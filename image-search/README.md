@@ -1,7 +1,7 @@
 # UI reference board
 
 115 screenshots of course-selling, video-learning, cooking-course, checkout, paywall, header, tab-bar and
-search UI, collected while redesigning Rasoi Studio. They are reference only — no asset here ships in the app.
+search UI, collected while redesigning YDU Academy. They are reference only — no asset here ships in the app.
 
 What the board settled, and what the implementation does:
 

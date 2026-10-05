@@ -75,7 +75,7 @@ export default function ExploreScreen() {
 
     const seeds = [
       ...words.map((word) => ({ term: word, badge: 'Course' })),
-      ...categories.map((category) => ({ term: category.label, badge: 'Cuisine' })),
+      ...categories.map((category) => ({ term: category.label, badge: 'Track' })),
     ];
 
     const seen = new Set<string>();
@@ -127,7 +127,7 @@ export default function ExploreScreen() {
       contentStyle={styles.content}
       header={
         <View style={styles.headerBlock}>
-          <TabHeader overline="Discover" title="What will you cook today?" />
+          <TabHeader overline="Discover" title="What will you make today?" />
           <View style={styles.searchWrap}>
             <SearchField
               value={filters.query}
@@ -252,7 +252,7 @@ export default function ExploreScreen() {
             <EmptyState
               icon={Search}
               title="No courses match these filters"
-              body="Try a different cuisine, level or price range. Clearing the filters brings the full catalog back."
+              body="Try a different track, level or price range. Clearing the filters brings the full catalog back."
               actionLabel="Clear filters"
               onAction={() => setFilters({ ...emptyFilters })}
             />
@@ -312,7 +312,7 @@ export default function ExploreScreen() {
             <Button label="Clear all filters" onPress={clearAll} variant="ghost" />
           </View>
         }>
-        <FilterGroup title="Cuisine or skill">
+        <FilterGroup title="Track or skill">
           {categories.map((category) => (
             <Chip
               key={category.id}

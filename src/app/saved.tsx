@@ -10,7 +10,7 @@ import { courseById, courses } from '@/data/catalog';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 import { formatDuration } from '@/lib/format';
-import { Clock, CookingPot } from 'lucide-react-native';
+import { Clock, Milk } from 'lucide-react-native';
 
 type Segment = 'courses' | 'recipes';
 
@@ -38,7 +38,7 @@ export default function SavedScreen() {
         <Segmented<Segment>
           options={[
             { id: 'courses', label: `Courses · ${savedCourses.length}` },
-            { id: 'recipes', label: `Recipes · ${savedRecipes.length}` },
+            { id: 'recipes', label: `Batch sheets · ${savedRecipes.length}` },
           ]}
           value={segment}
           onChange={setSegment}
@@ -83,8 +83,8 @@ export default function SavedScreen() {
       ) : savedRecipes.length === 0 ? (
         <EmptyState
           icon={ShoppingBasket}
-          title="No saved recipes"
-          body="Recipes live inside lessons. Open a lesson, go to the Recipe tab and save the ones you cook often."
+          title="No saved batch sheets"
+          body="Batch sheets live inside lessons. Open a lesson, go to the Sheet tab and save the ones you make often."
           actionLabel="Find a lesson"
           onAction={() => router.push('/explore')}
         />
@@ -94,7 +94,7 @@ export default function SavedScreen() {
             <View key={lesson.id} style={styles.recipeRow}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`${lesson.recipe!.title}, from ${course.title}. Open the recipe.`}
+                accessibilityLabel={`${lesson.recipe!.title}, from ${course.title}. Open the batch sheet.`}
                 onPress={() =>
                   router.push({
                     pathname: '/lesson/[courseId]/[lessonId]',
@@ -111,7 +111,7 @@ export default function SavedScreen() {
                     {course.title}
                   </Text>
                   <View style={styles.metaRow}>
-                    <MetaItem icon={CookingPot} label={`Serves ${lesson.recipe!.servings}`} />
+                    <MetaItem icon={Milk} label={`Makes ${lesson.recipe!.servings}`} />
                     <MetaItem
                       icon={Clock}
                       label={formatDuration(lesson.recipe!.prepMinutes + lesson.recipe!.cookMinutes)}
@@ -122,7 +122,7 @@ export default function SavedScreen() {
               <IconButton
                 icon={BookmarkCheck}
                 active
-                accessibilityLabel={`Remove ${lesson.recipe!.title} from saved recipes`}
+                accessibilityLabel={`Remove ${lesson.recipe!.title} from saved batch sheets`}
                 onPress={() => toggleSavedRecipe(lesson.recipe!.id)}
                 variant="soft"
                 size={layout.touchTarget}

@@ -250,7 +250,7 @@ const animation = {
   op: DUR,
   w: SIZE,
   h: SIZE,
-  nm: 'Rasoi offer mark',
+  nm: 'YDU offer mark',
   ddd: 0,
   assets: [],
   layers,

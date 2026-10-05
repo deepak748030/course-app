@@ -597,10 +597,10 @@ export default function LessonPlayerScreen() {
           <View style={styles.tabs}>
             <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
             <TabButton
-              label="Recipe"
+              label="Sheet"
               active={tab === 'recipe'}
               disabled={!recipe}
-              hint={recipe ? undefined : 'This lesson has no recipe'}
+              hint={recipe ? undefined : 'This lesson has no batch sheet'}
               onPress={() => recipe && setTab('recipe')}
             />
             <TabButton label="Notes" active={tab === 'notes'} onPress={() => setTab('notes')} />
@@ -658,7 +658,7 @@ export default function LessonPlayerScreen() {
                   <View style={styles.metaRow}>
                     <Clock size={14} color={colors.textMuted} strokeWidth={1.9} />
                     <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
-                      {recipe.prepMinutes} min prep · {recipe.cookMinutes} min cook
+                      {recipe.prepMinutes} min prep · {recipe.cookMinutes} min make
                     </Text>
                   </View>
                 </View>
@@ -666,20 +666,20 @@ export default function LessonPlayerScreen() {
                   icon={isRecipeSaved(recipe.id) ? BookmarkCheck : Bookmark}
                   variant="soft"
                   active={isRecipeSaved(recipe.id)}
-                  accessibilityLabel={isRecipeSaved(recipe.id) ? 'Remove recipe from saved' : 'Save recipe'}
+                  accessibilityLabel={isRecipeSaved(recipe.id) ? 'Remove batch sheet from saved' : 'Save batch sheet'}
                   onPress={() => toggleSavedRecipe(recipe.id)}
                 />
               </View>
 
               <View style={styles.servingsRow}>
-                <Text style={[type.label, { color: colors.textMuted }]}>Servings</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>Batch</Text>
                 <View style={styles.stepper}>
                   <IconButton
                     icon={Minus}
                     variant="soft"
                     size={36}
                     iconSize={16}
-                    accessibilityLabel="Fewer servings"
+                    accessibilityLabel="Smaller batch"
                     onPress={() => setServings(Math.max(1, currentServings - 1))}
                   />
                   <Text style={[type.bodyStrong, tabularNums, styles.servingValue, { color: colors.text }]}>
@@ -690,7 +690,7 @@ export default function LessonPlayerScreen() {
                     variant="soft"
                     size={36}
                     iconSize={16}
-                    accessibilityLabel="More servings"
+                    accessibilityLabel="Larger batch"
                     onPress={() => setServings(Math.min(12, currentServings + 1))}
                   />
                 </View>
@@ -699,7 +699,7 @@ export default function LessonPlayerScreen() {
               <View style={styles.sectionCard}>
                 <View style={styles.ingredientHead}>
                   <ShoppingBasket size={16} color={colors.sage} strokeWidth={1.9} />
-                  <Text style={[type.labelStrong, { color: colors.text }]}>Ingredients</Text>
+                  <Text style={[type.labelStrong, { color: colors.text }]}>Materials</Text>
                 </View>
                 {recipe.ingredients.map((ingredient) => (
                   <View key={ingredient.item} style={styles.ingredientRow}>
@@ -711,13 +711,13 @@ export default function LessonPlayerScreen() {
                 ))}
                 {factor !== 1 ? (
                   <Text style={[type.label, { color: colors.textSubtle }]}>
-                    Quantities scaled from the original {baseServings} servings.
+                    Quantities scaled from the original batch of {baseServings}.
                   </Text>
                 ) : null}
               </View>
 
               <View style={styles.sectionCard}>
-                <Text style={[type.labelStrong, { color: colors.text }]}>Method</Text>
+                <Text style={[type.labelStrong, { color: colors.text }]}>Steps</Text>
                 {recipe.steps.map((step, index) => (
                   <View key={step} style={styles.stepRow}>
                     <View style={styles.stepNumber}>
@@ -740,7 +740,7 @@ export default function LessonPlayerScreen() {
               ) : null}
 
               <Text style={[type.label, { color: colors.textSubtle }]}>
-                Sample recipe content for learning. This is not professional dietary, allergy or food-safety advice.
+                Sample batch sheet for learning. This is not food-safety or regulatory advice — check your own process and local rules.
               </Text>
             </View>
           ) : null}

@@ -1,5 +1,5 @@
 /**
- * Design tokens for Rasoi Studio — two themes, one component tree.
+ * Design tokens for YDU Academy — two themes, one component tree.
  *
  * Rules this file enforces (Design Rules — App):
  * - ONE font family (DM Sans). No serif, no third family.

@@ -23,7 +23,7 @@ export default function LegalScreen() {
 
       <View style={styles.pad}>
         <Text style={[type.label, { color: colors.textSubtle }]}>
-          Before distributing Rasoi Studio, replace this placeholder with documents reviewed by a lawyer.
+          Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.
         </Text>
       </View>
 

@@ -5,7 +5,7 @@ export type Id = string;
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Language = 'English' | 'Hindi' | 'English + Hindi';
-export type VideoKey = 'home-cooking' | 'gravies' | 'baking' | 'foundations';
+export type VideoKey = 'milk' | 'paneer' | 'ghee' | 'curd-ferments';
 
 export interface Ingredient {
   item: string;

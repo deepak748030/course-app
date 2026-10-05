@@ -32,24 +32,24 @@ type Slide = {
 
 const slides: Slide[] = [
   {
-    key: 'joy',
-    image: images.onboardingJoy,
-    headline: 'A little practice.\nA lot of flavour.',
-    support: 'Discover cooking courses that turn everyday ingredients into something special.',
+    key: 'milk',
+    image: images.onboardingFreshMilk,
+    headline: 'Good dairy starts\nwith good milk.',
+    support: 'Learn reception, chilling and testing from structured video courses built for the trade.',
     cta: 'Next',
   },
   {
-    key: 'guided',
-    image: images.onboardingGuided,
-    headline: 'Learn the why,\nnot just the recipe.',
-    support: 'Follow clear, step-by-step video lessons, from the first chop to the plated dish.',
+    key: 'bench',
+    image: images.onboardingTesting,
+    headline: 'Learn the numbers,\nnot the guesswork.',
+    support: 'Fat, SNF, lactometer readings and adulteration tests — shown at the bench, step by step.',
     cta: 'Next',
   },
   {
-    key: 'confidence',
-    image: images.onboardingConfidence,
-    headline: 'Your next great dish\nstarts here.',
-    support: 'Build skills at your pace, save your favourites, and cook with confidence.',
+    key: 'range',
+    image: images.onboardingRange,
+    headline: 'From milk\nto a finished product.',
+    support: 'Paneer, ghee, curd, cheese and frozen desserts: pick a track, follow the make-sheet, sell it.',
     cta: 'Start learning',
   },
 ];
@@ -91,7 +91,7 @@ export default function OnboardingScreen() {
       <View style={styles.topBar}>
         <View style={styles.brand}>
           <BrandMark size={26} />
-          <Text style={[type.bodyStrong, { color: colors.text }]}>Rasoi Studio</Text>
+          <Text style={[type.bodyStrong, { color: colors.text }]}>YDU Academy</Text>
         </View>
       </View>
 

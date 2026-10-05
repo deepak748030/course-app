@@ -28,10 +28,19 @@ clip() { # clip <still> <out> [seconds]
   echo "wrote $out"
 }
 
-clip "$IMG/course-restaurant-gravies.jpg" "$VID/demo-clip-gravies.mp4"
-clip "$IMG/course-everyday-indian.jpg"    "$VID/demo-clip-home-cooking.mp4"
-clip "$IMG/course-baking-basics.jpg"      "$VID/demo-clip-baking.mp4"
-# Foundations uses its own cover still.
-clip "$IMG/course-knife-skills.jpg"          "$VID/demo-clip-foundations.mp4"
+clip "$IMG/course-milk-foundations.jpg" "$VID/demo-clip-milk.mp4"
+clip "$IMG/course-paneer-craft.jpg"     "$VID/demo-clip-paneer.mp4"
+clip "$IMG/course-ghee-butter.jpg"      "$VID/demo-clip-ghee.mp4"
+clip "$IMG/course-curd-ferments.jpg"    "$VID/demo-clip-curd-ferments.mp4"
 
-# Fill any photograph that has not been generated yet with its documented placeholder.
+# The designed fallback panel for a photograph that does not exist yet: ivory ground, the YDU
+# Academy mark in ink and the brand arc, regenerated from the same brief as the brand mark.
+MARK="${MARK:-$ROOT/../mark.png}"
+if [ -f "$MARK" ]; then
+  convert -size 1200x896 xc:'#FBF5E4' \
+    \( "$MARK" -resize 380x380 \) -gravity center -composite \
+    -fill none -stroke '#FFC629' -strokewidth 26 \
+    -draw "stroke-linecap round path 'M 430,660 Q 600,742 770,660'" \
+    "$IMG/placeholder-panel-4x3.jpg"
+  echo "wrote $IMG/placeholder-panel-4x3.jpg"
+fi

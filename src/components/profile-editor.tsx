@@ -17,11 +17,11 @@ import { createStyles, colors, spacing, type } from '@/constants/theme';
 import { buildDateOfBirth, DOB_FORMAT_HINT, validateEmail } from '@/lib/format';
 import type { UserProfile } from '@/types';
 
-export const COOKING_GOALS = [
-  'Cook better everyday meals',
-  'Bake at home',
-  'Restaurant-style cooking',
-  'Lighter, healthier food',
+export const DAIRY_GOALS = [
+  'Run a cleaner milk reception',
+  'Sell milk and products',
+  'Make paneer for sale',
+  'Get a dairy unit compliant',
 ] as const;
 
 type Draft = {
@@ -217,13 +217,13 @@ export function ProfileEditorSheet({
         placeholder="Indore"
         autoCapitalize="words"
         returnKeyType="done"
-        hint="Helps us suggest dishes you already cook."
+        hint="Helps us suggest products and tracks that fit your dairy."
       />
 
       <View style={styles.fieldWrap}>
-        <Text style={[type.labelStrong, { color: colors.textMuted }]}>Cooking goal</Text>
+        <Text style={[type.labelStrong, { color: colors.textMuted }]}>Dairy goal</Text>
         <View style={styles.chips}>
-          {COOKING_GOALS.map((goal) => (
+          {DAIRY_GOALS.map((goal) => (
             <Chip
               key={goal}
               label={goal}

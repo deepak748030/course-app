@@ -8,7 +8,7 @@
 
 import { storage } from '@/lib/storage';
 
-const KEY = 'rasoi.recent-searches';
+const KEY = 'ydu.recent-searches';
 const LIMIT = 5;
 
 export async function readRecentSearches(): Promise<string[]> {

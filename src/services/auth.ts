@@ -17,7 +17,7 @@ import { Platform } from 'react-native';
 
 import type { Session } from '@/types';
 
-const SESSION_KEY = 'rasoi.session';
+const SESSION_KEY = 'ydu.session';
 
 export type OtpFailure = 'incorrect' | 'expired' | 'network';
 

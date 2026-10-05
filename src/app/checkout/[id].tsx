@@ -81,7 +81,7 @@ export default function CheckoutScreen() {
     const match = demoCoupons.find((entry) => entry.code === code);
     if (!match) {
       setCoupon(null);
-      setCouponError('That code is not in the demo dataset. Try RASOI10.');
+      setCouponError('That code is not in the demo dataset. Try YDU10.');
       return;
     }
     setCouponError(null);

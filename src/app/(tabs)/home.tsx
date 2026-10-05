@@ -76,8 +76,8 @@ export default function HomeScreen() {
               <BrandMark size={26} color={colors.onAccent} />
             </BrandTile>
           }
-          title="Rasoi Studio"
-          meta={`${courses.length} courses · ${categories.length} skills`}
+          title="YDU Academy"
+          meta={`${courses.length} courses · ${categories.length} tracks`}
           actions={
             <>
               <IconButton
@@ -129,7 +129,7 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.block}>
-        <SectionHeader title="Browse by" subtitle="Cuisine or skill" />
+        <SectionHeader title="Browse by" subtitle="Track or skill" />
         <Rail>
           {categories.map((category) => (
             <Chip
@@ -152,7 +152,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.block}>
-        <SectionHeader title="Quick skills" subtitle="Short courses you can finish this week" />
+        <SectionHeader title="Quick tracks" subtitle="Short courses you can finish this week" />
         <Rail>
           {quickSkills.map((course) => (
             <CourseCard key={course.id} course={course} />

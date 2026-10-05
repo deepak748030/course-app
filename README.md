@@ -1,7 +1,9 @@
-# Rasoi Studio
+# YDU Academy
 
-A premium Indian cooking-education app built with Expo (SDK 57), Expo Router and TypeScript.
-Learners browse structured video courses, buy them, and learn inside an immersive lesson player.
+A dairy-education app built with Expo (SDK 57), Expo Router and TypeScript. Dairy owners, plant
+hands and family producers browse structured video courses — milk handling, paneer, ghee, curd,
+cheese, frozen desserts, farm practice, selling — buy them, and learn inside an immersive lesson
+player with a standardised batch sheet beside the video.
 
 > **Prototype build.** The catalog, prices, ratings and reviews are fictional sample
 > content. Authentication and payments are demo implementations; nothing is charged and no SMS is
@@ -56,7 +58,7 @@ Checkout lets you pick which scenario the demo reproduces:
 | Failed payment | Shows the failure + retry state (nothing is charged) |
 | Cancelled by user | Returns to checkout with an explanatory note |
 
-Demo coupons: `RASOI10` (10% off) and `FOUNDATIONS20` (20% off). Every coupon is applied to a
+Demo coupons: `YDU10` (10% off) and `DAIRY20` (20% off). Every coupon is applied to a
 simulated total only.
 
 ## Project structure
@@ -73,11 +75,11 @@ src/
     course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)
     checkout/[id].tsx      demo checkout with scenarios and coupons
     purchase-success.tsx   confirmation → first lesson
-    lesson/[courseId]/[lessonId].tsx   player: Overview · Recipe · Notes
+    lesson/[courseId]/[lessonId].tsx   player: Overview · Sheet (batch sheet) · Notes
     saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
   components/              UI kit (ui.tsx), course cards, animated icons, bottom sheet, brand marks
   constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
-  data/                    catalog.ts (courses, categories, recipes), content.ts (FAQ, coupons, legal)
+  data/                    catalog.ts (courses, tracks, batch sheets), content.ts (FAQ, coupons, legal)
   lib/format.ts            pure formatters/validators (runnable outside the app)
   lib/util.ts              haptics feedback
   media.ts                 the only place that maps data keys → bundled assets
@@ -90,15 +92,16 @@ State is one React context with `AsyncStorage` persistence — no state library 
 
 ## Assets and placeholders
 
-Photography in `assets/images` was **AI-generated for this prototype** using the art direction in the
-project brief (warm editorial culinary style). Photography is used for illustration only; every course
-cover corresponds to fictional sample content.
+Photography in `assets/images` was **AI-generated for this prototype** in a clean editorial dairy
+style: eight course covers (`course-milk-foundations`, `course-paneer-craft`, `course-curd-ferments`,
+`course-ghee-butter`, `course-frozen-desserts`, `course-artisan-cheese`, `course-dairy-farming`,
+`course-dairy-business`) and two onboarding frames (`onboarding-fresh-milk`, `onboarding-testing`).
+Photography is used for illustration only; every course corresponds to fictional sample content.
 
-Every course cover is now a real generated photograph, including `course-eggless-desserts.jpg` and
-`course-knife-skills.jpg`. Any photograph that has not been generated yet falls back to
-`placeholder-panel-4x3.jpg` — a designed brand panel (ivory ground, ink bowl-and-play mark, yellow arc),
-not a grey box, so nothing ever renders as a broken image. Replace them with real photography using the
-same file names; no code changes are needed.
+Any photograph that has not been generated yet falls back to `placeholder-panel-4x3.jpg` — a designed
+brand panel (ivory ground, the dairy mark in ink, brand-yellow arc), not a grey box, so nothing ever
+renders as a broken image. Replace any cover with real photography using the same file name; no code
+changes are needed.
 
 Derived media is reproducible and documented in scripts:
 
@@ -111,8 +114,12 @@ bash scripts/generate-brand-assets.sh # app icon, splash, favicon, Android adapt
 placeholder lesson and trailer footage until real course video exists. They are real, playable files —
 no invented streaming URLs are used anywhere.
 
-The brand mark (bowl + steam + play triangle) is vector geometry in `src/components/marks.tsx` and is
-mirrored by the icon generator, so the app icon and the in-app mark stay in sync.
+The brand mark is a **milk can with a play triangle on its face and a drop beneath it**, drawn as
+vector geometry in `src/components/marks.tsx` (a 48-unit box: lid plate and neck, tapered shoulder,
+straight can body, knocked-out play triangle, drop) and mirrored by
+`scripts/generate-brand-assets.sh`, so the app icon, splash, favicon, Android adaptive layers and the
+in-app mark all come from the same source of truth. The wordmark is the two weights of DM Sans —
+"YDU" semibold, "Academy" regular.
 
 ## Design system
 
@@ -222,7 +229,7 @@ A UI reference board of 100 course-app screens used for this redesign is kept in
   filled *and* outline pair for the same glyph.
 - **Headers**: a tab is already labelled in the bar, so no tab screen repeats its own name as a page
   title. `TabHeader` composes 16px padding, an optional leading mark and one overline + one semibold line:
-  Home carries the brand tile and the catalog size, Explore asks "What will you cook today?", Learning
+  Home carries the brand tile and the catalog size, Explore asks "What will you make today?", Learning
   shows progress with a Saved shortcut, Profile is the identity block (avatar, name, member since) with a
   Settings action. Stacked screens keep the centred 56px `AppBar` with a back button — which now only
   renders when the router can actually go back.
@@ -258,7 +265,7 @@ onboarding completion and app preferences are kept.
 - The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs`, `tabs.mjs`
   with `SEED=1`) so the real client boot path runs and can be inspected: every route renders real content
   (no empty screens), and click-throughs were exercised for the tab bar (all four tabs, via
-  `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Recipe/Notes,
+  `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Sheet/Notes,
   the sort/filter sheets opening and closing, and focusing the search field (recent searches +
   suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
 - Status bar. Android has two modes and both are covered, because the black bar came from the second
@@ -296,6 +303,20 @@ onboarding completion and app preferences are kept.
   the three outcome rows with their radios, and the pay bar reading "₹1,199 · 33% off · Total payable ·
   one-time · Pay ₹1,199" when the course is not owned, or "You own this course" with "Start learning"
   when it is.
+- The dairy switch was walked in the exported web build the same way: the home screen reads
+  "YDU Academy · 8 courses · 8 tracks", the hero and the "Browse by / Track or skill" rails carry the
+  dairy tracks, Explore opens with "What will you make today?", and the seeded demo enrolment is
+  `milk-foundations` ("The reception check, step by step", 0%). The lesson route
+  `/lesson/milk-foundations/milk-foundations-l1` renders the player with the tabs
+  Overview · **Sheet** · Notes, and the control peek still behaves: transport up and no extras before
+  the first play, four extras (speed, 540p, Mute, Fullscreen) on play, hidden three seconds later,
+  back on a tap, hidden again, and staying put while paused. The course page shows the rating block
+  ("Rated 4.8 out of 5 from 1,284 reviews") and the checkout shows ₹1,999 in the theme accent with
+  ₹2,999 struck through in red. `scripts/selfcheck.ts` now also asserts that every course belongs to a
+  dairy track and that no cooking-course wording is left in the catalog.
+- The brand mark was rendered at 512px and at 96px to check it survives icon size, and the app icon,
+  splash, favicon and Android adaptive layers were regenerated from the same geometry. Onboarding,
+  auth and the tabs all still boot with zero import errors.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 

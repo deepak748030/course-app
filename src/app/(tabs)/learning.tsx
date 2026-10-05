@@ -56,7 +56,7 @@ export default function MyLearningScreen() {
         <TabHeader
           bordered
           overline="Your progress"
-          title="Keep cooking"
+          title="Keep learning"
           actions={
             <IconButton
               icon={Bookmark}

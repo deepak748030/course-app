@@ -10,39 +10,39 @@ export const notifications: NotificationItem[] = [
     id: 'n1',
     kind: 'learning-reminder',
     title: 'Pick up where you left off',
-    body: 'You were 4 minutes into “Soft rotis on a tawa”. A short session today keeps the streak going.',
+    body: 'You were 4 minutes into “Reading a lactometer correctly”. A short session today keeps the streak going.',
     minutesAgo: 45,
-    courseId: 'everyday-indian',
+    courseId: 'milk-foundations',
   },
   {
     id: 'n2',
     kind: 'course-update',
-    title: 'Baking Basics: oven temperatures',
-    body: 'Meera added a short lesson on testing your oven for hot spots. It is now part of the troubleshooting section.',
+    title: 'Paneer Craft: acid strength',
+    body: 'Meera added a short lesson on checking citric acid strength before a batch. It is now part of the troubleshooting section.',
     minutesAgo: 190,
-    courseId: 'baking-basics',
+    courseId: 'paneer-craft',
   },
   {
     id: 'n3',
     kind: 'course-update',
-    title: 'Dal makhani, step by step',
-    body: '“Restaurant-Style Gravies” now includes a longer dal makhani walkthrough.',
+    title: 'Ghee, step by step',
+    body: '“Ghee & Butter at Home” now includes a longer walkthrough of the clarification stages.',
     minutesAgo: 1450,
-    courseId: 'restaurant-gravies',
+    courseId: 'ghee-butter',
   },
   {
     id: 'n4',
     kind: 'course-update',
-    title: 'A small addition to Knife Skills',
-    body: 'A new lesson covers storing prepped vegetables so they last the week.',
+    title: 'A small addition to Artisan Cheese',
+    body: 'A new lesson covers cleaning and turning shelves between wheels in a small maturing room.',
     minutesAgo: 2900,
-    courseId: 'knife-skills',
+    courseId: 'artisan-cheese',
   },
   {
     id: 'n5',
     kind: 'product',
     title: 'Notes are live in the player',
-    body: 'You can now write lesson notes and they stay with the lesson on this device.',
+    body: 'You can now write batch notes and they stay with the lesson on this device.',
     minutesAgo: 4300,
   },
 ];
@@ -58,7 +58,7 @@ export const faqs: FaqItem[] = [
     id: 'f2',
     question: 'Are the purchases in this app real?',
     answer:
-      'No. Rasoi Studio currently ships a demo checkout: no payment gateway is connected, no card details are ever collected, and no money moves. The course unlocks locally so you can see the full journey.',
+      'No. YDU Academy currently ships a demo checkout: no payment gateway is connected, no card details are ever collected, and no money moves. The course unlocks locally so you can see the full journey.',
   },
   {
     id: 'f3',
@@ -80,15 +80,15 @@ export const faqs: FaqItem[] = [
   },
   {
     id: 'f6',
-    question: 'I found a cooking technique that did not work',
+    question: 'I followed a method and the batch did not work',
     answer:
-      'Recipes and techniques in the app are sample educational content, not professional dietary or food-safety guidance. If a method does not suit your ingredients or equipment, use your judgement and a trusted local source.',
+      'The make-sheets in the app are sample educational content, not food-safety, veterinary or licensing guidance. Batch outcomes depend on your milk, your equipment and your local rules — check with your dairy officer or a qualified advisor before you change a commercial process.',
   },
 ];
 
 export const demoCoupons: { code: string; percentOff: number; label: string }[] = [
-  { code: 'RASOI10', percentOff: 10, label: '10% off any course' },
-  { code: 'FOUNDATIONS20', percentOff: 20, label: '20% off foundation courses' },
+  { code: 'YDU10', percentOff: 10, label: '10% off any course' },
+  { code: 'DAIRY20', percentOff: 20, label: '20% off dairy essentials tracks' },
 ];
 
 /** Sample legal copy. Replace with reviewed documents before shipping. */
@@ -97,9 +97,9 @@ export const legalDocs = {
     title: 'Terms of use',
     updated: 'Sample document',
     paragraphs: [
-      'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before Rasoi Studio is distributed.',
+      'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before YDU Academy is distributed.',
       'In this build, courses, prices and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
-      'You are responsible for how you use the cooking techniques shown. Recipes are educational sample material, not dietary, allergy or food-safety advice.',
+      'You are responsible for how you apply the methods shown. Batch sheets are educational sample material, not food-safety, veterinary, licensing or regulatory advice.',
     ],
   },
   privacy: {
@@ -114,10 +114,10 @@ export const legalDocs = {
 } as const;
 
 /** What a purchase includes in this prototype. Deliberately conservative — nothing is promised
- * that the product does not actually do. */
+ *  that the product does not actually do. */
 export const purchaseTerms: string[] = [
   'Stream every lesson of this course on this account',
   'Lessons unlock immediately after the demo purchase completes',
-  'Lesson notes, progress and playback position are saved on this device',
+  'Batch notes, progress and playback position are saved on this device',
   'Downloads, certificates, captions and live classes are not offered in this prototype',
 ];

@@ -13,7 +13,7 @@ export default function HelpScreen() {
     // No support inbox is configured in this prototype, so nothing is submitted anywhere.
     await Share.share({
       message:
-        'Rasoi Studio prototype feedback:\n\n(Describe what happened, which screen, and what you expected.)\n\nThis message is not sent automatically — copy or send it to your team.',
+        'YDU Academy prototype feedback:\n\n(Describe what happened, which screen, and what you expected.)\n\nThis message is not sent automatically — copy or send it to your team.',
     }).catch(() => {});
   };
 

@@ -1,5 +1,5 @@
 /**
- * Core UI kit for Rasoi Studio.
+ * Core UI kit for YDU Academy.
  *
  * Every value comes from @/constants/theme. Rules honoured here:
  * - No shadows: separation comes from surface colour + 1px hairlines.
@@ -1021,7 +1021,7 @@ export function BrandTile({ size = 40, children }: { size?: number; children: Re
  * Search
  * ------------------------------------------------------------------ */
 
-export const SEARCH_PLACEHOLDER = 'Search courses, skills or a dish';
+export const SEARCH_PLACEHOLDER = 'Search courses, tracks or a product';
 
 /** Pill search field. Focus raises the border and reveals a Cancel action, iOS style. */
 export function SearchField({

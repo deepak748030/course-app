@@ -22,7 +22,7 @@ import type {
   UserProfile,
 } from '@/types';
 
-const STORAGE_KEY = 'rasoi.state.v1';
+const STORAGE_KEY = 'ydu.state.v1';
 
 type PersistedState = {
   onboardingDone: boolean;
@@ -54,19 +54,19 @@ function seedState(): PersistedState {
     savedCourseIds: [],
     savedRecipeIds: [],
     enrollments: {
-      'everyday-indian': {
-        courseId: 'everyday-indian',
+      'milk-foundations': {
+        courseId: 'milk-foundations',
         purchasedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 6).toISOString(),
         priceInr: 0,
         source: 'sample-seed',
       },
     },
     progress: {
-      'everyday-indian': {
-        'everyday-indian-l1': { completed: true, positionSec: 0 },
-        'everyday-indian-l2': { completed: true, positionSec: 0 },
-        'everyday-indian-l3': { completed: true, positionSec: 0 },
-        'everyday-indian-l4': { completed: false, positionSec: 214 },
+      'milk-foundations': {
+        'milk-foundations-l1': { completed: true, positionSec: 0 },
+        'milk-foundations-l2': { completed: true, positionSec: 0 },
+        'milk-foundations-l3': { completed: true, positionSec: 0 },
+        'milk-foundations-l4': { completed: false, positionSec: 214 },
       },
     },
     notes: {},

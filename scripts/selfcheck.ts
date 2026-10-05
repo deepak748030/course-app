@@ -108,6 +108,15 @@ check('catalog derivation produces unique ids and coherent counts', async () => 
   const uniqueIds = new Set(allLessons.map((lesson) => lesson.id));
 
   assert.equal(catalog.courses.length, 8, 'eight sample courses');
+  assert.ok(
+    catalog.courses.every((course) => catalog.categories.some((category) => category.id === course.categoryId)),
+    'every course belongs to one of the dairy tracks',
+  );
+  const offDomain = /biryani|thali|roti|knife skills|baking basics/i;
+  assert.ok(
+    catalog.courses.every((course) => !offDomain.test(`${course.title} ${course.promise} ${course.description}`)),
+    'no cooking-course content is left in the dairy catalog',
+  );
   assert.equal(uniqueIds.size, allLessons.length, 'lesson ids must be unique across the catalog');
   assert.ok(
     allLessons.every((lesson) => catalog.courses.some((course) => course.sections.some((section) => section.id === lesson.sectionId))),
@@ -127,8 +136,8 @@ check('search, filters and sorting act on the catalog', async () => {
   const catalog = await import('../src/data/catalog');
 
   assert.deepEqual(
-    catalog.browseCourses({ ...catalog.emptyFilters, query: 'biryani' }).map((course) => course.id),
-    ['biryani'],
+    catalog.browseCourses({ ...catalog.emptyFilters, query: 'paneer' }).map((course) => course.id),
+    ['paneer-craft'],
   );
   assert.deepEqual(
     catalog.browseCourses({ ...catalog.emptyFilters, query: 'armchair' }),
@@ -136,8 +145,8 @@ check('search, filters and sorting act on the catalog', async () => {
     'a query with no match returns no results, so the empty state is reachable',
   );
   assert.deepEqual(
-    catalog.browseCourses({ ...catalog.emptyFilters, categoryIds: ['baking'] }).map((course) => course.id),
-    ['baking-basics'],
+    catalog.browseCourses({ ...catalog.emptyFilters, categoryIds: ['cheese'] }).map((course) => course.id),
+    ['artisan-cheese'],
   );
 
   const cheap = catalog.browseCourses({ ...catalog.emptyFilters, priceBands: ['under-1000'], sort: 'price-asc' });

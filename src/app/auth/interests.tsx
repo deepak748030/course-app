@@ -27,9 +27,9 @@ export default function InterestsScreen() {
   return (
     <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.md }}>
       <View style={styles.intro}>
-        <Text style={[type.title, { color: colors.text }]}>What would you like to cook?</Text>
+        <Text style={[type.title, { color: colors.text }]}>What do you work with?</Text>
         <Text style={[type.body, { color: colors.textMuted }]}>
-          Pick a few and we will put those courses first on your home screen. You can change this anytime in Settings.
+          Pick a few tracks and we will put those courses first on your home screen. You can change this anytime in Settings.
         </Text>
       </View>
 

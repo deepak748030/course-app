@@ -105,7 +105,7 @@ export default function SettingsScreen() {
 
         <View style={styles.about}>
           <Text style={[type.label, { color: colors.textSubtle }]}>
-            Rasoi Studio {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
+            YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
           </Text>
           <Text style={[type.label, { color: colors.textSubtle }]}>
             Prototype build: sample catalog, demo authentication, demo payments.

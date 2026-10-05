@@ -93,7 +93,7 @@ export default function ProfileScreen() {
       return;
     }
     if (result.reason === 'permission') {
-      setPhotoNotice('Photo access is switched off for Rasoi Studio. Turn it on in your device settings, then try again.');
+      setPhotoNotice('Photo access is switched off for YDU Academy. Turn it on in your device settings, then try again.');
     } else if (result.reason === 'failed') {
       setPhotoNotice('That image could not be read. Try another photo.');
     }
@@ -153,7 +153,7 @@ export default function ProfileScreen() {
               />
             ) : null}
             {profile.city ? <ListRow icon={MapPin} label="City" subtitle={profile.city} chevron={false} /> : null}
-            {profile.goal ? <ListRow icon={Target} label="Cooking goal" subtitle={profile.goal} chevron={false} /> : null}
+            {profile.goal ? <ListRow icon={Target} label="Dairy goal" subtitle={profile.goal} chevron={false} /> : null}
           </DataList>
         </View>
       ) : (
@@ -181,7 +181,7 @@ export default function ProfileScreen() {
           <View style={styles.statRow}>
             <Stat icon={Bookmark} label="Saved courses" value={String(state.savedCourseIds.length)} />
             <View style={styles.statDivider} />
-            <Stat icon={UtensilsCrossed} label="Saved recipes" value={String(state.savedRecipeIds.length)} />
+            <Stat icon={UtensilsCrossed} label="Saved batch sheets" value={String(state.savedRecipeIds.length)} />
             <View style={styles.statDivider} />
             <Stat icon={NotebookPen} label="Notes written" value={String(notesWritten)} />
           </View>
@@ -195,7 +195,7 @@ export default function ProfileScreen() {
             <ListRow
               icon={Bookmark}
               label="Saved"
-              subtitle={`${state.savedCourseIds.length} courses · ${state.savedRecipeIds.length} recipes`}
+              subtitle={`${state.savedCourseIds.length} courses · ${state.savedRecipeIds.length} batch sheets`}
               onPress={() => router.push('/saved')}
             />
             <ListRow
@@ -242,7 +242,7 @@ export default function ProfileScreen() {
         <View style={styles.about}>
           <View style={styles.aboutRow}>
             <AppText variant="label" color={colors.textSubtle}>
-              Rasoi Studio {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
+              YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
             </AppText>
             <Badge label="Demo" tone="gold" />
           </View>
@@ -272,7 +272,7 @@ export default function ProfileScreen() {
 
       <ConfirmSheet
         visible={logoutOpen}
-        title="Log out of Rasoi Studio?"
+        title="Log out of YDU Academy?"
         body="Your session and the courses, progress and notes stored for it are removed from this device. Onboarding and app preferences stay."
         confirmLabel="Log out"
         destructive

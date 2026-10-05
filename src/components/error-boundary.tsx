@@ -18,7 +18,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Left in on purpose: this is a prototype, and the console is the only log a reviewer has.
-    console.error('[Rasoi] render error', error, info.componentStack);
+    console.error('[YDU Academy] render error', error, info.componentStack);
   }
 
   render() {
