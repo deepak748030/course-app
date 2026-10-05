@@ -9,7 +9,6 @@ import {
   Clock,
   Globe,
   Play,
-  ShoppingBasket,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -18,8 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
-import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
-import { OfferBadge } from '@/components/offer-tag';
+import { AnimatedCart, AnimatedCheck, AnimatedIcon, AnimatedPercent } from '@/components/animated-icons';
 import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { RatingStar } from '@/components/rating-star';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
@@ -115,6 +113,14 @@ export default function CourseDetailsScreen() {
                 Watch free preview · {previewLesson.minutes} min
               </Text>
             </Pressable>
+            {/* The discount sits where the player puts its own secondary controls: bottom right,
+                white glyph and label straight on the scrim — not a badge pasted into the text. */}
+            {offer ? (
+              <View style={styles.heroOffer} accessible accessibilityLabel={`${offer} percent off this course`}>
+                <AnimatedPercent size={15} color={colors.textInverse} />
+                <Text style={[type.labelStrong, { color: colors.textInverse }]}>{offer}% off</Text>
+              </View>
+            ) : null}
           </View>
         }>
         {/* Title block. Reads as a title: an uppercase overline, the largest type on the screen,
@@ -122,11 +128,6 @@ export default function CourseDetailsScreen() {
             belongs beside the title rather than under it, so it takes the empty column on the right
             and the block below stays three lines tall instead of six. */}
         <View style={styles.intro}>
-          {offer ? (
-            <View style={styles.offerRow}>
-              <OfferBadge percent={offer} />
-            </View>
-          ) : null}
           <View style={styles.titleRow}>
             <View style={styles.titleText}>
               <Text style={[type.overline, { color: colors.textSubtle }]}>
@@ -198,20 +199,6 @@ export default function CourseDetailsScreen() {
                 onOpen={openLesson}
                 locked={!enrolled}
               />
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader style={styles.headInset} title="What you'll need" />
-          <View style={styles.bullets}>
-            {course.equipment.map((item) => (
-              <View key={item} style={styles.bulletRow}>
-                <View style={styles.bulletIcon}>
-                  <AnimatedIcon icon={ShoppingBasket} size={16} color={colors.textMuted} motion="pulse" />
-                </View>
-                <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>{item}</Text>
-              </View>
             ))}
           </View>
         </View>
@@ -412,7 +399,9 @@ const styles = createStyles(() => StyleSheet.create({
   hero: { height: 240, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: layout.screen },
-  heroPlay: { position: 'absolute', left: layout.section, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  heroPlay: { position: 'absolute', left: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  /** Mirrors the player's own bottom-right control: glyph + label straight on the scrim. */
+  heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   playCircle: {
     width: 44,
     height: 44,
@@ -426,7 +415,7 @@ const styles = createStyles(() => StyleSheet.create({
   simpleBar: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
 
   intro: {
-    paddingHorizontal: layout.section,
+    paddingHorizontal: layout.screen,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
     gap: spacing.xs,
@@ -434,15 +423,19 @@ const styles = createStyles(() => StyleSheet.create({
   /** Kicker and title are one unit: 2px between them, and the rating column centred against both. */
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   titleText: { flex: 1, gap: 2 },
+  /**
+   * Full-bleed tone strip: it reaches both screen edges — the negative margin cancels the intro's
+   * 8pt gutter — and its contents stay on that same 8pt gutter, so the row lines up with every
+   * other line on the screen while the block itself reads as a band, not a card.
+   */
   facts: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: spacing.sm,
     backgroundColor: colors.surfaceAlt,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: layout.screen,
     paddingVertical: spacing.md,
-    marginTop: spacing.sm,
+    marginHorizontal: -layout.screen,
   },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   progressBlock: { gap: spacing.xs, marginTop: spacing.xs },
@@ -454,21 +447,20 @@ const styles = createStyles(() => StyleSheet.create({
    */
   section: { paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.sm },
   sectionTight: { paddingBottom: spacing.sm },
-  headInset: { paddingHorizontal: layout.section },
+  headInset: { paddingHorizontal: layout.screen },
   rule: { height: 1, backgroundColor: colors.divider },
-  sectionNote: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
-  bullets: { gap: spacing.sm, paddingHorizontal: layout.section },
+  sectionNote: { paddingHorizontal: layout.screen, paddingTop: spacing.xs },
+  bullets: { gap: spacing.sm, paddingHorizontal: layout.screen },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   bulletIcon: { height: 22, justifyContent: 'center' },
   factItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
   factIcon: { height: 16, justifyContent: 'center' },
   priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  offerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   strike: { textDecorationLine: 'line-through' },
 
   curriculum: { borderTopWidth: 1, borderColor: colors.border },
   curriculumBlock: { borderBottomWidth: 1, borderColor: colors.border },
-  curriculumHeader: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: layout.section, paddingVertical: spacing.md },
+  curriculumHeader: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
   sectionIndex: {
     width: 32,
     height: 32,

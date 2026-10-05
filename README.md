@@ -150,6 +150,17 @@ The UI follows the project's design rules document and is generated from one tok
   rendition with its resolution, bitrate and which one is in use, and says plainly that the demo lessons
   ship a single 540p file each: no invented 480p/720p/1080p menu that changes nothing. (The bundled demo
   clips are video-only, so the sound toggle has no audio to reveal until a lesson with a track plays.)
+- **The course page keeps the same 8pt gutter as every other screen.** Its title block, section
+  headers, bullets, section notes, curriculum rows and review rows all sit on `layout.screen` (8) —
+  only the inside of a card pads 16 — so the page no longer reads as if it were inset one step
+  further than Home or My learning. The facts strip (lessons · duration · language · level) is a
+  full-bleed tone band: negative 8pt margins cancel the gutter so the band reaches both screen
+  edges, while its contents stay on the 8pt gutter and line up with everything else.
+- **The discount lives on the picture, where the player puts its own controls.** The course hero
+  carries `33% off` at the bottom right — an animated percent glyph and a white label straight on
+  the scrim, exactly like the player's Fullscreen control at its bottom right — instead of a yellow
+  badge pasted into the text block. The yellow animated offer badge still marks offer prices on
+  cards, the home hero and checkout.
 - **The rating is the one thing beside the title.** On a course page the overline and the title are
   one unit (2px apart), and the empty column to their right carries the rating: a 36px star that
   leans left and right every couple of seconds with five fine star motes drifting down past it, the
@@ -293,6 +304,11 @@ onboarding completion and app preferences are kept.
   is gone again; a pause brings it back and it stays. The four transport buttons were dumped together:
   two groups of two, `speed · 540p` on the left and `Mute · Fullscreen` on the right, and the quality
   sheet reports "540p · 960 x 540 · in use" with the single-rendition note.
+- The course page's gutters were re-checked after the change: intro padding left/right 8 with a 4px
+  gap, section titles and bullets at 8, the facts band at `margin -8 / padding 8` so it bleeds edge
+  to edge with its content still on the gutter, the hero control at `right: 8px; bottom: 16px` with
+  the label "33 percent off this course", and the "What you'll need" section gone (the page now runs
+  What you'll learn → Curriculum → Reviews).
 - The course page's head was dumped at a 390pt viewport: intro padding 12/16 with a 4px gap, the
   kicker and title 2px apart in their column, the rating block 8px away on the right holding one big
   star and five motes (one star and no motes with reduced motion on) and reading
