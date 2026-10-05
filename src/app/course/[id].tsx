@@ -435,7 +435,8 @@ const styles = createStyles(() => StyleSheet.create({
   heroBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: layout.screen },
   heroPlay: { position: 'absolute', left: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   /** Mirrors the player's own bottom-right control: glyph + label straight on the scrim. */
-  heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  /** Number, percent glyph, `OFF`: one mark, so the gaps stay at 2px rather than the block rhythm. */
+  heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 2 },
   playCircle: {
     width: 44,
     height: 44,

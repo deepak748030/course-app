@@ -30,6 +30,17 @@ const DUR = 90;
 const SIZE = 512;
 const C = SIZE / 2;
 
+/**
+ * How much of the square the mark covers.
+ *
+ * The player fits the whole composition into its box, so every empty pixel around the drawing turns
+ * into layout space between the number, the glyph and "OFF" — which is what made the badge read
+ * loose. The mark is drawn at this factor (it ends up just under 75% of the canvas) so the badge can
+ * close up, while the ring and the twinkles are kept inside the square.
+ */
+const FIT = 1.55;
+const fit = (value) => Math.round(value * FIT);
+
 /** Palette: ink for the mark, brand yellow for the twinkles. Values are 0-1, as Lottie expects. */
 const INK = [0.1216, 0.1059, 0.0549, 1];
 const YELLOW = [1, 0.7765, 0.1608, 1];
@@ -192,8 +203,9 @@ function sparkleLayer({ ind, position, size, phase }) {
 }
 
 const layers = [
-  sparkleLayer({ ind: 1, position: [C - 132, C - 150], size: 54, phase: 0 }),
-  sparkleLayer({ ind: 2, position: [C + 140, C + 116], size: 44, phase: 15 }),
+  // Twinkles sit just off the mark's two opposite corners: inside the canvas, outside the ink.
+  sparkleLayer({ ind: 1, position: [C - 158, C - 166], size: 62, phase: 0 }),
+  sparkleLayer({ ind: 2, position: [C + 162, C + 142], size: 50, phase: 15 }),
 
   // Percent mark: always on screen, swaying gently.
   shapeLayer({
@@ -208,25 +220,37 @@ const layers = [
         ty: 'gr',
         nm: 'Slash',
         np: 3,
-        it: [rect([212, 34], [0, 0], 17), fill(INK), groupTransform({ r: still(-45) })],
+        it: [rect([fit(212), fit(34)], [0, 0], fit(17)), fill(INK), groupTransform({ r: still(-45) })],
       },
-      { ty: 'gr', nm: 'DotTopLeft', np: 3, it: [ellipse([68, 68], [-88, -88]), fill(INK), groupTransform()] },
-      { ty: 'gr', nm: 'DotBottomRight', np: 3, it: [ellipse([68, 68], [88, 88]), fill(INK), groupTransform()] },
+      {
+        ty: 'gr',
+        nm: 'DotTopLeft',
+        np: 3,
+        it: [ellipse([fit(68), fit(68)], [-fit(88), -fit(88)]), fill(INK), groupTransform()],
+      },
+      {
+        ty: 'gr',
+        nm: 'DotBottomRight',
+        np: 3,
+        it: [ellipse([fit(68), fit(68)], [fit(88), fit(88)]), fill(INK), groupTransform()],
+      },
     ],
   }),
 
   // Ring: one slow pulse per loop. It snaps back to its start size on the next frame, while it is
   // still invisible, so the cycle repeats without a visible jump and every keyframe value lines up.
+  // The pulse grows from 80% to 100%, which is what keeps the widened ring (and its stroke) inside
+  // the canvas — anything larger would be clipped into a straight edge at peak.
   shapeLayer({
     ind: 4,
     name: 'Ring',
     ks: {
       s: anim(
         [
-          [0, [88, 88, 100]],
-          [45, [120, 120, 100]],
-          [46, [88, 88, 100]],
-          [90, [88, 88, 100]],
+          [0, [80, 80, 100]],
+          [45, [100, 100, 100]],
+          [46, [80, 80, 100]],
+          [90, [80, 80, 100]],
         ],
         OUT_EASE,
       ),
@@ -237,7 +261,7 @@ const layers = [
         ty: 'gr',
         nm: 'Ring',
         np: 3,
-        it: [ellipse([300, 300], [0, 0]), stroke(INK, 20, 100), groupTransform()],
+        it: [ellipse([fit(300), fit(300)], [0, 0]), stroke(INK, fit(20), 100), groupTransform()],
       },
     ],
   }),

@@ -2,7 +2,8 @@
  * Offer mark — the animated badge that says a course is discounted.
  *
  * The animation is a real Lottie composition (`assets/lottie/offer.json`) played by a Lottie
- * runtime, not a CSS keyframe animation and not a GIF:
+ * runtime, not a CSS keyframe animation and not a GIF. The drawing fills about three quarters of
+ * its square (see the generator's FIT factor), so the badge around it can stay tight:
  *   - Android / iOS: `lottie-react-native` renders it with the native Lottie cores,
  *   - web: `lottie-web` renders it with its SVG renderer (see `offer-lottie.web.tsx` for why the
  *     WASM player is avoided — it loads its runtime from a public CDN).
@@ -41,6 +42,17 @@ type Tone = 'onYellow' | 'onSurface';
 const BRAND_YELLOW = '#FFC629';
 const BRAND_YELLOW_SOFT = '#FFF4CC';
 
+/**
+ * Optical spacing inside the mark.
+ *
+ * The percent mark is a drawing, not a font glyph, and its ink now reaches the edge of its box — so
+ * the gaps beside it are set by eye (2px), not by the 4px block rhythm, and the yellow ground hugs
+ * the mark instead of framing it. This is why the pill is narrower than the 8px-padding baseline:
+ * every pixel here is inside one small mark, not between two blocks of content.
+ */
+const MARK_GAP = 2;
+const BADGE_SIDE = 6;
+
 const TONES: Record<Tone, string> = {
   /** Ink mark on the brand yellow pill: the combination used on course artwork. */
   onYellow: '#1F1B0E',
@@ -66,10 +78,10 @@ class AnimationBoundary extends Component<{ onFail: () => void; children: ReactN
 }
 
 /**
- * The animation on its own. `size` is the square it is drawn into; the composition keeps a wide
- * margin around the mark, so it stays legible down to 18px in a list row.
+ * The animation on its own. `size` is the square it is drawn into; the mark covers most of that
+ * square, so 20px already reads clearly and 28px is a decision-point size.
  */
-export function OfferGlyph({ size = 22, tone = 'onYellow' }: { size?: number; tone?: Tone }) {
+export function OfferGlyph({ size = 20, tone = 'onYellow' }: { size?: number; tone?: Tone }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const tint = TONES[tone];
@@ -106,7 +118,7 @@ export function OfferGlyph({ size = 22, tone = 'onYellow' }: { size?: number; to
  */
 export function OfferMark({
   percent,
-  glyph = 22,
+  glyph = 20,
   tone = 'onYellow',
   color = colors.accentText,
 }: {
@@ -142,7 +154,7 @@ export function OfferBadge({
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
 }) {
-  const glyph = size === 'md' ? 30 : 22;
+  const glyph = size === 'md' ? 28 : 20;
   return (
     <View
       accessibilityRole="text"
@@ -154,15 +166,15 @@ export function OfferBadge({
 }
 
 const styles = createStyles(() => StyleSheet.create({
-  mark: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  /** The three pieces of the mark: number, animated percent glyph, `OFF`. */
+  mark: { flexDirection: 'row', alignItems: 'center', gap: MARK_GAP },
   glyphBox: { alignItems: 'center', justifyContent: 'center' },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
     backgroundColor: BRAND_YELLOW,
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: BADGE_SIDE,
     paddingVertical: 2,
   },
   badgeMd: { paddingVertical: spacing.xs },
