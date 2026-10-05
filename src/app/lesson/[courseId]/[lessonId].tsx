@@ -1,6 +1,5 @@
 import { useEvent, useEventListener } from 'expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   ArrowLeft,
@@ -38,6 +37,7 @@ import {
 import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
 import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen } from '@/components/ui';
@@ -226,7 +226,7 @@ export default function LessonPlayerScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <AppStatusBar style="light" />
 
       {/* Player: full-bleed, no side gap, controls float over the surface. */}
       <View style={styles.playerWrap}>

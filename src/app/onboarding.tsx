@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { ArrowRight } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
@@ -15,6 +14,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppStatusBar } from '@/components/app-status-bar';
 import { BrandMark } from '@/components/marks';
 import { Button } from '@/components/ui';
 import { colors, layout, radius, spacing, type } from '@/constants/theme';
@@ -85,7 +85,7 @@ export default function OnboardingScreen() {
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
-      <StatusBar style="dark" />
+      <AppStatusBar />
 
       {/* Brand only — nothing competes with the artwork. Skip lives over the image. */}
       <View style={styles.topBar}>

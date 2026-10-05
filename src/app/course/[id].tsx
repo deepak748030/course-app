@@ -1,6 +1,5 @@
 import { Image, type ImageSource } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -18,6 +17,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, PriceSummary, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
@@ -75,7 +75,7 @@ export default function CourseDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="light" />
+      <AppStatusBar style="light" />
       <Screen
         contentStyle={{ paddingBottom: insets.bottom + 120 }}
         header={

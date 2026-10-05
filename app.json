@@ -14,10 +14,6 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "statusBar": {
-        "barStyle": "dark-content",
-        "backgroundColor": "#FFFFFF"
-      },
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -41,11 +37,18 @@
           "supportsBackgroundPlayback": false
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-system-ui"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "backgroundColor": "#FFFFFF",
+    "androidStatusBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content",
+      "translucent": true
     }
   }
 }

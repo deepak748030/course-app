@@ -3,17 +3,23 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { AppState, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { AppStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { colors, font } from '@/constants/theme';
 import { StoreProvider, useStore } from '@/store';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Runs before React mounts: on Android the decor view is what shows behind a transparent
+// edge-to-edge status bar, and its default reads as a black band on top of a white app.
+if (Platform.OS !== 'web') {
+  void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+}
 
 /**
  * The app renders immediately — nothing is gated behind an await.
@@ -42,15 +48,16 @@ function hideSplash() {
   void SplashScreen.hideAsync().catch(() => {});
 }
 
-/**
- * Android edge-to-edge: the status bar is transparent and shows whatever the window paints, so
- * the window background has to be the app background or the bar reads as black. Same reason the
- * splash background is white in app.json.
- */
+/** Some hosts repaint the window on resume, so the colour is re-applied on every foreground. */
 function useThemedWindow() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+    const apply = () => void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+    apply();
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active') apply();
+    });
+    return () => subscription.remove();
   }, []);
 }
 
@@ -86,7 +93,8 @@ export default function RootLayout() {
             <ErrorBoundary>
               <SplashGate>
                 <View style={styles.flex}>
-                  <Stack
+                  <StatusBarToneProvider>
+                    <Stack
                     screenOptions={{
                       headerShown: false,
                       contentStyle: { backgroundColor: colors.background },
@@ -94,9 +102,11 @@ export default function RootLayout() {
                     <Stack.Screen name="index" options={{ animation: 'fade' }} />
                     <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
                     <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-                  </Stack>
-                  {/* Dark icons on the white window. The player and course hero override this with style="light". */}
-                  <StatusBar style="dark" />
+                    </Stack>
+                    {/* Dark icons on the white window; the strip behind the bar is painted in-app. */}
+                    <AppStatusBar />
+                    <StatusBarBackdrop />
+                  </StatusBarToneProvider>
                 </View>
               </SplashGate>
             </ErrorBoundary>

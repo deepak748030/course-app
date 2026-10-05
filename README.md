@@ -183,10 +183,15 @@ onboarding completion and app preferences are kept.
   `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Recipe/Notes,
   the sort/filter sheets opening and closing, and focusing the search field (recent searches +
   suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
-- Status bar: the app is light-only (`userInterfaceStyle: "light"`), the Android window background is set
-  to the app background through `expo-system-ui`, and the bar uses dark icons on every light screen while
-  the player and course hero switch to light icons. Without the window background a transparent
-  edge-to-edge status bar reads as black.
+- Status bar (Android edge-to-edge makes it transparent, so it shows whatever is painted behind it):
+  1. `backgroundColor: "#FFFFFF"` at the top level of app.json is the root view / window background,
+     and `androidStatusBar` sets `dark-content` icons on the same white;
+  2. `expo-system-ui` sets the decor view background before React mounts and again on every foreground;
+  3. `src/components/app-status-bar.tsx` paints a white strip across the safe area itself, so a host that
+     ignores the window colour still cannot show a black band;
+  4. the lesson player and the course hero declare `<AppStatusBar style="light" />`, which switches the
+     strip off over their dark surfaces and uses light icons. All other screens get dark icons on the
+     app background.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 
