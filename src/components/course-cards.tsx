@@ -206,7 +206,7 @@ export function ContinueCard({
           </View>
         </View>
         <View style={styles.continuePlay}>
-          <Play size={16} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
+          <Play size={16} color={colors.onAccent} strokeWidth={2} fill={colors.onAccent} />
         </View>
       </Pressable>
     </Animated.View>
@@ -268,7 +268,7 @@ export function LessonRow({
     : state === 'completed'
       ? colors.success
       : state === 'current'
-        ? colors.primary
+        ? colors.accentText
         : colors.textMuted;
 
   return (

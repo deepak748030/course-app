@@ -4,46 +4,50 @@
  * Rules this file enforces (Design Rules — App):
  * - ONE font family (DM Sans). No serif, no third family.
  * - 5 type sizes on a 1.25 scale. Two weights only: 400 regular, 600 semibold.
- * - 3 text colours: primary, muted, subtle. Colour ranks inside a line, size ranks between blocks.
+ * - 3 text colours: primary, muted, subtle. Yellow is a fill; dark amber carries text and icons.
  * - Line-height shrinks as size grows (1.7 small -> 1.17 display); letter-spacing tightens >= 24.
  * - 4px spacing base; 8px side padding baseline; 16px content sections; 8px gap between items.
  * - Concentric radii on a small/medium/large scale, pills only for single-line content.
- * - NO shadows anywhere: elevation comes from surface colour + hairlines.
+ * - White surfaces, one yellow accent, no shadows: elevation comes from tone + hairlines.
  */
 
 import '@/global.css';
 
 import type { TextStyle } from 'react-native';
 
-/** Raw palette. Prefer the semantic groups below in components. */
+/**
+ * Raw palette: white surfaces, one yellow accent, warm neutrals.
+ * Yellow is a *fill* colour — on white it needs the darker amber next to it to stay legible.
+ */
 export const palette = {
-  paper: '#FAF7F2',
-  surface: '#FFFFFF',
-  surfaceAlt: '#F3EDE4',
-  ink: '#1C1A17',
-  inkMuted: '#6B6459',
-  inkSubtle: '#948C80',
-  border: 'rgba(28, 26, 23, 0.10)',
-  divider: 'rgba(28, 26, 23, 0.08)',
-  primary: '#9F3F2F',
-  primaryPressed: '#843225',
-  primarySoft: '#F6E7E1',
-  sage: '#65755A',
-  sageSoft: '#EAEEE5',
-  gold: '#C49A4A',
-  goldSoft: '#F6ECD9',
+  white: '#FFFFFF',
+  surfaceAlt: '#FBF5E4',
+  ink: '#17150F',
+  inkMuted: '#6B6455',
+  inkSubtle: '#968F7C',
+  border: 'rgba(23, 21, 15, 0.12)',
+  divider: 'rgba(23, 21, 15, 0.08)',
+  yellow: '#FFC629',
+  yellowPressed: '#F0B100',
+  yellowSoft: '#FFF4CC',
+  amberDeep: '#8A6200',
+  inkOnYellow: '#1F1B0E',
+  olive: '#6F6A2A',
+  oliveSoft: '#F5F1DC',
+  gold: '#D9A400',
+  goldSoft: '#FBEEC4',
   success: '#2F6B47',
   successSoft: '#E7F0EA',
   error: '#B42318',
   errorSoft: '#FAEAE8',
-  player: '#121412',
-  playerRaised: '#1B1E1B',
+  player: '#14130E',
+  playerRaised: '#1E1C15',
 } as const;
 
-/** Semantic colours. Gold is decoration only — never text on paper. */
+/** Semantic colours. Yellow (`primary`) is a fill; `accentText` is its readable counterpart. */
 export const colors = {
-  background: palette.paper,
-  surface: palette.surface,
+  background: palette.white,
+  surface: palette.white,
   surfaceAlt: palette.surfaceAlt,
   border: palette.border,
   divider: palette.divider,
@@ -51,14 +55,19 @@ export const colors = {
   text: palette.ink,
   textMuted: palette.inkMuted,
   textSubtle: palette.inkSubtle,
-  textInverse: palette.surface,
+  textInverse: palette.white,
 
-  primary: palette.primary,
-  primaryPressed: palette.primaryPressed,
-  primarySoft: palette.primarySoft,
+  /** Yellow: buttons, chips, progress, selection. */
+  primary: palette.yellow,
+  primaryPressed: palette.yellowPressed,
+  primarySoft: palette.yellowSoft,
+  /** Dark amber for labels, links and icons that sit on white or on the soft yellow. */
+  accentText: palette.amberDeep,
+  /** Text and icons placed on top of the yellow fill. */
+  onAccent: palette.inkOnYellow,
 
-  sage: palette.sage,
-  sageSoft: palette.sageSoft,
+  sage: palette.olive,
+  sageSoft: palette.oliveSoft,
   gold: palette.gold,
   goldSoft: palette.goldSoft,
   success: palette.success,
@@ -69,8 +78,8 @@ export const colors = {
   player: palette.player,
   playerRaised: palette.playerRaised,
   onPlayer: 'rgba(255, 255, 255, 0.92)',
-  onPlayerMuted: 'rgba(255, 255, 255, 0.60)',
-  scrim: 'rgba(18, 20, 18, 0.55)',
+  onPlayerMuted: 'rgba(255, 255, 255, 0.62)',
+  scrim: 'rgba(20, 19, 14, 0.58)',
 } as const;
 
 export type ColorToken = keyof typeof colors;

@@ -9,7 +9,7 @@ import Svg, { Path, Polygon } from 'react-native-svg';
 
 import { colors, font, spacing } from '@/constants/theme';
 
-export function BrandMark({ size = 40, color = colors.primary }: { size?: number; color?: string }) {
+export function BrandMark({ size = 40, color = colors.accentText }: { size?: number; color?: string }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48" accessibilityRole="image" accessibilityLabel="Rasoi Studio">
       {/* steam */}

@@ -196,7 +196,7 @@ export default function OtpScreen() {
               <Text
                 style={[
                   type.labelStrong,
-                  { color: secondsLeft > 0 || resending ? colors.textSubtle : colors.primary },
+                  { color: secondsLeft > 0 || resending ? colors.textSubtle : colors.accentText },
                 ]}>
                 {resending ? 'Sending…' : 'Resend code'}
               </Text>
@@ -209,7 +209,7 @@ export default function OtpScreen() {
             onPress={changeNumber}
             hitSlop={8}
             style={styles.changeLink}>
-            <Text style={[type.labelStrong, { color: colors.primary }]}>Change number</Text>
+            <Text style={[type.labelStrong, { color: colors.accentText }]}>Change number</Text>
           </Pressable>
 
           <Text style={[type.label, { color: colors.textSubtle }]}>

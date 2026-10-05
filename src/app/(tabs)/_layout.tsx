@@ -34,7 +34,7 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
+        tabBarActiveTintColor: colors.accentText,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
           // 56px of bar content, plus the home indicator area on gesture devices.

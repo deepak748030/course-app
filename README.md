@@ -156,5 +156,27 @@ onboarding completion and app preferences are kept.
   Explore screen. All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
-- Not performed: device/emulator runs, EAS builds, and real end-to-end UI interaction (no browser or
+- The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs` with
+  `SEED=1`) so the real client boot path runs and can be inspected: every route renders real content
+  (no empty screens), and click-throughs were exercised for the tab bar, Home → course details →
+  checkout, and My learning → lesson player → Overview/Recipe/Notes, with zero console or unhandled
+  errors. This is a DOM check, not a visual one.
+- Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
+
+## Boot resilience
+
+Two failures could previously leave the app on a blank first screen, and both are now fixed at the
+source:
+
+- **Fonts were a hard gate.** The root layout rendered nothing until `useFonts` resolved. If a font
+  request stalled, every screen stayed blank and no tap did anything. The app now renders
+  immediately and the bundled DM Sans faces swap in when they arrive.
+- **Storage was a hard gate.** Hydration awaited `AsyncStorage`, which on web reads
+  `window.localStorage` — a call that throws inside a cross-origin iframe when the browser blocks
+  third-party storage. A rejected hydrate left `ready` false forever. All storage now goes through
+  `src/lib/storage.ts`, which is timeout-bounded, never rejects and falls back to memory, and the
+  boot gate releases even when storage is unavailable.
+- A root `ErrorBoundary` shows a readable card with a retry action instead of a blank page or a
+  red box if a screen ever throws, and the plugin splash screen is released at most 1.6s after
+  launch regardless of what is still loading.

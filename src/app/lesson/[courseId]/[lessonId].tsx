@@ -494,7 +494,7 @@ export default function LessonPlayerScreen() {
                 {recipe.steps.map((step, index) => (
                   <View key={step} style={styles.stepRow}>
                     <View style={styles.stepNumber}>
-                      <Text style={[type.labelStrong, tabularNums, { color: colors.primary }]}>{index + 1}</Text>
+                      <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>{index + 1}</Text>
                     </View>
                     <Text style={[type.body, { color: colors.text, flex: 1 }]}>{step}</Text>
                   </View>
@@ -600,7 +600,7 @@ export default function LessonPlayerScreen() {
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
             <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
-            {player.playbackRate === speed ? <Check size={18} color={colors.primary} strokeWidth={2.2} /> : null}
+            {player.playbackRate === speed ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
           </Pressable>
         ))}
       </BottomSheet>

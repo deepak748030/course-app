@@ -127,8 +127,8 @@ export default function ExploreScreen() {
               activeChips.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
               pressed && { opacity: 0.7 },
             ]}>
-            <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.primary : colors.text} strokeWidth={1.9} />
-            <Text style={[type.label, { color: activeChips.length > 0 ? colors.primary : colors.text }]}>
+            <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.accentText : colors.text} strokeWidth={1.9} />
+            <Text style={[type.label, { color: activeChips.length > 0 ? colors.accentText : colors.text }]}>
               {activeChips.length > 0 ? `Filters · ${activeChips.length}` : 'Filters'}
             </Text>
           </Pressable>
@@ -144,8 +144,8 @@ export default function ExploreScreen() {
               accessibilityLabel={`Remove filter ${chip.label}`}
               onPress={chip.clear}
               style={styles.activeChip}>
-              <Text style={[type.label, { color: colors.primary }]}>{chip.label}</Text>
-              <X size={13} color={colors.primary} strokeWidth={2} />
+              <Text style={[type.label, { color: colors.accentText }]}>{chip.label}</Text>
+              <X size={13} color={colors.accentText} strokeWidth={2} />
             </Pressable>
           ))}
           <Pressable accessibilityRole="button" accessibilityLabel="Clear all filters" onPress={clearAll} hitSlop={8}>
@@ -189,7 +189,7 @@ export default function ExploreScreen() {
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
             <Text style={[type.body, { color: colors.text }]}>{option.label}</Text>
-            {filters.sort === option.id ? <Check size={18} color={colors.primary} strokeWidth={2} /> : null}
+            {filters.sort === option.id ? <Check size={18} color={colors.accentText} strokeWidth={2} /> : null}
           </Pressable>
         ))}
       </BottomSheet>

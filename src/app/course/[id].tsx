@@ -345,7 +345,7 @@ function PopularInstructorRow({
           {headline}
         </Text>
       </View>
-      <Text style={[type.label, { color: colors.primary }]}>Profile</Text>
+      <Text style={[type.label, { color: colors.accentText }]}>Profile</Text>
     </Pressable>
   );
 }
@@ -380,7 +380,7 @@ function CurriculumSectionBlock({
         onPress={() => setOpen((value) => !value)}
         style={({ pressed }) => [styles.curriculumHeader, pressed && { opacity: 0.75 }]}>
         <View style={styles.sectionIndex}>
-          <Text style={[type.labelStrong, tabularNums, { color: colors.primary }]}>{String(index).padStart(2, '0')}</Text>
+          <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>{String(index).padStart(2, '0')}</Text>
         </View>
         <View style={styles.flex}>
           <Text style={[type.bodyStrong, { color: colors.text }]}>{title}</Text>

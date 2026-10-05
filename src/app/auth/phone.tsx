@@ -139,7 +139,7 @@ export default function PhoneScreen() {
             accessibilityLabel="Why we ask for your number"
             onPress={() => router.push('/help')}
             style={({ pressed }) => [styles.helpLink, pressed && { opacity: 0.6 }]}>
-            <Text style={[type.labelStrong, { color: colors.primary }]}>Why do you need this?</Text>
+            <Text style={[type.labelStrong, { color: colors.accentText }]}>Why do you need this?</Text>
           </Pressable>
         </ScrollView>
       </Screen>
@@ -167,6 +167,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     padding: spacing.md,
   },
-  link: { color: colors.primary, textDecorationLine: 'underline' },
+  link: { color: colors.accentText, textDecorationLine: 'underline' },
   helpLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, minHeight: layout.touchTarget, justifyContent: 'center' },
 });

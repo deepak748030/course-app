@@ -228,7 +228,7 @@ export function SectionHeader({
           onPress={onAction}
           hitSlop={8}
           style={({ pressed }) => [styles.sectionAction, pressed && { opacity: 0.6 }]}>
-          <AppText variant="labelStrong" color={colors.primary}>
+          <AppText variant="labelStrong" color={colors.accentText}>
             {actionLabel}
           </AppText>
         </Pressable>
@@ -248,7 +248,7 @@ export function Badge({
 }) {
   const tones = {
     neutral: { bg: colors.surfaceAlt, fg: colors.textMuted },
-    primary: { bg: colors.primarySoft, fg: colors.primary },
+    primary: { bg: colors.primarySoft, fg: colors.accentText },
     sage: { bg: colors.sageSoft, fg: colors.sage },
     success: { bg: colors.successSoft, fg: colors.success },
     error: { bg: colors.errorSoft, fg: colors.error },
@@ -308,9 +308,9 @@ export function Button({
   const inactive = disabled || loading;
 
   const tones = {
-    primary: { bg: colors.primary, fg: colors.textInverse, border: 'transparent' },
+    primary: { bg: colors.primary, fg: colors.onAccent, border: 'transparent' },
     secondary: { bg: colors.surface, fg: colors.text, border: colors.border },
-    ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
+    ghost: { bg: 'transparent', fg: colors.accentText, border: 'transparent' },
     danger: { bg: colors.errorSoft, fg: colors.error, border: 'transparent' },
   }[variant];
 
@@ -377,7 +377,7 @@ export function IconButton({
 }) {
   const press = usePressScale(0.92);
   const bg = variant === 'soft' ? colors.surfaceAlt : variant === 'onImage' ? colors.scrim : 'transparent';
-  const color = variant === 'onImage' ? colors.textInverse : active ? colors.primary : colors.text;
+  const color = variant === 'onImage' ? colors.textInverse : active ? colors.accentText : colors.text;
 
   return (
     <Animated.View style={press.style}>
@@ -448,7 +448,7 @@ export function FormField({
         style={[
           styles.field,
           {
-            borderColor: error ? colors.error : focused ? colors.primary : colors.border,
+            borderColor: error ? colors.error : focused ? colors.accentText : colors.border,
             borderWidth: focused || error ? 1.5 : 1,
           },
         ]}>
@@ -521,8 +521,8 @@ export function Chip({
             opacity: disabled ? 0.5 : 1,
           },
         ]}>
-        {Icon ? <Icon size={14} color={selected ? colors.textInverse : colors.textMuted} strokeWidth={1.9} /> : null}
-        <Text style={[type.label, { color: selected ? colors.textInverse : colors.text }]} numberOfLines={1}>
+        {Icon ? <Icon size={14} color={selected ? colors.onAccent : colors.textMuted} strokeWidth={1.9} /> : null}
+        <Text style={[type.label, { color: selected ? colors.onAccent : colors.text }]} numberOfLines={1}>
           {label}
         </Text>
       </Pressable>
@@ -556,7 +556,7 @@ export function Segmented<T extends string>({
             }}
             style={[styles.segment, active && styles.segmentActive]}>
             <Text
-              style={[active ? type.labelStrong : type.label, { color: active ? colors.textInverse : colors.textMuted }]}
+              style={[active ? type.labelStrong : type.label, { color: active ? colors.onAccent : colors.textMuted }]}
               numberOfLines={1}>
               {option.label}
             </Text>
@@ -687,7 +687,7 @@ export function EmptyState({
   return (
     <View style={styles.stateBlock}>
       <View style={styles.stateIcon}>
-        <Icon size={24} color={colors.primary} strokeWidth={1.75} />
+        <Icon size={24} color={colors.accentText} strokeWidth={1.75} />
       </View>
       <Text style={[type.subheading, styles.centerText, { color: colors.text }]}>{title}</Text>
       <Text style={[type.body, styles.centerText, { color: colors.textMuted }]}>{body}</Text>

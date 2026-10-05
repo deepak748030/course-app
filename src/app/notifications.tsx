@@ -77,7 +77,7 @@ function Group({
               onPress={() => item.courseId && onOpenCourse(item.courseId)}
               style={({ pressed }) => [styles.row, pressed && openable && { opacity: 0.75 }]}>
               <View style={styles.icon}>
-                <Icon size={18} color={colors.primary} strokeWidth={1.9} />
+                <Icon size={18} color={colors.accentText} strokeWidth={1.9} />
               </View>
               <View style={styles.flex}>
                 <View style={styles.rowHead}>
@@ -85,7 +85,7 @@ function Group({
                   <Text style={[type.label, { color: colors.textSubtle }]}>{minutesAgoLabel(item.minutesAgo)}</Text>
                 </View>
                 <Text style={[type.body, { color: colors.textMuted }]}>{item.body}</Text>
-                {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.primary }]}>Open course</Text> : null}
+                {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.accentText }]}>Open course</Text> : null}
               </View>
             </Pressable>
           );

@@ -44,7 +44,7 @@ export default function ProfileScreen() {
       <View style={styles.pad}>
         <View style={styles.identityCard}>
           <View style={styles.avatar}>
-            <Text style={[type.title, { color: colors.primary }]}>{initial}</Text>
+            <Text style={[type.title, { color: colors.accentText }]}>{initial}</Text>
           </View>
           <View style={styles.flex}>
             <Text style={[type.title, { color: colors.text }]} numberOfLines={1}>

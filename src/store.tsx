@@ -6,9 +6,9 @@
  * The session token lives in the auth service, which uses the platform secure store.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { storage } from '@/lib/storage';
 import { authService } from '@/services/auth';
 import type {
   Course,
@@ -110,7 +110,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [raw, storedSession] = await Promise.all([AsyncStorage.getItem(STORAGE_KEY), authService.getSession()]);
+      // Every storage call is already bounded and never rejects (see @/lib/storage), and the
+      // boot gate is released no matter what happens here — a locked-down browser must not
+      // leave the app on a blank screen.
+      let raw: string | null = null;
+      let storedSession = null;
+      try {
+        [raw, storedSession] = await Promise.all([storage.get(STORAGE_KEY), authService.getSession()]);
+      } catch {
+        // Storage is unavailable; the app continues with the seeded demo state.
+      }
       if (cancelled) return;
       if (raw) {
         try {
@@ -122,7 +131,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setSession(storedSession);
       hydrated.current = true;
       setReady(true);
-    })();
+    })().catch(() => {
+      if (!cancelled) {
+        hydrated.current = true;
+        setReady(true);
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -130,7 +144,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated.current) return;
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state)).catch(() => {});
+    void storage.set(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
   const patchProgress = useCallback(

@@ -11,8 +11,8 @@
  * bottom of this file. Nothing else in the app needs to change.
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { storage } from '@/lib/storage';
 import { Platform } from 'react-native';
 
 import type { Session } from '@/types';
@@ -35,13 +35,13 @@ export const DEMO_OFFLINE_PHONE = '9000000000';
 const MAX_ATTEMPTS = 3;
 
 async function readStored(key: string): Promise<string | null> {
-  if (Platform.OS === 'web') return AsyncStorage.getItem(key);
+  if (Platform.OS === 'web') return storage.get(key);
   return SecureStore.getItemAsync(key);
 }
 
 async function writeStored(key: string, value: string): Promise<void> {
   if (Platform.OS === 'web') {
-    await AsyncStorage.setItem(key, value);
+    await storage.set(key, value);
     return;
   }
   await SecureStore.setItemAsync(key, value, { keychainAccessible: SecureStore.WHEN_UNLOCKED });
@@ -49,7 +49,7 @@ async function writeStored(key: string, value: string): Promise<void> {
 
 async function deleteStored(key: string): Promise<void> {
   if (Platform.OS === 'web') {
-    await AsyncStorage.removeItem(key);
+    await storage.remove(key);
     return;
   }
   await SecureStore.deleteItemAsync(key);

@@ -162,7 +162,7 @@ export default function CheckoutScreen() {
                     <Text
                       style={[
                         type.labelStrong,
-                        { color: couponInput.trim().length === 0 ? colors.textSubtle : colors.primary },
+                        { color: couponInput.trim().length === 0 ? colors.textSubtle : colors.accentText },
                       ]}>
                       Apply
                     </Text>
@@ -318,8 +318,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  radioSelected: { borderColor: colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.primary },
+  radioSelected: { borderColor: colors.accentText },
+  radioDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.accentText },
   securityRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', paddingTop: spacing.md },
   notice: {
     gap: spacing.sm,

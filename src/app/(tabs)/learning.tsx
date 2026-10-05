@@ -120,7 +120,7 @@ export default function MyLearningScreen() {
                 <ProgressBar value={1} accessibilityLabel={`${course.title} complete`} />
               </View>
               <View style={styles.replay}>
-                <Play size={16} color={colors.primary} strokeWidth={2} fill={colors.primary} />
+                <Play size={16} color={colors.accentText} strokeWidth={2} fill={colors.accentText} />
               </View>
             </Pressable>
           ))}
