@@ -116,6 +116,17 @@ export default function LessonPlayerScreen() {
     }
   });
 
+  // Lessons can share the same demo clip, so the player is not recreated on every navigation.
+  // Move it to the incoming lesson's saved position whenever the lesson changes.
+  useEffect(() => {
+    if (!course || !lesson) return;
+    const target = lessonProgress(course.id, lesson.id).positionSec;
+    lastSavedRef.current = target;
+    setPosition(target);
+    if (player.status === 'readyToPlay') player.currentTime = target;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson?.id]);
+
   // Persist the last position when leaving the lesson.
   useEffect(() => {
     if (!course || !lesson) return;

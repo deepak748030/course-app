@@ -129,8 +129,10 @@ onboarding completion and app preferences are kept.
 ## Verification performed
 
 - `npx tsc --noEmit` (also run with `--noUnusedLocals`) — clean.
-- `bun scripts/selfcheck.ts` — 7 assertions over phone normalisation/validation, masking, quantity
-  scaling, INR/clock/duration formatting and the greeting helper; all pass.
+- `bun scripts/selfcheck.ts` (`npm run check`) — 9 checks: phone normalisation/validation/masking,
+  quantity scaling, INR/clock/duration formatting, the greeting helper, catalog derivation (unique
+  lesson ids, counts, section integrity, preview lessons) and the search/filter/sort behaviour of the
+  Explore screen. All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
 - Not performed: device/emulator runs, EAS builds, and real end-to-end UI interaction (no browser or

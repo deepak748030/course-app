@@ -1,11 +1,12 @@
 import type { LucideIcon } from 'lucide-react-native';
 import { BookOpen, Compass, House, UserRound } from 'lucide-react-native';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import { useEffect } from 'react';
 import { View, type ColorValue } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 
 import { colors, font } from '@/constants/theme';
+import { useStore } from '@/store';
 
 /** Active state: colour, slightly heavier stroke and a small indicator — no bouncing. */
 function TabIcon({ icon: Icon, color, focused }: { icon: LucideIcon; color: ColorValue; focused: boolean }) {
@@ -34,6 +35,11 @@ function TabIcon({ icon: Icon, color, focused }: { icon: LucideIcon; color: Colo
 }
 
 export default function TabsLayout() {
+  const { session, ready } = useStore();
+
+  // Deep links must not land inside the app without a session.
+  if (ready && !session) return <Redirect href="/auth/phone" />;
+
   return (
     <Tabs
       screenOptions={{
