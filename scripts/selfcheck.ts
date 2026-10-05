@@ -8,6 +8,8 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 declare const Bun: { plugin: (options: unknown) => void } | undefined;
 
@@ -144,6 +146,60 @@ check('search, filters and sorting act on the catalog', async () => {
 
   const shortest = catalog.browseCourses({ ...catalog.emptyFilters, sort: 'shortest' });
   assert.equal(shortest[0].hours, Math.min(...catalog.courses.map((course) => course.hours)));
+});
+
+// --- Worklet safety -------------------------------------------------------------------------
+// Reanimated compiles the arguments of withTiming/withSpring/withRepeat/withDecay/withSequence for
+// the UI runtime. A JS callback passed as the completion argument therefore runs as a worklet, and
+// calling a React state setter from it throws
+//   "[Worklets] Tried to synchronously call a Remote Function. Called \"bound dispatchSetState\"…"
+// on device (the web build silently degrades, so a green web run is NOT evidence). Guard against
+// reintroducing that pattern anywhere in src/.
+const ANIMATION_CALL = /\bwith(Timing|Spring|Repeat|Decay|Sequence)\s*\(/g;
+
+function scanWorkletCallbacks(): string[] {
+  const offenders: string[] = [];
+  const root = fileURLToPath(new URL('../src', import.meta.url));
+  const walk = (dir: string): string[] => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    return entries.flatMap((entry) => {
+      const child = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) return walk(child);
+      return /\.(ts|tsx)$/.test(entry.name) ? [child] : [];
+    });
+  };
+
+  for (const file of walk(root)) {
+    const source = readFileSync(file, 'utf8');
+    const lines = source.split('\n');
+    for (const match of source.matchAll(ANIMATION_CALL)) {
+      const start = match.index + match[0].length - 1; // at '('
+      let depth = 0;
+      let end = start;
+      for (let i = start; i < source.length; i += 1) {
+        if (source[i] === '(') depth += 1;
+        else if (source[i] === ')') {
+          depth -= 1;
+          if (depth === 0) { end = i; break; }
+        }
+      }
+      const args = source.slice(start + 1, end);
+      if (!/=>/.test(args)) continue; // no callback at all — always safe
+      if (/runOnJS\s*\(|scheduleOnRN\s*\(/.test(args)) continue; // correctly hop to the JS thread
+      const line = lines.slice(0, match.index).join('\n').split('\n').length;
+      offenders.push(`${file.split('/src/')[1]}:${line} ${match[0]}`);
+    }
+  }
+  return offenders;
+}
+
+check('animation callbacks never touch React state (worklet safety)', () => {
+  const offenders = scanWorkletCallbacks();
+  assert.deepEqual(
+    offenders,
+    [],
+    `these animation calls pass a UI-runtime callback — call setState via runOnJS instead:\n  ${offenders.join('\n  ')}`,
+  );
 });
 
 void formatIndianMobile;

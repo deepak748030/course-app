@@ -150,10 +150,11 @@ onboarding completion and app preferences are kept.
 ## Verification performed
 
 - `npx tsc --noEmit` (also run with `--noUnusedLocals`) — clean.
-- `bun scripts/selfcheck.ts` (`npm run check`) — 9 checks: phone normalisation/validation/masking,
+- `bun scripts/selfcheck.ts` (`npm run check`) — 10 checks: phone normalisation/validation/masking,
   quantity scaling, INR/clock/duration formatting, the greeting helper, catalog derivation (unique
-  lesson ids, counts, section integrity, preview lessons) and the search/filter/sort behaviour of the
-  Explore screen. All pass.
+  lesson ids, counts, section integrity, preview lessons), the search/filter/sort behaviour of the
+  Explore screen, and a source scan that fails the build if any Reanimated animation call is given a
+  callback that touches React state (see "Native worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
 - The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs` with
@@ -163,6 +164,24 @@ onboarding completion and app preferences are kept.
   errors. This is a DOM check, not a visual one.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
+
+## Native worklet safety
+
+Reanimated compiles the arguments of `withTiming` / `withSpring` / `withRepeat` / `withDecay` /
+`withSequence` for the UI runtime. Passing a completion callback there produces a worklet, so calling
+a React setter from it throws on device:
+
+```
+[Worklets] Tried to synchronously call a Remote Function. Called "bound dispatchSetState" on the UI Runtime
+```
+
+The bottom sheet did exactly that to unmount itself after the exit animation (`withTiming(1, …,
+(finished) => setMounted(false))`), and because the sheet is mounted — closed — by Explore, the course
+screen, the lesson player, Profile and Settings, the red screen appeared on almost every tap. The
+unmount is now scheduled from the JS thread with a timer that matches the animation duration, and
+`bun scripts/selfcheck.ts` scans `src/` for any regression of this pattern (`runOnJS` / `scheduleOnRN`
+wrapped callbacks are accepted). Web silently degrades these callbacks to JS, so a green web run is
+not evidence — the source scan is the guard.
 
 ## Boot resilience
 

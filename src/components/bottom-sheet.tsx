@@ -43,15 +43,17 @@ export function BottomSheet({
       backdrop.value = withTiming(1, { duration: 160 });
       return;
     }
+
+    // Closing. The sheet must stay mounted until the exit animation has played, but React
+    // state can only be touched from the JS thread: a callback passed to withTiming runs as a
+    // worklet on the UI runtime, where calling setState throws
+    // "[Worklets] Tried to synchronously call a Remote Function … dispatchSetState".
+    // So the unmount is scheduled with a plain timer that matches the animation duration.
     backdrop.value = withTiming(0, { duration: 160 });
-    if (reduced) {
-      translateY.value = 1;
-      setMounted(false);
-      return;
-    }
-    translateY.value = withTiming(1, { duration: 200 }, (finished) => {
-      if (finished) setMounted(false);
-    });
+    translateY.value = reduced ? 1 : withTiming(1, { duration: 200 });
+
+    const timer = setTimeout(() => setMounted(false), reduced ? 0 : 220);
+    return () => clearTimeout(timer);
   }, [visible, reduced, translateY, backdrop]);
 
   const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value * 560 }] }));
