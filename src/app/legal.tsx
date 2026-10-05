@@ -37,8 +37,7 @@ export default function LegalScreen() {
       {/* Title block: which document this is, what it covers, and how final it is. */}
       <View style={styles.intro}>
         <Text style={[type.overline, { color: colors.textSubtle }]}>{t('Sample document')}</Text>
-        <Text style={[type.title, { color: colors.text }]}>{t(document.title)}</Text>
-        <Text style={[type.body, { color: colors.textMuted }]}>{t(document.summary)}</Text>
+        <Text style={[type.subheading, { color: colors.text }]}>{t(document.summary)}</Text>
       </View>
 
       {/* The warning that matters is the one a reader can see before the text, not small print at the
@@ -59,7 +58,7 @@ export default function LegalScreen() {
           <View style={styles.card}>
             <Text style={[type.subheading, { color: colors.text }]}>{section.heading}</Text>
             {section.body.map((paragraph) => (
-              <Text key={paragraph} style={[type.body, { color: colors.textMuted }]}>
+              <Text key={paragraph} style={[type.body, { color: colors.text }]}>
                 {paragraph}
               </Text>
             ))}

@@ -28,8 +28,7 @@ export default function LanguageScreen() {
       header={<AppBar title={t('App language')} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       <View style={styles.intro}>
-        <Text style={[type.title, { color: colors.text }]}>{t('App language')}</Text>
-        <Text style={[type.body, { color: colors.textMuted }]}>
+        <Text style={[type.body, { color: colors.text }]}>
           {t('Switches the whole interface right away, and is remembered on this device.')}
         </Text>
       </View>
