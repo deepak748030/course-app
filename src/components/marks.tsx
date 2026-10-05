@@ -24,18 +24,19 @@ export function BrandMark({ size = 40, color = colors.primary }: { size?: number
   );
 }
 
+/** Wordmark: semibold name, regular suffix — one family, two weights, nothing else. */
 export function Wordmark({ size = 22, color = colors.text }: { size?: number; color?: string }) {
   return (
     <View style={styles.wordmark} accessible accessibilityRole="image" accessibilityLabel="Rasoi Studio">
       <BrandMark size={size * 1.5} />
-      <Text style={{ fontFamily: font.serifSemibold, fontSize: size, lineHeight: size * 1.25, color }}>Rasoi</Text>
+      <Text style={{ fontFamily: font.semibold, fontSize: size, lineHeight: size * 1.25, color }}>Rasoi</Text>
       <Text
         style={{
-          fontFamily: font.medium,
+          fontFamily: font.regular,
           fontSize: size,
           lineHeight: size * 1.25,
-          color: colors.textSecondary,
-          marginLeft: -spacing.xxs,
+          color: colors.textMuted,
+          marginLeft: -spacing.xs + 2,
         }}>
         Studio
       </Text>

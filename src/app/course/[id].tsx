@@ -1,6 +1,6 @@
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Image, type ImageSource } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import {
   ArrowLeft,
   BadgeCheck,
@@ -11,39 +11,27 @@ import {
   Clapperboard,
   Clock,
   Globe,
-  Lock,
   Play,
   ShoppingBasket,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomSheet } from '@/components/bottom-sheet';
-import { InstructorCard, LessonRow, ReviewCard } from '@/components/course-cards';
-import {
-  Accordion,
-  Badge,
-  EmptyState,
-  IconButton,
-  MetaItem,
-  PrimaryButton,
-  ProgressBar,
-  RatingSummary,
-  ScreenHeader,
-} from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, shadow, spacing, type } from '@/constants/theme';
+import { LessonRow, PriceSummary, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { AppText, Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, instructorById } from '@/data/catalog';
+import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Lesson } from '@/types';
-import { formatDuration, formatInr } from '@/lib/format';
 
 export default function CourseDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isEnrolled, isCourseSaved, toggleSavedCourse, completedCount, courseProgressRatio, lessonProgress } =
-    useStore();
+  const { isEnrolled, isCourseSaved, toggleSavedCourse, completedCount, courseProgressRatio, lessonProgress } = useStore();
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
   const course = useMemo(() => courseById(id), [id]);
@@ -51,16 +39,15 @@ export default function CourseDetailsScreen() {
 
   if (!course || !instructor) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <ScreenHeader onBack={() => router.replace('/explore')} />
+      <Screen header={<CourseAppBar />}>
         <EmptyState
           icon={Clapperboard}
           title="We could not find that course"
-          body="The link may be out of date. Browse the catalog to find a course to learn."
+          body="This link may be out of date. Browse the catalog to find a course to learn."
           actionLabel="Browse courses"
           onAction={() => router.replace('/explore')}
         />
-      </View>
+      </Screen>
     );
   }
 
@@ -69,228 +56,201 @@ export default function CourseDetailsScreen() {
   const previewLesson = course.lessons.find((lesson) => lesson.isPreview) ?? course.lessons[0];
   const done = completedCount(course);
   const ratio = courseProgressRatio(course);
+  const resumeLesson = course.lessons.find((lesson) => !lessonProgress(course.id, lesson.id).completed) ?? course.lessons[0];
 
   const openLesson = (lesson: Lesson) => {
     if (enrolled || lesson.isPreview) {
-      router.push({
-        pathname: '/lesson/[courseId]/[lessonId]',
-        params: { courseId: course.id, lessonId: lesson.id },
-      });
+      router.push({ pathname: '/lesson/[courseId]/[lessonId]', params: { courseId: course.id, lessonId: lesson.id } });
       return;
     }
     setPaywallLesson(lesson);
   };
 
-  const buy = () =>
-    router.push({ pathname: '/checkout/[id]', params: { id: course.id } });
-
-  const resumeLesson = course.lessons.find((lesson) => !lessonProgress(course.id, lesson.id).completed) ?? course.lessons[0];
+  const stateFor = (lesson: Lesson): LessonRowState => {
+    if (lessonProgress(course.id, lesson.id).completed) return 'completed';
+    if (!enrolled && !lesson.isPreview) return 'locked';
+    if (enrolled && lesson.id === resumeLesson.id) return 'current';
+    return 'available';
+  };
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 140 }]}
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.hero}>
-          <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
-          <LinearGradient
-            colors={['rgba(18,20,18,0.55)', 'rgba(18,20,18,0)']}
-            start={{ x: 0.5, y: 0 }}
-            end={{ x: 0.5, y: 0.5 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={['rgba(18,20,18,0)', 'rgba(18,20,18,0.6)']}
-            start={{ x: 0.5, y: 0.5 }}
-            end={{ x: 0.5, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <View style={[styles.heroTop, { paddingTop: insets.top + spacing.xs }]}>
-            <IconButton
-              icon={ArrowLeft}
-              variant="onImage"
-              accessibilityLabel="Go back"
-              onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
-            />
-            <IconButton
-              icon={Bookmark}
-              variant="onImage"
-              active={saved}
-              accessibilityLabel={saved ? 'Remove from saved courses' : 'Save this course'}
-              onPress={() => toggleSavedCourse(course.id)}
-            />
+      <StatusBar style="light" />
+      <Screen
+        contentStyle={{ paddingBottom: insets.bottom + 120 }}
+        header={
+          <View style={styles.hero}>
+            <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
+            <Scrim to="rgba(18, 20, 18, 0.62)" />
+            <View style={[styles.heroBar, { paddingTop: insets.top + spacing.xs }]}>
+              <IconButton
+                icon={ArrowLeft}
+                variant="onImage"
+                accessibilityLabel="Go back"
+                onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
+              />
+              <IconButton
+                icon={Bookmark}
+                variant="onImage"
+                active={saved}
+                accessibilityLabel={saved ? 'Remove from saved courses' : 'Save this course'}
+                onPress={() => toggleSavedCourse(course.id)}
+              />
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewLesson.minutes} minutes`}
+              onPress={() => openLesson(previewLesson)}
+              style={styles.heroPlay}>
+              <View style={styles.playCircle}>
+                <Play size={20} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
+              </View>
+              <Text style={[type.labelStrong, { color: colors.textInverse }]}>
+                Watch free preview · {previewLesson.minutes} min
+              </Text>
+            </Pressable>
+          </View>
+        }>
+        <View style={styles.intro}>
+          <Text style={[type.title, { color: colors.text }]}>{course.title}</Text>
+          <Text style={[type.body, { color: colors.textMuted }]}>{course.promise}</Text>
+
+          <View style={styles.metaWrap}>
+            <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+            <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
+            <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
+            <MetaItem icon={Globe} label={course.language} />
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewLesson.minutes} minutes`}
-            onPress={() => openLesson(previewLesson)}
-            style={styles.heroPlay}>
-            <View style={styles.playCircle}>
-              <Play size={22} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
-            </View>
-            <Text style={[type.label, { color: colors.textInverse }]}>
-              Watch free preview · {previewLesson.minutes} min
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.body}>
-          <View style={styles.titleBlock}>
-            <Text style={[type.screenTitle, { color: colors.text }]}>{course.title}</Text>
-            <Text style={[type.body, { color: colors.textSecondary }]}>{course.promise}</Text>
-            <View style={styles.metaWrap}>
-              <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
-              <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
-              <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
-              <MetaItem icon={Globe} label={course.language} />
-            </View>
-            <View style={styles.ratingRow}>
-              <RatingSummary rating={course.rating} reviewCount={course.reviewCount} />
-              {enrolled ? <Badge label={`${done} of ${course.lessonCount} done`} tone="success" icon={CircleCheck} /> : null}
-            </View>
+          <View style={styles.ratingRow}>
+            <RatingInline rating={course.rating} reviewCount={course.reviewCount} />
+            {enrolled ? <Badge label={`${done} of ${course.lessonCount} done`} tone="success" icon={CircleCheck} /> : null}
           </View>
-
-          <InstructorCard instructor={instructor} />
 
           {enrolled ? (
             <View style={styles.progressBlock}>
               <ProgressBar value={ratio} accessibilityLabel={`${course.title} progress`} />
-              <Text style={[type.meta, { color: colors.textSecondary }]}>
-                {Math.round(ratio * 100)}% complete · pick up at “{resumeLesson.title}”
+              <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
+                {Math.round(ratio * 100)}% complete · next up “{resumeLesson.title}”
               </Text>
             </View>
           ) : null}
+        </View>
 
-          <Text style={[type.body, { color: colors.textSecondary }]}>{course.description}</Text>
+        <DataList>
+          <PopularInstructorRow
+            name={instructor.name}
+            headline={instructor.headline}
+            portrait={instructor.portrait}
+            verified={instructor.verified}
+            onPress={() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } })}
+          />
+        </DataList>
 
-          <View style={styles.section}>
-            <Text style={[type.section, { color: colors.text }]}>What you&apos;ll learn</Text>
-            <View style={styles.outcomeList}>
-              {course.outcomes.map((outcome) => (
-                <View key={outcome} style={styles.outcomeRow}>
-                  <CircleCheck size={18} color={colors.sage} strokeWidth={1.9} />
-                  <Text style={[type.body, { color: colors.text, flex: 1, fontSize: 15.5 }]}>{outcome}</Text>
-                </View>
-              ))}
-            </View>
-            <Text style={[type.meta, { color: colors.textSecondary }]}>For {course.audience.toLowerCase()}</Text>
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <Text style={[type.section, { color: colors.text }]}>Curriculum</Text>
-              <Text style={[type.meta, { color: colors.textSecondary }]}>
-                {course.sections.length} sections · {course.lessonCount} lessons
-              </Text>
-            </View>
-            {course.sections.map((section, index) => {
-              const lessons = course.lessons.filter((lesson) => lesson.sectionId === section.id);
-              const sectionMinutes = lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
-              const hasPreview = lessons.some((lesson) => lesson.isPreview);
-              return (
-                <Accordion
-                  key={section.id}
-                  title={section.title}
-                  subtitle={`${lessons.length} lessons · ${formatDuration(sectionMinutes)}${
-                    hasPreview ? ' · includes free preview' : ''
-                  }`}
-                  defaultOpen={index === 0}
-                  right={!enrolled && !hasPreview ? <Lock size={14} color={colors.textSecondary} strokeWidth={1.9} /> : undefined}>
-                  <Text style={[type.supporting, { color: colors.textSecondary }]}>{section.summary}</Text>
-                  {lessons.map((lesson, lessonIndex) => {
-                    const entry = lessonProgress(course.id, lesson.id);
-                    const state = entry.completed
-                      ? 'completed'
-                      : !enrolled && !lesson.isPreview
-                        ? 'locked'
-                        : lesson.id === resumeLesson.id && enrolled
-                          ? 'current'
-                          : 'available';
-                    return (
-                      <LessonRow
-                        key={lesson.id}
-                        lesson={lesson}
-                        state={state}
-                        index={lessonIndex + 1}
-                        onPress={() => openLesson(lesson)}
-                      />
-                    );
-                  })}
-                </Accordion>
-              );
-            })}
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[type.section, { color: colors.text }]}>What you&apos;ll need</Text>
-            <View style={styles.outcomeList}>
-              {course.equipment.map((item) => (
-                <View key={item} style={styles.outcomeRow}>
-                  <ShoppingBasket size={17} color={colors.textSecondary} strokeWidth={1.9} />
-                  <Text style={[type.body, { color: colors.textSecondary, flex: 1, fontSize: 15.5 }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={[type.section, { color: colors.text }]}>Your instructor</Text>
-            <View style={[styles.instructorCard, shadow.card]}>
-              <View style={styles.instructorHead}>
-                <Image source={instructor.portrait} style={styles.instructorPortrait} contentFit="cover" transition={180} />
-                <View style={styles.flex}>
-                  <View style={styles.nameRow}>
-                    <Text style={[type.cardTitle, { color: colors.text }]}>{instructor.name}</Text>
-                    {instructor.verified ? <BadgeCheck size={16} color={colors.sage} strokeWidth={2} /> : null}
-                  </View>
-                  <Text style={[type.meta, { color: colors.textSecondary }]}>
-                    {instructor.city} · {instructor.yearsTeaching} years teaching
-                  </Text>
-                </View>
+        <View style={styles.section}>
+          <SectionHeader title="What you'll learn" />
+          <View style={styles.bullets}>
+            {course.outcomes.map((outcome) => (
+              <View key={outcome} style={styles.bulletRow}>
+                <CircleCheck size={16} color={colors.sage} strokeWidth={1.9} />
+                <Text style={[type.body, { color: colors.text, flex: 1 }]}>{outcome}</Text>
               </View>
-              <Text style={[type.supporting, { color: colors.textSecondary }]}>{instructor.bio}</Text>
-              <View style={styles.teachingRow}>
-                <ChefHat size={16} color={colors.sage} strokeWidth={1.9} />
-                <Text style={[type.supporting, { color: colors.text, flex: 1 }]}>{instructor.teachingStyle}</Text>
-              </View>
-              <PrimaryButton
-                label="View instructor profile"
-                variant="secondary"
-                onPress={() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } })}
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <View style={styles.sectionHead}>
-              <Text style={[type.section, { color: colors.text }]}>Reviews</Text>
-              <RatingSummary rating={course.rating} reviewCount={course.reviewCount} />
-            </View>
-            {course.reviews.map((review) => (
-              <ReviewCard key={review.id} review={review} />
             ))}
-            <Text style={[type.meta, { color: colors.textSecondary }]}>
-              Showing {course.reviews.length} of {course.reviewCount.toLocaleString('en-IN')} sample reviews. Ratings and
-              reviews in this prototype are authored sample content.
-            </Text>
+          </View>
+          <Text style={[type.label, styles.sectionNote, { color: colors.textMuted }]}>For {course.audience.toLowerCase()}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title="Curriculum" subtitle={`${course.sections.length} sections · ${course.lessonCount} lessons`} />
+          <View style={styles.curriculum}>
+            {course.sections.map((section, index) => (
+              <CurriculumSectionBlock
+                key={section.id}
+                index={index + 1}
+                title={section.title}
+                summary={section.summary}
+                lessons={course.lessons.filter((lesson) => lesson.sectionId === section.id)}
+                stateFor={stateFor}
+                onOpen={openLesson}
+                locked={!enrolled}
+              />
+            ))}
           </View>
         </View>
-      </ScrollView>
 
-      <View style={[styles.stickyBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+        <View style={styles.section}>
+          <SectionHeader title="What you'll need" />
+          <View style={styles.bullets}>
+            {course.equipment.map((item) => (
+              <View key={item} style={styles.bulletRow}>
+                <ShoppingBasket size={16} color={colors.textMuted} strokeWidth={1.75} />
+                <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>{item}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title="Your instructor" />
+          <View style={styles.instructorCard}>
+            <View style={styles.instructorHead}>
+              <Image source={instructor.portrait} style={styles.instructorPortrait} contentFit="cover" transition={160} />
+              <View style={styles.flex}>
+                <View style={styles.nameRow}>
+                  <Text style={[type.bodyStrong, { color: colors.text }]}>{instructor.name}</Text>
+                  {instructor.verified ? <BadgeCheck size={15} color={colors.sage} strokeWidth={2} /> : null}
+                </View>
+                <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
+                  {instructor.city} · {instructor.yearsTeaching} years teaching
+                </Text>
+              </View>
+            </View>
+            <Text style={[type.body, { color: colors.textMuted }]}>{instructor.bio}</Text>
+            <View style={styles.teachingRow}>
+              <ChefHat size={16} color={colors.sage} strokeWidth={1.75} />
+              <Text style={[type.body, { color: colors.text, flex: 1 }]}>{instructor.teachingStyle}</Text>
+            </View>
+            <Button
+              label="View instructor profile"
+              variant="secondary"
+              onPress={() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } })}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title="Reviews" subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`} />
+        </View>
+        <DataList>
+          {course.reviews.map((review) => (
+            <ReviewCard key={review.id} review={review} />
+          ))}
+        </DataList>
+        <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>
+          Ratings and reviews in this prototype are authored sample content, not verified facts.
+        </Text>
+
+        <View style={styles.section}>
+          <SectionHeader title="Price" />
+          <View style={styles.priceWrap}>
+            <PriceSummary course={course} />
+          </View>
+        </View>
+      </Screen>
+
+      <StickyBar bottomInset={insets.bottom}>
         {enrolled ? (
           <>
             <View style={styles.flex}>
-              <Text style={[type.meta, { color: colors.textSecondary }]}>You own this course</Text>
-              <Text style={[type.cardTitle, { color: colors.text, fontSize: 17 }]} numberOfLines={1}>
+              <Text style={[type.label, { color: colors.textMuted }]}>You own this course</Text>
+              <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
                 {resumeLesson.title}
               </Text>
             </View>
-            <PrimaryButton
+            <Button
               label={done === 0 ? 'Start learning' : 'Continue'}
-              fullWidth={false}
               icon={Play}
+              fullWidth={false}
               onPress={() =>
                 router.push({
                   pathname: '/lesson/[courseId]/[lessonId]',
@@ -302,114 +262,213 @@ export default function CourseDetailsScreen() {
         ) : (
           <>
             <View style={styles.flex}>
-              <View style={styles.priceLine}>
-                <Text style={[type.screenTitle, { color: colors.text, fontSize: 24, lineHeight: 30 }]}>
-                  {formatInr(course.priceInr)}
-                </Text>
-                {course.listPriceInr ? (
-                  <Text style={[type.supporting, styles.strike, { color: colors.textSecondary }]}>
-                    {formatInr(course.listPriceInr)}
-                  </Text>
-                ) : null}
-              </View>
-              <Text style={[type.meta, { color: colors.textSecondary }]}>One-time purchase · demo checkout</Text>
+              <Text style={[type.title, tabularNums, { color: colors.text }]}>{formatInr(course.priceInr)}</Text>
+              <Text style={[type.label, { color: colors.textMuted }]}>One-time · demo checkout</Text>
             </View>
-            <PrimaryButton label="Buy course" fullWidth={false} onPress={buy} />
+            <Button
+              label="Buy course"
+              fullWidth={false}
+              onPress={() => router.push({ pathname: '/checkout/[id]', params: { id: course.id } })}
+            />
           </>
         )}
-      </View>
+      </StickyBar>
 
       <BottomSheet
         visible={Boolean(paywallLesson)}
         onClose={() => setPaywallLesson(null)}
         title="Unlock this course"
         subtitle={paywallLesson ? `“${paywallLesson.title}” is part of ${course.title}.` : undefined}>
-        <Text style={[type.body, { color: colors.textSecondary }]}>
+        <Text style={[type.body, { color: colors.textMuted }]}>
           Buy the course to watch all {course.lessonCount} lessons, keep notes on every lesson and track your progress.
-          The free preview lessons stay open to everyone.
+          Free preview lessons stay open to everyone.
         </Text>
         <View style={styles.paywallActions}>
-          <PrimaryButton
+          <Button
             label={`Buy for ${formatInr(course.priceInr)}`}
             onPress={() => {
               setPaywallLesson(null);
-              buy();
+              router.push({ pathname: '/checkout/[id]', params: { id: course.id } });
             }}
           />
-          {previewLesson ? (
-            <PrimaryButton
-              label="Watch a free preview instead"
-              variant="ghost"
-              onPress={() => {
-                const lesson = previewLesson;
-                setPaywallLesson(null);
-                router.push({
-                  pathname: '/lesson/[courseId]/[lessonId]',
-                  params: { courseId: course.id, lessonId: lesson.id },
-                });
-              }}
-            />
-          ) : null}
+          <Button
+            label="Watch a free preview instead"
+            variant="ghost"
+            onPress={() => {
+              const lesson = previewLesson;
+              setPaywallLesson(null);
+              openLesson(lesson);
+            }}
+          />
         </View>
       </BottomSheet>
     </View>
   );
 }
 
+function CourseAppBar() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.simpleBar, { paddingTop: insets.top + spacing.xs }]}>
+      <IconButton icon={ArrowLeft} accessibilityLabel="Go back" onPress={() => router.replace('/explore')} />
+    </View>
+  );
+}
+
+function PopularInstructorRow({
+  name,
+  headline,
+  portrait,
+  verified,
+  onPress,
+}: {
+  name: string;
+  headline: string;
+  portrait: ImageSource;
+  verified: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${headline}. Open instructor profile.`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tutorRow, pressed && { opacity: 0.7 }]}>
+      <Image source={portrait as never} style={styles.tutorAvatar} contentFit="cover" transition={140} />
+      <View style={styles.flex}>
+        <View style={styles.nameRow}>
+          <Text style={[type.bodyStrong, { color: colors.text }]}>{name}</Text>
+          {verified ? <BadgeCheck size={15} color={colors.sage} strokeWidth={2} /> : null}
+        </View>
+        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
+          {headline}
+        </Text>
+      </View>
+      <Text style={[type.label, { color: colors.primary }]}>Profile</Text>
+    </Pressable>
+  );
+}
+
+/** Section block: number + title row, then lesson rows with dividers. */
+function CurriculumSectionBlock({
+  index,
+  title,
+  summary,
+  lessons,
+  stateFor,
+  onOpen,
+  locked,
+}: {
+  index: number;
+  title: string;
+  summary: string;
+  lessons: Lesson[];
+  stateFor: (lesson: Lesson) => LessonRowState;
+  onOpen: (lesson: Lesson) => void;
+  locked: boolean;
+}) {
+  const [open, setOpen] = useState(index === 1);
+  const minutes = lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
+
+  return (
+    <View style={styles.curriculumBlock}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`Section ${index}, ${title}. ${lessons.length} lessons, ${formatDuration(minutes)}`}
+        onPress={() => setOpen((value) => !value)}
+        style={({ pressed }) => [styles.curriculumHeader, pressed && { opacity: 0.75 }]}>
+        <View style={styles.sectionIndex}>
+          <Text style={[type.labelStrong, tabularNums, { color: colors.primary }]}>{String(index).padStart(2, '0')}</Text>
+        </View>
+        <View style={styles.flex}>
+          <Text style={[type.bodyStrong, { color: colors.text }]}>{title}</Text>
+          <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
+            {summary}
+          </Text>
+          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>
+            {lessons.length} lessons · {formatDuration(minutes)}
+            {locked ? ' · previews marked free' : ''}
+          </Text>
+        </View>
+      </Pressable>
+
+      {open ? (
+        <DataList>
+          {lessons.map((lesson, lessonIndex) => (
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              index={lessonIndex + 1}
+              state={stateFor(lesson)}
+              onPress={() => onOpen(lesson)}
+            />
+          ))}
+        </DataList>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  content: { width: '100%', maxWidth: maxContentWidth, alignSelf: 'center' },
   flex: { flex: 1 },
-  hero: { backgroundColor: colors.player },
-  heroImage: { width: '100%', aspectRatio: 16 / 10, backgroundColor: colors.surfaceWarm },
-  heroTop: {
-    position: 'absolute',
-    top: 0,
-    left: screenPadding,
-    right: screenPadding,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  heroPlay: { position: 'absolute', left: screenPadding, bottom: spacing.md, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  hero: { height: 240, backgroundColor: colors.player, overflow: 'hidden' },
+  heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  heroBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: layout.screen },
+  heroPlay: { position: 'absolute', left: layout.section, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   playCircle: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(18,20,18,0.55)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: colors.scrim,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: { paddingHorizontal: screenPadding, gap: spacing.xl, paddingTop: spacing.lg },
-  titleBlock: { gap: spacing.sm },
+  simpleBar: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
+
+  intro: { paddingHorizontal: layout.section, paddingVertical: spacing.lg, gap: spacing.sm },
   metaWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  progressBlock: { gap: spacing.xs },
-  section: { gap: spacing.sm },
-  sectionHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: spacing.sm },
-  outcomeList: { gap: spacing.sm },
-  outcomeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  instructorCard: { backgroundColor: colors.surface, borderRadius: radius.card, padding: spacing.md, gap: spacing.sm },
-  instructorHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  instructorPortrait: { width: 60, height: 60, borderRadius: radius.pill, backgroundColor: colors.surfaceWarm },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
-  teachingRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  stickyBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
+  progressBlock: { gap: spacing.xs, marginTop: spacing.xs },
+
+  tutorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  tutorAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+
+  section: { paddingHorizontal: layout.screen, paddingTop: spacing.xl, gap: layout.gap },
+  sectionNote: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
+  bullets: { gap: spacing.sm, paddingHorizontal: layout.section },
+  bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+
+  curriculum: { borderTopWidth: 1, borderColor: colors.border },
+  curriculumBlock: { borderBottomWidth: 1, borderColor: colors.border },
+  curriculumHeader: { flexDirection: 'row', gap: spacing.md, paddingHorizontal: layout.section, paddingVertical: spacing.md },
+  sectionIndex: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
     alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: screenPadding,
-    paddingTop: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    justifyContent: 'center',
   },
-  priceLine: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.xs },
-  strike: { textDecorationLine: 'line-through' },
-  paywallActions: { gap: spacing.xs },
+
+  instructorCard: {
+    marginHorizontal: layout.section,
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  instructorHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  instructorPortrait: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+  teachingRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+
+  priceWrap: { paddingHorizontal: layout.section },
+  paywallActions: { gap: spacing.sm },
 });

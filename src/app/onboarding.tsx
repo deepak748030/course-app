@@ -16,8 +16,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandMark } from '@/components/marks';
-import { PrimaryButton } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { Button } from '@/components/ui';
+import { colors, layout, radius, spacing, type } from '@/constants/theme';
 import { images } from '@/media';
 import { useStore } from '@/store';
 import type { ImageSource } from 'expo-image';
@@ -87,16 +87,12 @@ export default function OnboardingScreen() {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <StatusBar style="dark" />
 
+      {/* Brand only — nothing competes with the artwork. Skip lives over the image. */}
       <View style={styles.topBar}>
-        <BrandMark size={30} />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Skip introduction"
-          hitSlop={12}
-          onPress={finish}
-          style={({ pressed }) => [styles.skip, pressed && { opacity: 0.6 }]}>
-          <Text style={[type.label, { color: colors.textSecondary }]}>Skip</Text>
-        </Pressable>
+        <View style={styles.brand}>
+          <BrandMark size={26} />
+          <Text style={[type.bodyStrong, { color: colors.text }]}>Rasoi Studio</Text>
+        </View>
       </View>
 
       <View style={styles.pager} onLayout={onPagerLayout}>
@@ -111,35 +107,35 @@ export default function OnboardingScreen() {
             showsHorizontalScrollIndicator={false}
             onScroll={onScroll}
             scrollEventThrottle={16}
-            onMomentumScrollEnd={(event) =>
-              setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))
-            }
+            onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))}
             renderItem={({ item, index: itemIndex }) => (
-              <SlideView
-                slide={item}
-                index={itemIndex}
-                width={width}
-                height={pagerHeight}
-                scrollX={scrollX}
-              />
+              <SlideView slide={item} index={itemIndex} width={width} height={pagerHeight} scrollX={scrollX} />
             )}
           />
         ) : null}
       </View>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.lg }]}>
-        <View style={styles.dots} accessibilityLabel={`Step ${index + 1} of ${slides.length}`}>
-          {slides.map((slide, dotIndex) => (
-            <Dot key={slide.key} active={dotIndex === index} />
-          ))}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <View style={styles.footerRow}>
+          <View style={styles.dots} accessibilityLabel={`Step ${index + 1} of ${slides.length}`}>
+            {slides.map((slide, dotIndex) => (
+              <Dot key={slide.key} active={dotIndex === index} />
+            ))}
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Skip introduction"
+            hitSlop={12}
+            onPress={finish}
+            style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
+            <Text style={[type.label, { color: colors.textMuted }]}>Skip</Text>
+          </Pressable>
         </View>
-        <PrimaryButton
+        <Button
           label={slides[index].cta}
           onPress={goNext}
-          iconRight={ArrowRight}
-          accessibilityHint={
-            index === slides.length - 1 ? 'Opens the sign-in screen' : 'Shows the next introduction screen'
-          }
+          icon={ArrowRight}
+          accessibilityHint={index === slides.length - 1 ? 'Opens the sign-in screen' : 'Shows the next introduction screen'}
         />
       </View>
     </View>
@@ -147,12 +143,7 @@ export default function OnboardingScreen() {
 }
 
 function Dot({ active }: { active: boolean }) {
-  const reduced = useReducedMotion();
-  const style = useAnimatedStyle(() => ({
-    width: reduced ? (active ? 22 : 8) : active ? 22 : 8,
-    opacity: active ? 1 : 0.35,
-  }));
-  return <Animated.View style={[styles.dot, style]} />;
+  return <View style={[styles.dot, active ? styles.dotActive : styles.dotIdle]} />;
 }
 
 function SlideView({
@@ -170,7 +161,7 @@ function SlideView({
 }) {
   const reduced = useReducedMotion();
 
-  // Gentle image translation + text fade as the page moves.
+  // Gentle image translation as the page moves; text fades with distance.
   const imageStyle = useAnimatedStyle(() => {
     if (reduced) return { transform: [{ translateX: 0 }] };
     const offset = interpolate(
@@ -193,6 +184,7 @@ function SlideView({
 
   return (
     <View style={{ width, height }}>
+      {/* Full-bleed: the image touches both screen edges, text sits below it on paper. */}
       <View style={styles.imageWrap}>
         <Animated.View style={[styles.imageInner, imageStyle]}>
           <Image source={slide.image} style={styles.image} contentFit="cover" transition={200} />
@@ -200,8 +192,8 @@ function SlideView({
       </View>
 
       <Animated.View style={[styles.copy, textStyle]}>
-        <Text style={[type.onboarding, { color: colors.text }]}>{slide.headline}</Text>
-        <Text style={[type.body, { color: colors.textSecondary, maxWidth: 420 }]}>{slide.support}</Text>
+        <Text style={[type.title, { color: colors.text }]}>{slide.headline}</Text>
+        <Text style={[type.body, { color: colors.textMuted, maxWidth: 420 }]}>{slide.support}</Text>
       </Animated.View>
     </View>
   );
@@ -209,44 +201,31 @@ function SlideView({
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: screenPadding,
-    paddingVertical: spacing.sm,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
-  skip: { paddingVertical: spacing.xs, paddingHorizontal: spacing.xs },
+  topBar: { paddingHorizontal: layout.screen, paddingVertical: spacing.sm, width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center' },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingLeft: spacing.sm },
   pager: { flex: 1 },
-  imageWrap: {
-    flex: 1,
-    minHeight: 220,
-    borderBottomLeftRadius: radius.card + 6,
-    borderBottomRightRadius: radius.card + 6,
-    overflow: 'hidden',
-    backgroundColor: colors.surfaceWarm,
-  },
-  imageInner: { ...StyleSheet.absoluteFill },
+  imageWrap: { flex: 1, minHeight: 220, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
+  imageInner: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   image: { width: '100%', height: '100%' },
   copy: {
-    paddingHorizontal: screenPadding,
+    paddingHorizontal: layout.screen,
     paddingTop: spacing.lg,
     gap: spacing.sm,
     width: '100%',
-    maxWidth: maxContentWidth,
+    maxWidth: layout.maxWidth,
     alignSelf: 'center',
   },
   footer: {
-    paddingHorizontal: screenPadding,
+    paddingHorizontal: layout.screen,
     paddingTop: spacing.md,
     gap: spacing.md,
     width: '100%',
-    maxWidth: maxContentWidth,
+    maxWidth: layout.maxWidth,
     alignSelf: 'center',
   },
-  dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, alignSelf: 'center' },
-  dot: { height: 8, borderRadius: 4, backgroundColor: colors.primary },
+  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm },
+  dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  dot: { height: 6, borderRadius: radius.pill },
+  dotActive: { width: 22, backgroundColor: colors.primary },
+  dotIdle: { width: 6, backgroundColor: colors.border },
 });

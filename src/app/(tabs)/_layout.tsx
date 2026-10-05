@@ -1,36 +1,24 @@
+import { Tabs, Redirect } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import { BookOpen, Compass, House, UserRound } from 'lucide-react-native';
-import { Redirect, Tabs } from 'expo-router';
-import { useEffect } from 'react';
-import { View, type ColorValue } from 'react-native';
-import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { StyleSheet, Text, View, type ColorValue } from 'react-native';
 
-import { colors, font } from '@/constants/theme';
+import { colors, font, layout, spacing } from '@/constants/theme';
 import { useStore } from '@/store';
 
-/** Active state: colour, slightly heavier stroke and a small indicator — no bouncing. */
-function TabIcon({ icon: Icon, color, focused }: { icon: LucideIcon; color: ColorValue; focused: boolean }) {
-  const reduced = useReducedMotion();
-  const scale = useSharedValue(focused ? 1 : 0.94);
-
-  useEffect(() => {
-    scale.value = reduced ? 1 : withSpring(focused ? 1 : 0.94, { damping: 20, stiffness: 320, mass: 0.6 });
-  }, [focused, reduced, scale]);
-
-  const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
+/**
+ * Tab bar: 4 tabs, 56px, hairline top border, opaque surface (no blur needed since the
+ * surface is opaque), filled-feeling active state via colour + semibold label.
+ * No status dots here — the only badge in the app is the unread notification count.
+ */
+function TabItem({ icon: Icon, color, focused, label }: { icon: LucideIcon; color: ColorValue; focused: boolean; label: string }) {
   return (
-    <Animated.View style={[{ alignItems: 'center', gap: 3 }, style]}>
-      <Icon size={23} color={color as string} strokeWidth={focused ? 2.1 : 1.75} />
-      <View
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: 2.5,
-          backgroundColor: focused ? (color as string) : 'transparent',
-        }}
-      />
-    </Animated.View>
+    <View style={styles.tabItem}>
+      <Icon size={22} color={color as string} strokeWidth={focused ? 2 : 1.6} />
+      <Text style={[styles.tabLabel, focused && styles.tabLabelActive, { color: color as string }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -45,44 +33,56 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
+          height: layout.tabBarHeight + spacing.sm,
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
           borderTopWidth: 1,
+          borderTopColor: colors.border,
           elevation: 0,
+          paddingTop: spacing.xs,
         },
-        tabBarLabelStyle: { fontFamily: font.semibold, fontSize: 11.5 },
+        tabBarLabel: () => null,
         tabBarHideOnKeyboard: true,
       }}>
       <Tabs.Screen
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, focused }) => <TabIcon icon={House} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabItem icon={House} color={color} focused={focused} label="Home" />,
+          tabBarAccessibilityLabel: 'Home',
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color, focused }) => <TabIcon icon={Compass} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabItem icon={Compass} color={color} focused={focused} label="Explore" />,
+          tabBarAccessibilityLabel: 'Explore',
         }}
       />
       <Tabs.Screen
         name="learning"
         options={{
           title: 'My learning',
-          tabBarIcon: ({ color, focused }) => <TabIcon icon={BookOpen} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabItem icon={BookOpen} color={color} focused={focused} label="Learning" />,
+          tabBarAccessibilityLabel: 'My learning',
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, focused }) => <TabIcon icon={UserRound} color={color} focused={focused} />,
+          tabBarIcon: ({ color, focused }) => <TabItem icon={UserRound} color={color} focused={focused} label="Profile" />,
+          tabBarAccessibilityLabel: 'Profile',
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabItem: { alignItems: 'center', gap: 2, width: 72 },
+  tabLabel: { fontFamily: font.regular, fontSize: 10, lineHeight: 13 },
+  tabLabelActive: { fontFamily: font.semibold },
+});

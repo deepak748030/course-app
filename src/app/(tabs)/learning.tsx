@@ -1,29 +1,23 @@
 import { useRouter } from 'expo-router';
 import { BookOpen, CircleCheck, Clock, Play, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ContinueCard } from '@/components/course-cards';
-import { AppText, Badge, EmptyState, MetaItem, ProgressBar } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, shadow, spacing, type } from '@/constants/theme';
+import { AppText, Badge, Button, DataList, EmptyState, ProgressBar, Screen, Segmented } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
-import { useStore } from '@/store';
 import { formatDuration } from '@/lib/format';
+import { useStore } from '@/store';
 
 type Segment = 'progress' | 'completed';
 
 export default function MyLearningScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { state, courseProgressRatio, completedCount, resumeLesson } = useStore();
   const [segment, setSegment] = useState<Segment>('progress');
 
-  const enrolled = useMemo(
-    () => courses.filter((course) => state.enrollments[course.id]),
-    [state.enrollments],
-  );
-
+  const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments]);
   const inProgress = enrolled.filter((course) => courseProgressRatio(course) < 1);
   const completed = enrolled.filter((course) => courseProgressRatio(course) === 1);
 
@@ -44,198 +38,154 @@ export default function MyLearningScreen() {
   const list = segment === 'progress' ? inProgress : completed;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: spacing.xxxl }]}
-        showsVerticalScrollIndicator={false}>
-        <AppText variant="title">My learning</AppText>
+    <Screen contentStyle={styles.content}>
+      <Text style={[type.display, styles.title, { color: colors.text }]}>My learning</Text>
 
-        <View style={styles.statsRow}>
-          <StatTile icon={BookOpen} label="Courses" value={String(enrolled.length)} />
-          <StatTile icon={CircleCheck} label="Lessons done" value={String(stats.lessons)} />
-          <StatTile icon={Clock} label="Time learned" value={formatDuration(stats.minutes)} />
+      <View style={styles.pad}>
+        <View style={styles.statsCard}>
+          <Stat icon={BookOpen} label="Courses" value={String(enrolled.length)} />
+          <View style={styles.statDivider} />
+          <Stat icon={CircleCheck} label="Lessons done" value={String(stats.lessons)} />
+          <View style={styles.statDivider} />
+          <Stat icon={Clock} label="Time learned" value={formatDuration(stats.minutes)} />
         </View>
+      </View>
 
-        <View style={styles.segment}>
-          <SegmentButton label={`In progress${inProgress.length ? ` (${inProgress.length})` : ''}`} active={segment === 'progress'} onPress={() => setSegment('progress')} />
-          <SegmentButton label={`Completed${completed.length ? ` (${completed.length})` : ''}`} active={segment === 'completed'} onPress={() => setSegment('completed')} />
-        </View>
+      <Segmented<Segment>
+        options={[
+          { id: 'progress', label: `In progress${inProgress.length ? ` · ${inProgress.length}` : ''}` },
+          { id: 'completed', label: `Completed${completed.length ? ` · ${completed.length}` : ''}` },
+        ]}
+        value={segment}
+        onChange={setSegment}
+      />
 
-        {list.length === 0 ? (
-          segment === 'progress' ? (
-            <EmptyState
-              icon={BookOpen}
-              title="Nothing in progress yet"
-              body="Enrol in a course and it will appear here with your progress, next lesson and notes."
-              actionLabel="Browse courses"
-              onAction={() => router.push('/explore')}
-            />
-          ) : (
-            <EmptyState
-              icon={CircleCheck}
-              title="No completed courses yet"
-              body="Finish every lesson in a course and it moves here so you can revisit it anytime."
-              actionLabel="Continue learning"
-              onAction={() => setSegment('progress')}
-            />
-          )
+      {list.length === 0 ? (
+        segment === 'progress' ? (
+          <EmptyState
+            icon={BookOpen}
+            title="Nothing in progress yet"
+            body="Enrol in a course and it appears here with your progress, the next lesson and your notes."
+            actionLabel="Browse courses"
+            onAction={() => router.push('/explore')}
+          />
         ) : (
-          <View style={styles.list}>
-            {list.map((course) => {
-              const ratio = courseProgressRatio(course);
-              const resume = resumeLesson(course);
-              const nextLesson = resume?.lesson ?? course.lessons[0];
-
-              if (segment === 'progress') {
-                return (
-                  <View key={course.id} style={styles.courseBlock}>
-                    <ContinueCard
-                      course={course}
-                      lessonTitle={nextLesson.title}
-                      progress={ratio}
-                      onPress={() =>
-                        router.push({
-                          pathname: '/lesson/[courseId]/[lessonId]',
-                          params: { courseId: course.id, lessonId: nextLesson.id },
-                        })
-                      }
-                    />
-                    <View style={styles.metaRow}>
-                      <MetaItem icon={CircleCheck} label={`${completedCount(course)}/${course.lessonCount} lessons`} />
-                      <Text style={[type.meta, { color: colors.textSecondary }]}>
-                        {Math.round(ratio * 100)}% complete
-                      </Text>
-                    </View>
-                  </View>
-                );
-              }
-
-              return (
-                <Pressable
-                  key={course.id}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${course.title}, completed. Review lessons.`}
-                  onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
-                  style={({ pressed }) => [styles.completedCard, shadow.card, pressed && { opacity: 0.85 }]}>
-                  <View style={styles.completedHeader}>
-                    <View style={styles.flex}>
-                      <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={2}>
-                        {course.title}
-                      </Text>
-                      <Badge label="All lessons complete" tone="success" icon={CircleCheck} />
-                    </View>
-                    <View style={styles.replayIcon}>
-                      <Play size={18} color={colors.primary} strokeWidth={2} fill={colors.primary} />
-                    </View>
-                  </View>
-                  <ProgressBar value={1} accessibilityLabel={`${course.title} complete`} />
-                  <Text style={[type.meta, { color: colors.textSecondary }]}>
-                    {course.lessonCount} lessons · {formatDuration(course.hours * 60)} of material
+          <EmptyState
+            icon={CircleCheck}
+            title="No completed courses yet"
+            body="Finish every lesson in a course and it moves here so you can revisit it anytime."
+            actionLabel="Continue learning"
+            onAction={() => setSegment('progress')}
+          />
+        )
+      ) : segment === 'progress' ? (
+        <DataList>
+          {list.map((course) => {
+            const nextLesson = resumeLesson(course)?.lesson ?? course.lessons[0];
+            return (
+              <ContinueCard
+                key={course.id}
+                course={course}
+                lessonTitle={nextLesson.title}
+                progress={courseProgressRatio(course)}
+                onPress={() =>
+                  router.push({
+                    pathname: '/lesson/[courseId]/[lessonId]',
+                    params: { courseId: course.id, lessonId: nextLesson.id },
+                  })
+                }
+              />
+            );
+          })}
+        </DataList>
+      ) : (
+        <DataList>
+          {list.map((course) => (
+            <Pressable
+              key={course.id}
+              accessibilityRole="button"
+              accessibilityLabel={`${course.title}, completed. Review lessons.`}
+              onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
+              style={({ pressed }) => [styles.completedRow, pressed && { opacity: 0.7 }]}>
+              <View style={styles.flex}>
+                <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+                  {course.title}
+                </Text>
+                <View style={styles.completedMeta}>
+                  <Badge label="All lessons done" tone="success" icon={CircleCheck} />
+                  <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
+                    {completedCount(course)}/{course.lessonCount} · {formatDuration(course.hours * 60)}
                   </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
+                </View>
+                <ProgressBar value={1} accessibilityLabel={`${course.title} complete`} />
+              </View>
+              <View style={styles.replay}>
+                <Play size={16} color={colors.primary} strokeWidth={2} fill={colors.primary} />
+              </View>
+            </Pressable>
+          ))}
+        </DataList>
+      )}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Find more courses"
+      <View style={styles.pad}>
+        <Button
+          label="Find more courses"
+          variant="secondary"
+          icon={Search}
           onPress={() => router.push('/explore')}
-          style={({ pressed }) => [styles.exploreRow, pressed && { opacity: 0.8 }]}>
-          <Search size={18} color={colors.primary} strokeWidth={2} />
-          <Text style={[type.label, { color: colors.primary }]}>Find more courses</Text>
-        </Pressable>
-      </ScrollView>
-    </View>
+        />
+      </View>
+    </Screen>
   );
 }
 
-function StatTile({
+function Stat({
   icon: Icon,
   label,
   value,
 }: {
-  icon: React.ComponentProps<typeof MetaItem>['icon'];
+  icon: typeof BookOpen;
   label: string;
   value: string;
 }) {
   return (
-    <View style={styles.statTile}>
-      <Icon size={17} color={colors.sage} strokeWidth={1.9} />
-      <Text style={[type.cardTitle, { color: colors.text, fontSize: 17 }]} numberOfLines={1}>
+    <View style={styles.stat}>
+      <Icon size={16} color={colors.sage} strokeWidth={1.75} />
+      <AppText variant="subheading" style={[tabularNums, styles.statValue]}>
         {value}
-      </Text>
-      <Text style={[type.meta, { color: colors.textSecondary }]} numberOfLines={1}>
+      </AppText>
+      <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
   );
 }
 
-function SegmentButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={[styles.segmentButton, active && styles.segmentButtonActive]}>
-      <Text style={[type.label, { color: active ? colors.textInverse : colors.text }]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    paddingTop: spacing.sm,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
+  content: { gap: layout.gap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  statsRow: { flexDirection: 'row', gap: spacing.xs },
-  statTile: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.input,
-    padding: spacing.sm,
-    gap: spacing.xxs,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  segment: {
+  title: { paddingHorizontal: layout.section, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  pad: { paddingHorizontal: layout.screen },
+  statsCard: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceWarm,
-    borderRadius: radius.pill,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
+    alignItems: 'stretch',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
   },
-  segmentButton: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  segmentButtonActive: { backgroundColor: colors.primary },
-  list: { gap: spacing.lg },
-  courseBlock: { gap: spacing.xs },
-  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  completedCard: { backgroundColor: colors.surface, borderRadius: radius.card, padding: spacing.md, gap: spacing.sm },
-  completedHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  replayIcon: {
-    width: 40,
-    height: 40,
+  stat: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  statValue: { fontSize: 19, lineHeight: 24 },
+  statDivider: { width: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
+  completedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
+  completedMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.sm, flexWrap: 'wrap' },
+  replay: {
+    width: 36,
+    height: 36,
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  exploreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    minHeight: 48,
   },
 });

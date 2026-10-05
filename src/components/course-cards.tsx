@@ -1,7 +1,12 @@
 /**
  * Course, instructor, lesson and price components.
- * Cards own their navigation target (always the course screen) so screens stay declarative;
- * anything that needs a decision (paywall vs player) takes an onPress instead.
+ *
+ * Rules honoured here:
+ * - No shadows. Cards are built from a white surface + hairline border; artwork fills the
+ *   top edge and is clipped by the card radius (edge-to-edge image, concentric corners).
+ * - Dividers (not gaps) inside data lists; 8px gaps inside a rail.
+ * - Prices, ratings and counters use tabular figures so columns never wobble.
+ * - Every visible metric has a reason to be on the card; nothing is decorative.
  */
 
 import { Image } from 'expo-image';
@@ -10,7 +15,6 @@ import {
   BadgeCheck,
   Bookmark,
   ChartNoAxesColumnIncreasing,
-  ChefHat,
   CircleCheck,
   Clapperboard,
   Clock,
@@ -21,12 +25,12 @@ import {
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { AppText, Badge, IconButton, MetaItem, ProgressBar, RatingSummary, usePressScale } from '@/components/ui';
-import { colors, radius, shadow, spacing, type } from '@/constants/theme';
+import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { instructorById } from '@/data/catalog';
+import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Instructor, Lesson, Review } from '@/types';
-import { formatDuration, formatInr } from '@/lib/format';
 
 function priceLabel(course: Course) {
   return course.priceInr === 0 ? 'Free' : formatInr(course.priceInr);
@@ -36,72 +40,67 @@ function instructorName(course: Course) {
   return instructorById(course.instructorId)?.name ?? 'Rasoi Studio instructor';
 }
 
-function courseMetaLabel(course: Course) {
-  return `${course.title} by ${instructorName(course)}. ${course.level}, ${course.lessonCount} lessons, ${formatDuration(
-    course.hours * 60,
-  )}, ${priceLabel(course)}.`;
+function openCourse(router: ReturnType<typeof useRouter>, id: string) {
+  router.push({ pathname: '/course/[id]', params: { id } });
 }
 
-/* ------------------------------------------------------------------ *
- * Course cards
- * ------------------------------------------------------------------ */
-
-export function CourseCardLarge({
-  course,
-  footer,
-  style,
-}: {
-  course: Course;
-  footer?: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-}) {
+/** Rail card: fixed width, 4:3 artwork, title, instructor, rating + price row. */
+export function CourseCard({ course, style }: { course: Course; style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
   const press = usePressScale(0.985);
-  const instructor = instructorName(course);
 
   return (
-    <Animated.View style={[styles.card, shadow.card, press.style, style]}>
+    <Animated.View style={[styles.card, press.style, style]}>
       <Pressable
         accessible
         accessibilityRole="button"
-        accessibilityLabel={courseMetaLabel(course)}
-        onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
+        accessibilityLabel={`${course.title} by ${instructorName(course)}. ${course.level}, ${course.lessonCount} lessons, ${formatDuration(
+          course.hours * 60,
+        )}, ${priceLabel(course)}.`}
+        onPress={() => openCourse(router, course.id)}
         onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={styles.cardPressable}>
-        <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={180} />
-        <View style={styles.cardBody}>
-          <View style={styles.cardTitleRow}>
-            <AppText variant="cardTitle" style={styles.flex} numberOfLines={2}>
-              {course.title}
-            </AppText>
+        onPressOut={press.onPressOut}>
+        <View style={styles.cardImageWrap}>
+          <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
+          <View style={styles.cardImageBadge}>
+            <Badge label={course.level} tone="neutral" />
           </View>
-          <Text style={[type.supporting, { color: colors.textSecondary }]} numberOfLines={1}>
-            {instructor}
+        </View>
+
+        <View style={styles.cardBody}>
+          <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+            {course.title}
           </Text>
-          <View style={styles.metaRow}>
-            <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+          <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+            {instructorName(course)}
+          </Text>
+
+          <View style={styles.cardMeta}>
+            <View style={styles.ratingRow}>
+              <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
+              <Text style={[type.labelStrong, tabularNums, { color: colors.text }]}>{course.rating.toFixed(1)}</Text>
+              <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>
+                ({course.reviewCount.toLocaleString('en-IN')})
+              </Text>
+            </View>
+            <View style={styles.flex} />
+            <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+          </View>
+
+          <View style={styles.cardFooter}>
             <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
             <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
           </View>
-          <View style={styles.priceRow}>
-            <Text style={[type.cardTitle, { color: colors.text }]}>{priceLabel(course)}</Text>
-            {course.listPriceInr ? (
-              <Text style={[type.supporting, styles.strike, { color: colors.textSecondary }]}>
-                {formatInr(course.listPriceInr)}
-              </Text>
-            ) : null}
-            <View style={styles.flex} />
-            <RatingSummary rating={course.rating} reviewCount={course.reviewCount} />
-          </View>
-          {footer}
         </View>
       </Pressable>
-      <View style={styles.bookmarkSlot}>
+
+      <View style={styles.cardBookmark}>
         <IconButton
           icon={Bookmark}
+          size={32}
+          iconSize={16}
           variant="onImage"
           active={saved}
           accessibilityLabel={saved ? `Remove ${course.title} from saved` : `Save ${course.title}`}
@@ -112,116 +111,135 @@ export function CourseCardLarge({
   );
 }
 
-export function CourseCardCompact({ course }: { course: Course }) {
+/** List row used on Explore / Saved: 96px artwork, details, price. Dividers come from DataList. */
+export function CourseRow({ course }: { course: Course }) {
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
-  const instructor = instructorName(course);
-
-  return (
-    <View style={[styles.compactCard, shadow.card]}>
-      <Pressable
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={`${course.title} by ${instructor}. ${course.level}, ${formatDuration(course.hours * 60)}, ${priceLabel(course)}.`}
-        onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
-        style={{ gap: spacing.sm }}>
-        <Image source={course.cover} style={styles.compactImage} contentFit="cover" transition={180} />
-        <View style={{ gap: spacing.xxs }}>
-          <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={2}>
-            {course.title}
-          </Text>
-          <Text style={[type.meta, { color: colors.textSecondary }]} numberOfLines={1}>
-            {instructor}
-          </Text>
-          <View style={styles.metaRow}>
-            <MetaItem icon={Clapperboard} label={`${course.lessonCount}`} />
-            <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
-          </View>
-          <View style={styles.priceRow}>
-            <Text style={[type.label, { color: colors.text }]}>{priceLabel(course)}</Text>
-            <View style={styles.flex} />
-            <RatingSummary rating={course.rating} size={12} />
-          </View>
-        </View>
-      </Pressable>
-      <View style={styles.compactBookmark}>
-        <IconButton
-          icon={Bookmark}
-          variant="onImage"
-          size={40}
-          iconSize={18}
-          active={saved}
-          accessibilityLabel={saved ? `Remove ${course.title} from saved` : `Save ${course.title}`}
-          onPress={() => toggleSavedCourse(course.id)}
-        />
-      </View>
-    </View>
-  );
-}
-
-/* ------------------------------------------------------------------ *
- * Instructor
- * ------------------------------------------------------------------ */
-
-export function InstructorCard({
-  instructor,
-  variant = 'row',
-}: {
-  instructor: Instructor;
-  variant?: 'row' | 'spotlight';
-}) {
-  const router = useRouter();
-  const open = () => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } });
-
-  if (variant === 'spotlight') {
-    return (
-      <Pressable
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={`${instructor.name}, ${instructor.headline}`}
-        onPress={open}
-        style={({ pressed }) => [styles.spotlight, shadow.card, pressed && { opacity: 0.9 }]}>
-        <Image source={instructor.portrait} style={styles.spotlightPortrait} contentFit="cover" transition={180} />
-        <View style={styles.flex}>
-          <View style={styles.nameRow}>
-            <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={1}>
-              {instructor.name}
-            </Text>
-            {instructor.verified ? <BadgeCheck size={16} color={colors.sage} strokeWidth={2} /> : null}
-          </View>
-          <Text style={[type.supporting, { color: colors.textSecondary }]} numberOfLines={2}>
-            {instructor.headline}
-          </Text>
-          <View style={styles.metaRow}>
-            <MetaItem icon={ChefHat} label={`${instructor.yearsTeaching} yrs teaching`} />
-            <MetaItem icon={Clock} label={instructor.city} />
-          </View>
-        </View>
-      </Pressable>
-    );
-  }
 
   return (
     <Pressable
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`${instructor.name}, ${instructor.headline}`}
-      onPress={open}
-      style={({ pressed }) => [styles.instructorRow, pressed && { opacity: 0.75 }]}>
-      <Image source={instructor.portrait} style={styles.instructorAvatar} contentFit="cover" transition={150} />
+      accessibilityLabel={`${course.title} by ${instructorName(course)}. ${course.level}, ${formatDuration(
+        course.hours * 60,
+      )}, ${priceLabel(course)}.`}
+      onPress={() => openCourse(router, course.id)}
+      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+      <Image source={course.cover} style={styles.rowImage} contentFit="cover" transition={140} />
+
       <View style={styles.flex}>
-        <View style={styles.nameRow}>
-          <Text style={[type.body, { color: colors.text, fontFamily: type.label.fontFamily }]} numberOfLines={1}>
+        <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+          {course.title}
+        </Text>
+        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+          {instructorName(course)}
+        </Text>
+        <View style={styles.rowMeta}>
+          <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+          <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
+        </View>
+        <View style={styles.rowPriceLine}>
+          <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+          {course.listPriceInr ? (
+            <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
+              {formatInr(course.listPriceInr)}
+            </Text>
+          ) : null}
+          <View style={styles.flex} />
+          <View style={styles.ratingRow}>
+            <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
+            <Text style={[type.labelStrong, tabularNums, { color: colors.text }]}>{course.rating.toFixed(1)}</Text>
+          </View>
+        </View>
+      </View>
+
+      <IconButton
+        icon={Bookmark}
+        size={32}
+        iconSize={16}
+        variant={saved ? 'soft' : 'plain'}
+        active={saved}
+        accessibilityLabel={saved ? `Remove ${course.title} from saved` : `Save ${course.title}`}
+        onPress={() => toggleSavedCourse(course.id)}
+      />
+    </Pressable>
+  );
+}
+
+/** Continue-learning row: thumbnail, next lesson, progress. */
+export function ContinueCard({
+  course,
+  lessonTitle,
+  progress,
+  onPress,
+}: {
+  course: Course;
+  lessonTitle: string;
+  progress: number;
+  onPress: () => void;
+}) {
+  const press = usePressScale(0.99);
+  return (
+    <Animated.View style={press.style}>
+      <Pressable
+        accessible
+        accessibilityRole="button"
+        accessibilityLabel={`Continue ${course.title}. Next up: ${lessonTitle}. ${Math.round(
+          progress * 100,
+        )} percent complete.`}
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={({ pressed }) => [styles.continueRow, pressed && { opacity: 0.75 }]}>
+        <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={140} />
+        <View style={styles.flex}>
+          <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+            {course.title}
+          </Text>
+          <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+            {lessonTitle}
+          </Text>
+          <View style={styles.continueProgress}>
+            <ProgressBar value={progress} accessibilityLabel={`${course.title} progress`} />
+            <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{Math.round(progress * 100)}%</Text>
+          </View>
+        </View>
+        <View style={styles.continuePlay}>
+          <Play size={16} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+export function InstructorRow({ instructor, onPress }: { instructor: Instructor; onPress?: () => void }) {
+  const router = useRouter();
+  const open = onPress ?? (() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } }));
+
+  return (
+    <Pressable
+      accessible
+      accessibilityRole="button"
+      accessibilityLabel={`${instructor.name}, ${instructor.headline}. Open profile.`}
+      onPress={open}
+      style={({ pressed }) => [styles.instructorRow, pressed && { opacity: 0.7 }]}>
+      <Image source={instructor.portrait} style={styles.instructorAvatar} contentFit="cover" transition={140} />
+      <View style={styles.flex}>
+        <View style={styles.instructorName}>
+          <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
             {instructor.name}
           </Text>
-          {instructor.verified ? <BadgeCheck size={15} color={colors.sage} strokeWidth={2} /> : null}
+          {instructor.verified ? <BadgeCheck size={14} color={colors.sage} strokeWidth={2} /> : null}
         </View>
-        <Text style={[type.supporting, { color: colors.textSecondary }]} numberOfLines={2}>
+        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
           {instructor.headline}
         </Text>
+        <View style={styles.rowMeta}>
+          <MetaItem icon={Clapperboard} label={`${instructor.yearsTeaching} yrs teaching`} />
+          <MetaItem icon={ChartNoAxesColumnIncreasing} label={instructor.city} />
+        </View>
       </View>
-      <Text style={[type.body, { color: colors.textSecondary }]}>›</Text>
     </Pressable>
   );
 }
@@ -244,53 +262,48 @@ export function LessonRow({
   onPress: () => void;
 }) {
   const locked = state === 'locked';
-  const icon = locked ? Lock : state === 'completed' ? CircleCheck : Play;
-  const Icon = icon;
+  const Icon = locked ? Lock : state === 'completed' ? CircleCheck : Play;
   const iconColor = locked
-    ? colors.textSecondary
+    ? colors.textSubtle
     : state === 'completed'
       ? colors.success
       : state === 'current'
         ? colors.primary
-        : colors.textSecondary;
+        : colors.textMuted;
 
   return (
     <Pressable
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`${lesson.title}, ${lesson.minutes} minutes${
-        lesson.isPreview ? ', free preview' : locked ? ', locked' : ''
+      accessibilityLabel={`Lesson ${index !== undefined ? `${index}. ` : ''}${lesson.title}, ${lesson.minutes} minutes${
+        lesson.isPreview ? ', free preview' : locked ? ', locked until purchase' : ''
       }`}
-      accessibilityState={{ disabled: false, selected: state === 'current' }}
+      accessibilityState={{ selected: state === 'current' }}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.lessonRow,
-        state === 'current' && { backgroundColor: colors.primarySoft },
-        pressed && { opacity: 0.75 },
-      ]}>
-      <View style={[styles.lessonIcon, state === 'current' && { backgroundColor: colors.surface }]}>
-        <Icon size={18} color={iconColor} strokeWidth={1.9} />
-      </View>
+      style={({ pressed }) => [styles.lessonRow, pressed && { opacity: 0.7 }]}>
+      {index !== undefined ? (
+        <Text style={[type.label, tabularNums, styles.lessonIndex, { color: colors.textSubtle }]}>
+          {String(index).padStart(2, '0')}
+        </Text>
+      ) : null}
       <View style={styles.flex}>
-        <Text
-          style={[type.body, { color: locked ? colors.textSecondary : colors.text, fontSize: 15.5 }]}
-          numberOfLines={2}>
-          {index !== undefined ? `${index}. ` : ''}
+        <Text style={[type.body, locked ? { color: colors.textMuted } : { color: colors.text }]} numberOfLines={2}>
           {lesson.title}
         </Text>
-        <View style={styles.metaRow}>
-          <MetaItem icon={Clock} label={`${lesson.minutes} min`} />
+        <View style={styles.lessonMeta}>
+          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lesson.minutes} min</Text>
           {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
           {state === 'completed' ? <Badge label="Completed" tone="success" /> : null}
+          {state === 'current' ? <Badge label="Next up" tone="primary" /> : null}
         </View>
       </View>
-      {locked ? <Lock size={15} color={colors.textSecondary} strokeWidth={1.9} /> : null}
+      <Icon size={16} color={iconColor} strokeWidth={1.75} />
     </Pressable>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Price and reviews
+ * Price & reviews
  * ------------------------------------------------------------------ */
 
 export function PriceSummary({
@@ -307,20 +320,24 @@ export function PriceSummary({
   const total = course.priceInr - couponValue;
 
   return (
-    <View style={styles.priceSummary}>
-      <Row label="Course price" value={formatInr(course.listPriceInr ?? course.priceInr)} />
-      {discountFromList > 0 ? <Row label="Course discount" value={`− ${formatInr(discountFromList)}`} tone="success" /> : null}
+    <View style={styles.summary}>
+      <SummaryRow label="Course price" value={formatInr(course.listPriceInr ?? course.priceInr)} />
+      {discountFromList > 0 ? (
+        <SummaryRow label="Course discount" value={`− ${formatInr(discountFromList)}`} tone="success" />
+      ) : null}
       {couponValue > 0 ? (
-        <Row label={`Coupon ${couponCode ?? ''}`.trim()} value={`− ${formatInr(couponValue)}`} tone="success" />
+        <SummaryRow label={`Coupon ${couponCode ?? ''}`.trim()} value={`− ${formatInr(couponValue)}`} tone="success" />
       ) : null}
       <View style={styles.summaryDivider} />
-      <Row label="Total payable" value={formatInr(total)} strong />
-      <Text style={[type.meta, { color: colors.textSecondary }]}>Inclusive of taxes. Demo checkout — no payment is processed.</Text>
+      <SummaryRow label="Total payable" value={formatInr(total)} strong />
+      <Text style={[type.label, { color: colors.textMuted }]}>
+        Inclusive of taxes. Demo checkout — no payment is processed.
+      </Text>
     </View>
   );
 }
 
-function Row({
+function SummaryRow({
   label,
   value,
   tone = 'default',
@@ -333,11 +350,12 @@ function Row({
 }) {
   return (
     <View style={styles.summaryRow}>
-      <Text style={[strong ? type.cardTitle : type.body, { color: colors.text }]}>{label}</Text>
+      <Text style={[strong ? type.bodyStrong : type.body, { color: colors.text }]}>{label}</Text>
       <Text
         style={[
-          strong ? type.cardTitle : type.body,
-          { color: tone === 'success' ? colors.success : colors.text, fontFamily: strong ? type.button.fontFamily : type.body.fontFamily },
+          strong ? type.bodyStrong : type.body,
+          tabularNums,
+          { color: tone === 'success' ? colors.success : colors.text },
         ]}>
         {value}
       </Text>
@@ -347,14 +365,14 @@ function Row({
 
 export function ReviewCard({ review }: { review: Review }) {
   return (
-    <View style={[styles.reviewCard, shadow.card]}>
+    <View style={styles.review}>
       <View style={styles.reviewHeader}>
         <View style={styles.reviewAvatar}>
-          <Text style={[type.label, { color: colors.sage }]}>{review.author.charAt(0)}</Text>
+          <Text style={[type.labelStrong, { color: colors.sage }]}>{review.author.charAt(0)}</Text>
         </View>
         <View style={styles.flex}>
-          <Text style={[type.label, { color: colors.text }]}>{review.author}</Text>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>{review.context}</Text>
+          <Text style={[type.bodyStrong, { color: colors.text }]}>{review.author}</Text>
+          <Text style={[type.label, { color: colors.textSubtle }]}>{review.context}</Text>
         </View>
         <View style={styles.reviewStars}>
           {Array.from({ length: 5 }).map((_, index) => (
@@ -362,142 +380,134 @@ export function ReviewCard({ review }: { review: Review }) {
               key={index}
               size={12}
               color={colors.gold}
-              strokeWidth={1.6}
+              strokeWidth={index < review.rating ? 0 : 1.5}
               fill={index < review.rating ? colors.gold : 'none'}
             />
           ))}
         </View>
       </View>
-      <Text style={[type.supporting, { color: colors.textSecondary }]}>{review.body}</Text>
+      <Text style={[type.body, { color: colors.textMuted }]}>{review.body}</Text>
     </View>
   );
 }
 
-/** Continue-learning card used on Home and My Learning. */
-export function ContinueCard({
-  course,
-  lessonTitle,
-  progress,
-  onPress,
+/** Hero / course-detail purchase bar. Flush to the screen edges, safe area handled by caller. */
+export function StickyBar({
+  children,
+  bottomInset,
 }: {
-  course: Course;
-  lessonTitle: string;
-  progress: number;
-  onPress: () => void;
+  children: React.ReactNode;
+  bottomInset: number;
 }) {
-  const press = usePressScale(0.99);
   return (
-    <Animated.View style={[styles.continueCard, shadow.card, press.style]}>
-      <Pressable
-        accessible
-        accessibilityRole="button"
-        accessibilityLabel={`Continue ${course.title}. Next up: ${lessonTitle}. ${Math.round(progress * 100)} percent complete.`}
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={styles.continueInner}>
-        <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={150} />
-        <View style={styles.flex}>
-          <Text style={[type.meta, { color: colors.textSecondary }]} numberOfLines={1}>
-            {course.title}
-          </Text>
-          <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={2}>
-            {lessonTitle}
-          </Text>
-          <ProgressBar value={progress} accessibilityLabel={`${course.title} progress`} />
-          <Text style={[type.meta, { color: colors.textSecondary }]}>{Math.round(progress * 100)}% complete</Text>
-        </View>
-        <View style={styles.continuePlay}>
-          <Play size={18} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
-        </View>
-      </Pressable>
-    </Animated.View>
+    <View style={[styles.stickyBar, { paddingBottom: bottomInset + spacing.sm }]}>
+      <View style={styles.stickyInner}>{children}</View>
+    </View>
   );
 }
 
+export function RatingInline({ rating, reviewCount }: { rating: number; reviewCount?: number }) {
+  return (
+    <View style={styles.ratingRow}>
+      <Star size={13} color={colors.gold} strokeWidth={0} fill={colors.gold} />
+      <Text style={[type.labelStrong, tabularNums, { color: colors.text }]}>{rating.toFixed(1)}</Text>
+      {reviewCount !== undefined ? (
+        <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>
+          ({reviewCount.toLocaleString('en-IN')})
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  card: { backgroundColor: colors.surface, borderRadius: radius.card, overflow: 'hidden' },
-  cardPressable: {},
-  cardImage: { width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.surfaceWarm },
-  cardBody: { padding: spacing.md, gap: spacing.xs },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   strike: { textDecorationLine: 'line-through' },
-  bookmarkSlot: { position: 'absolute', top: spacing.sm, right: spacing.sm },
-  compactCard: {
-    width: 252,
+
+  card: {
+    width: 200,
     backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.sm,
-    gap: spacing.xs,
-  },
-  compactImage: { width: '100%', aspectRatio: 4 / 3, borderRadius: radius.image, backgroundColor: colors.surfaceWarm },
-  compactBookmark: { position: 'absolute', top: spacing.sm + spacing.xxs, right: spacing.sm + spacing.xxs },
-  spotlight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-  },
-  spotlightPortrait: { width: 72, height: 72, borderRadius: radius.pill, backgroundColor: colors.surfaceWarm },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
-  instructorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  instructorAvatar: { width: 56, height: 56, borderRadius: radius.pill, backgroundColor: colors.surfaceWarm },
-  lessonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.input,
-  },
-  lessonIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceWarm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  priceSummary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    gap: spacing.xs,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.md,
+    borderWidth: 1,
     borderColor: colors.border,
+    overflow: 'hidden',
   },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
-  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginVertical: spacing.xxs },
-  reviewCard: { backgroundColor: colors.surface, borderRadius: radius.card, padding: spacing.md, gap: spacing.sm },
-  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  reviewAvatar: {
+  cardImageWrap: { backgroundColor: colors.surfaceAlt },
+  cardImage: { width: '100%', aspectRatio: 4 / 3 },
+  cardImageBadge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
+  cardBody: { padding: spacing.sm, gap: spacing.xs },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  cardFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  cardBookmark: { position: 'absolute', top: spacing.sm, right: spacing.sm },
+
+  row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'flex-start' },
+  rowImage: { width: 96, height: 72, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2, flexWrap: 'wrap' },
+  rowPriceLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+
+  continueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: layout.screen,
+    paddingVertical: spacing.md,
+  },
+  continueImage: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  continueProgress: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  continuePlay: {
     width: 36,
     height: 36,
-    borderRadius: radius.pill,
-    backgroundColor: colors.sageSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  reviewStars: { flexDirection: 'row', gap: 2 },
-  continueCard: { backgroundColor: colors.surface, borderRadius: radius.card },
-  continueInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, padding: spacing.sm },
-  continueImage: { width: 92, height: 92, borderRadius: radius.image, backgroundColor: colors.surfaceWarm },
-  continuePlay: {
-    width: 40,
-    height: 40,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  instructorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
+  instructorAvatar: { width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
+  instructorName: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+
+  lessonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: layout.screen,
+  },
+  lessonIndex: { width: 20 },
+  lessonMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2, flexWrap: 'wrap' },
+
+  summary: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.sm,
+  },
+  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  summaryDivider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
+
+  review: { paddingHorizontal: layout.screen, paddingVertical: spacing.md, gap: spacing.sm },
+  reviewHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  reviewAvatar: { width: 32, height: 32, borderRadius: radius.pill, backgroundColor: colors.sageSoft, alignItems: 'center', justifyContent: 'center' },
+  reviewStars: { flexDirection: 'row', gap: 1 },
+
+  stickyBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  stickyInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: layout.screen,
+    paddingTop: spacing.md,
+    width: '100%',
+    maxWidth: layout.maxWidth,
+    alignSelf: 'center',
   },
 });

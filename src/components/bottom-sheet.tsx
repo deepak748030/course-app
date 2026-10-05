@@ -1,6 +1,7 @@
 /**
- * Bottom sheet used for filters, lesson lists, paywalls and confirmations.
- * Native Modal + Reanimated spring; backdrop tap and Android back both dismiss.
+ * Bottom sheet for filters, lesson lists, paywalls and confirmations.
+ * Rules honoured: docked sheet has rounded top corners and square bottom corners;
+ * backdrop dims the page; spring entrance; reduced-motion falls back to a fade.
  */
 
 import { X } from 'lucide-react-native';
@@ -9,18 +10,8 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconButton, PrimaryButton, AppText } from '@/components/ui';
-import { colors, radius, screenPadding, spacing, type } from '@/constants/theme';
-
-type BottomSheetProps = {
-  visible: boolean;
-  onClose: () => void;
-  title?: string;
-  subtitle?: string;
-  children: ReactNode;
-  scrollable?: boolean;
-  footer?: ReactNode;
-};
+import { AppText, Button, IconButton } from '@/components/ui';
+import { colors, layout, radius, spacing, type } from '@/constants/theme';
 
 export function BottomSheet({
   visible,
@@ -30,7 +21,15 @@ export function BottomSheet({
   children,
   scrollable = false,
   footer,
-}: BottomSheetProps) {
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  children: ReactNode;
+  scrollable?: boolean;
+  footer?: ReactNode;
+}) {
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const [mounted, setMounted] = useState(visible);
@@ -40,25 +39,23 @@ export function BottomSheet({
   useEffect(() => {
     if (visible) {
       setMounted(true);
-      translateY.value = reduced ? 0 : withSpring(0, { damping: 22, stiffness: 240, mass: 0.9 });
-      backdrop.value = withTiming(1, { duration: 200 });
+      translateY.value = reduced ? 0 : withSpring(0, { damping: 24, stiffness: 260, mass: 0.9 });
+      backdrop.value = withTiming(1, { duration: 160 });
       return;
     }
-    backdrop.value = withTiming(0, { duration: 180 });
+    backdrop.value = withTiming(0, { duration: 160 });
     if (reduced) {
       translateY.value = 1;
       setMounted(false);
       return;
     }
-    translateY.value = withTiming(1, { duration: 220 }, (finished) => {
+    translateY.value = withTiming(1, { duration: 200 }, (finished) => {
       if (finished) setMounted(false);
     });
   }, [visible, reduced, translateY, backdrop]);
 
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value * 520 }],
-  }));
-  const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.value * 0.45 }));
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value * 560 }] }));
+  const backdropStyle = useAnimatedStyle(() => ({ opacity: backdrop.value * 0.4 }));
 
   if (!mounted) return null;
 
@@ -72,12 +69,15 @@ export function BottomSheet({
           {title ? (
             <View style={styles.header}>
               <View style={styles.headerText}>
-                <AppText variant="cardTitle">{title}</AppText>
-                {subtitle ? <Text style={[type.supporting, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
+                <AppText variant="subheading">{title}</AppText>
+                {subtitle ? (
+                  <Text style={[type.label, { color: colors.textMuted }]}>{subtitle}</Text>
+                ) : null}
               </View>
-              <IconButton icon={X} onPress={onClose} accessibilityLabel="Close" variant="soft" size={40} />
+              <IconButton icon={X} onPress={onClose} accessibilityLabel="Close" variant="soft" size={36} iconSize={18} />
             </View>
           ) : null}
+
           {scrollable ? (
             <ScrollView
               style={styles.scroll}
@@ -89,6 +89,7 @@ export function BottomSheet({
           ) : (
             <View style={styles.body}>{children}</View>
           )}
+
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </Animated.View>
       </View>
@@ -118,8 +119,8 @@ export function ConfirmSheet({
   return (
     <BottomSheet visible={visible} onClose={onCancel} title={title} subtitle={body}>
       <View style={styles.confirmActions}>
-        <PrimaryButton label={confirmLabel} onPress={onConfirm} variant={destructive ? 'danger' : 'primary'} />
-        <PrimaryButton label={cancelLabel} onPress={onCancel} variant="ghost" />
+        <Button label={confirmLabel} onPress={onConfirm} variant={destructive ? 'danger' : 'primary'} />
+        <Button label={cancelLabel} onPress={onCancel} variant="ghost" />
       </View>
     </BottomSheet>
   );
@@ -127,28 +128,28 @@ export function ConfirmSheet({
 
 const styles = StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.player },
+  backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.player },
   sheet: {
     backgroundColor: colors.surface,
-    borderTopLeftRadius: radius.sheet,
-    borderTopRightRadius: radius.sheet,
-    paddingHorizontal: screenPadding,
+    borderTopLeftRadius: radius.lg,
+    borderTopRightRadius: radius.lg,
+    paddingHorizontal: layout.section,
     paddingTop: spacing.sm,
     maxHeight: '88%',
   },
   grabber: {
     alignSelf: 'center',
-    width: 40,
+    width: 36,
     height: 4,
     borderRadius: 2,
     backgroundColor: colors.border,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
   },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.md },
   headerText: { flex: 1, gap: 2 },
   body: { gap: spacing.md },
   scroll: { flexGrow: 0 },
-  scrollContent: { gap: spacing.md, paddingBottom: spacing.md },
+  scrollContent: { gap: spacing.md, paddingBottom: spacing.sm },
   footer: { paddingTop: spacing.sm },
-  confirmActions: { gap: spacing.xs },
+  confirmActions: { gap: spacing.sm },
 });

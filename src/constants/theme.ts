@@ -1,50 +1,62 @@
 /**
  * Design tokens for Rasoi Studio.
  *
- * Light-first by design: the product identity is a warm paper surface with one
- * immersive dark player surface. There is no dark theme yet.
- * ponytail: single theme, no theme provider. Add a dark palette + `useTheme` when dark mode is actually requested.
+ * Rules this file enforces (Design Rules — App):
+ * - ONE font family (DM Sans). No serif, no third family.
+ * - 5 type sizes on a 1.25 scale. Two weights only: 400 regular, 600 semibold.
+ * - 3 text colours: primary, muted, subtle. Colour ranks inside a line, size ranks between blocks.
+ * - Line-height shrinks as size grows (1.7 small -> 1.17 display); letter-spacing tightens >= 24.
+ * - 4px spacing base; 8px side padding baseline; 16px content sections; 8px gap between items.
+ * - Concentric radii on a small/medium/large scale, pills only for single-line content.
+ * - NO shadows anywhere: elevation comes from surface colour + hairlines.
  */
 
 import '@/global.css';
 
-/** Raw brand ramp. Prefer the semantic tokens below in components. */
+import type { TextStyle } from 'react-native';
+
+/** Raw palette. Prefer the semantic groups below in components. */
 export const palette = {
   paper: '#FAF7F2',
   surface: '#FFFFFF',
-  surfaceWarm: '#F2EBE2',
+  surfaceAlt: '#F3EDE4',
+  ink: '#1C1A17',
+  inkMuted: '#6B6459',
+  inkSubtle: '#948C80',
+  border: 'rgba(28, 26, 23, 0.10)',
+  divider: 'rgba(28, 26, 23, 0.08)',
   primary: '#9F3F2F',
   primaryPressed: '#843225',
-  primarySoft: '#F4E4DE',
-  ink: '#25231F',
-  inkSecondary: '#686259',
-  border: '#E8E0D6',
+  primarySoft: '#F6E7E1',
   sage: '#65755A',
-  sageSoft: '#E9EDE4',
+  sageSoft: '#EAEEE5',
   gold: '#C49A4A',
-  goldSoft: '#F3E9D5',
+  goldSoft: '#F6ECD9',
   success: '#2F6B47',
-  successSoft: '#E4EFE7',
+  successSoft: '#E7F0EA',
   error: '#B42318',
-  errorSoft: '#FAE9E7',
+  errorSoft: '#FAEAE8',
   player: '#121412',
-  playerElevated: '#1B1E1B',
-  onPlayer: '#F4F1EC',
-  onPlayerMuted: '#B9B4AC',
+  playerRaised: '#1B1E1B',
 } as const;
 
-/** Semantic colors. Gold is for decoration only — never small text on paper. */
+/** Semantic colours. Gold is decoration only — never text on paper. */
 export const colors = {
   background: palette.paper,
   surface: palette.surface,
-  surfaceWarm: palette.surfaceWarm,
+  surfaceAlt: palette.surfaceAlt,
   border: palette.border,
+  divider: palette.divider,
+
   text: palette.ink,
-  textSecondary: palette.inkSecondary,
+  textMuted: palette.inkMuted,
+  textSubtle: palette.inkSubtle,
   textInverse: palette.surface,
+
   primary: palette.primary,
   primaryPressed: palette.primaryPressed,
   primarySoft: palette.primarySoft,
+
   sage: palette.sage,
   sageSoft: palette.sageSoft,
   gold: palette.gold,
@@ -53,89 +65,91 @@ export const colors = {
   successSoft: palette.successSoft,
   error: palette.error,
   errorSoft: palette.errorSoft,
+
   player: palette.player,
-  playerElevated: palette.playerElevated,
-  onPlayer: palette.onPlayer,
-  onPlayerMuted: palette.onPlayerMuted,
+  playerRaised: palette.playerRaised,
+  onPlayer: 'rgba(255, 255, 255, 0.92)',
+  onPlayerMuted: 'rgba(255, 255, 255, 0.60)',
+  scrim: 'rgba(18, 20, 18, 0.55)',
 } as const;
 
 export type ColorToken = keyof typeof colors;
 
-/** 8-point scale with a few 4-point steps. */
+/** 4px base scale. */
 export const spacing = {
-  xxs: 4,
-  xs: 8,
-  sm: 12,
-  md: 16,
-  lg: 20,
+  none: 0,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
   xl: 24,
   xxl: 32,
   xxxl: 48,
 } as const;
 
-/** Horizontal screen padding. */
-export const screenPadding = 20;
+/** Side padding. Banner / hero content ignores this and stays full-bleed. */
+export const layout = {
+  /** Baseline screen padding for rows, lists and rails. */
+  screen: 8,
+  /** Cards, forms and major sections. */
+  section: 16,
+  /** Gap between list items. */
+  gap: 8,
+  /** Gap between major sections. */
+  sectionGap: 24,
+  /** Header -> content, content -> footer. */
+  edge: 16,
+  headerHeight: 56,
+  buttonHeight: 48,
+  fieldHeight: 48,
+  tabBarHeight: 56,
+  /** Keeps line lengths readable on tablets and web. */
+  maxWidth: 640,
+  touchTarget: 44,
+} as const;
 
-/** Keeps line lengths readable on tablets and the web build. */
-export const maxContentWidth = 640;
-
-/** Minimum comfortable touch target (iOS 44pt / Android 48dp). */
-export const touchTarget = 48;
-
+/** Small / medium / large. Pills only for single-line content (chips, avatars, badges). */
 export const radius = {
-  input: 15,
-  button: 16,
-  card: 22,
-  sheet: 28,
-  image: 18,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
   pill: 999,
 } as const;
 
-/** Bundled font families (see @/app/_layout.tsx for loading). */
+/** One family, two weights. */
 export const font = {
   regular: 'DMSans_400Regular',
-  medium: 'DMSans_500Medium',
   semibold: 'DMSans_600SemiBold',
-  bold: 'DMSans_700Bold',
-  serif: 'Lora_500Medium',
-  serifSemibold: 'Lora_600SemiBold',
 } as const;
 
-/** Type scale. Line heights are tuned, sizes are the spec's editorial scale. */
+/**
+ * Five sizes. `null` letterSpacing means "leave it alone" (only display/title tighten,
+ * and only uppercase micro labels open up).
+ */
 export const type = {
-  onboarding: { fontFamily: font.serifSemibold, fontSize: 35, lineHeight: 43 },
-  screenTitle: { fontFamily: font.serifSemibold, fontSize: 29, lineHeight: 37 },
-  section: { fontFamily: font.serifSemibold, fontSize: 22, lineHeight: 29 },
-  cardTitle: { fontFamily: font.semibold, fontSize: 18, lineHeight: 25 },
-  body: { fontFamily: font.regular, fontSize: 16, lineHeight: 24 },
-  button: { fontFamily: font.semibold, fontSize: 16.5, lineHeight: 22 },
-  supporting: { fontFamily: font.regular, fontSize: 14, lineHeight: 20 },
-  label: { fontFamily: font.semibold, fontSize: 13, lineHeight: 18 },
-  meta: { fontFamily: font.medium, fontSize: 12.5, lineHeight: 17 },
+  display: { fontFamily: font.semibold, fontSize: 29, lineHeight: 34, letterSpacing: -0.6 },
+  title: { fontFamily: font.semibold, fontSize: 23, lineHeight: 28, letterSpacing: -0.45 },
+  subheading: { fontFamily: font.semibold, fontSize: 19, lineHeight: 24, letterSpacing: -0.2 },
+  body: { fontFamily: font.regular, fontSize: 15, lineHeight: 22, letterSpacing: 0 },
+  bodyStrong: { fontFamily: font.semibold, fontSize: 15, lineHeight: 22, letterSpacing: 0 },
+  label: { fontFamily: font.regular, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  labelStrong: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  /** Uppercase micro label: only place that opens letter-spacing. */
+  overline: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16, letterSpacing: 0.6, textTransform: 'uppercase' as const },
 } as const;
 
-/** Restrained motion tokens; every duration honours reduced-motion. */
+export type TypeToken = keyof typeof type;
+
+/** Prices, timers and counters must not wobble as they update. */
+export const tabularNums = { fontVariant: ['tabular-nums'] as TextStyle['fontVariant'] };
+
+/** Restrained motion; every duration respects reduced motion. */
 export const motion = {
-  screen: 220,
+  feedback: 90,
   press: 110,
+  entrance: 220,
+  exit: 160,
   sheet: 320,
-  quick: 160,
-  enter: 260,
-} as const;
-
-export const shadow = {
-  card: {
-    shadowColor: '#3B2E22',
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 2,
-  },
-  raised: {
-    shadowColor: '#3B2E22',
-    shadowOpacity: 0.1,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 5,
-  },
+  shimmer: 900,
 } as const;

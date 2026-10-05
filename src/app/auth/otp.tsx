@@ -1,5 +1,4 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -14,8 +13,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ErrorState, IconButton, PrimaryButton } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppBar, Button, ErrorState, Screen } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { formatIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
 import { authService, type OtpFailure } from '@/services/auth';
@@ -24,6 +23,10 @@ import { useStore } from '@/store';
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 30;
 
+/**
+ * Single accessible input, six visual cells. The real TextInput is one field (so paste and
+ * SMS autofill work) and is visually hidden behind the cells.
+ */
 export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -105,113 +108,116 @@ export default function OtpScreen() {
   const changeNumber = () => router.replace('/auth/phone');
 
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + spacing.xl },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <IconButton icon={ArrowLeft} onPress={changeNumber} accessibilityLabel="Back to mobile number" />
-        </View>
-
-        <View style={styles.intro}>
-          <Text style={[type.screenTitle, { color: colors.text }]}>Enter the 6-digit code</Text>
-          <Text style={[type.body, { color: colors.textSecondary }]}>
-            Sent to {formatIndianMobile(phone ?? '')}
-          </Text>
-        </View>
-
-        <Pressable
-          accessibilityRole="none"
-          onPress={() => inputRef.current?.focus()}
-          style={styles.cellsRow}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants">
-          {Array.from({ length: CODE_LENGTH }).map((_, index) => {
-            const digit = code[index] ?? '';
-            const isActive = index === Math.min(code.length, CODE_LENGTH - 1) && !error;
-            return (
-              <View
-                key={index}
-                style={[
-                  styles.cell,
-                  isActive && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-                  error && { borderColor: colors.error },
-                ]}>
-                <Text style={[type.screenTitle, { color: colors.text, fontSize: 24, lineHeight: 30 }]}>{digit}</Text>
-              </View>
-            );
-          })}
-        </Pressable>
-
-        <TextInput
-          ref={inputRef}
-          value={code}
-          onChangeText={(text) => {
-            setCode(text.replace(/\D/g, '').slice(0, CODE_LENGTH));
-            if (error) setError(null);
-          }}
-          keyboardType="number-pad"
-          inputMode="numeric"
-          autoComplete="sms-otp"
-          textContentType="oneTimeCode"
-          maxLength={CODE_LENGTH}
-          autoFocus
-          editable={!verifying && error?.kind !== 'expired'}
-          accessibilityLabel={`One-time code, 6 digits, sent to ${formatIndianMobile(phone ?? '')}`}
-          style={styles.hiddenInput}
-        />
-
-        {error ? (
-          <View style={styles.errorBlock} accessibilityLiveRegion="polite">
-            <ErrorState
-              title={error.kind === 'expired' ? 'Code expired' : error.kind === 'network' ? 'Connection problem' : 'Incorrect code'}
-              body={error.message}
-              offline={error.kind === 'network'}
-              onRetry={error.kind === 'expired' ? resend : () => verify(code)}
-            />
+    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <Screen
+        scroll={false}
+        header={<AppBar title="Verify number" onBack={changeNumber} backLabel="Back to mobile number" borderless />}
+        contentStyle={{ paddingHorizontal: 0, paddingBottom: insets.bottom + spacing.md }}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.intro}>
+            <Text style={[type.title, { color: colors.text }]}>Enter the 6-digit code</Text>
+            <Text style={[type.body, tabularNums, { color: colors.textMuted }]}>
+              Sent to {formatIndianMobile(phone ?? '')}
+            </Text>
           </View>
-        ) : null}
 
-        <PrimaryButton
-          label="Verify and continue"
-          onPress={() => verify(code)}
-          loading={verifying}
-          disabled={code.length !== CODE_LENGTH || error?.kind === 'expired'}
-          accessibilityHint="Verifies the code and continues to the app"
-        />
+          <Pressable
+            accessibilityRole="none"
+            onPress={() => inputRef.current?.focus()}
+            style={styles.cellsRow}>
+            {Array.from({ length: CODE_LENGTH }).map((_, index) => {
+              const digit = code[index] ?? '';
+              const isActive = index === Math.min(code.length, CODE_LENGTH - 1) && !error;
+              return (
+                <View
+                  key={index}
+                  style={[
+                    styles.cell,
+                    isActive && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+                    error && { borderColor: colors.error },
+                  ]}>
+                  <Text style={[type.title, tabularNums, { color: colors.text }]}>{digit}</Text>
+                </View>
+              );
+            })}
+          </Pressable>
 
-        <View style={styles.resendRow}>
-          <Text style={[type.supporting, { color: colors.textSecondary }]}>
-            {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : 'Did not get the code?'}
-          </Text>
+          <TextInput
+            ref={inputRef}
+            value={code}
+            onChangeText={(text) => {
+              setCode(text.replace(/\D/g, '').slice(0, CODE_LENGTH));
+              if (error) setError(null);
+            }}
+            keyboardType="number-pad"
+            inputMode="numeric"
+            autoComplete="sms-otp"
+            textContentType="oneTimeCode"
+            maxLength={CODE_LENGTH}
+            autoFocus
+            editable={!verifying && error?.kind !== 'expired'}
+            accessibilityLabel={`One-time code, 6 digits, sent to ${formatIndianMobile(phone ?? '')}`}
+            style={styles.hiddenInput}
+          />
+
+          {error ? (
+            <View accessibilityLiveRegion="polite">
+              <ErrorState
+                title={error.kind === 'expired' ? 'Code expired' : error.kind === 'network' ? 'Connection problem' : 'Incorrect code'}
+                body={error.message}
+                offline={error.kind === 'network'}
+                onRetry={error.kind === 'expired' ? resend : () => verify(code)}
+              />
+            </View>
+          ) : null}
+
+          <Button
+            label="Verify and continue"
+            onPress={() => verify(code)}
+            loading={verifying}
+            disabled={code.length !== CODE_LENGTH || error?.kind === 'expired'}
+            accessibilityHint="Verifies the code and continues to the app"
+          />
+
+          <View style={styles.resendRow}>
+            <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
+              {secondsLeft > 0 ? `Resend code in ${secondsLeft}s` : 'Did not get the code?'}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Resend code"
+              accessibilityState={{ disabled: secondsLeft > 0 || resending }}
+              disabled={secondsLeft > 0 || resending}
+              onPress={resend}
+              hitSlop={8}>
+              <Text
+                style={[
+                  type.labelStrong,
+                  { color: secondsLeft > 0 || resending ? colors.textSubtle : colors.primary },
+                ]}>
+                {resending ? 'Sending…' : 'Resend code'}
+              </Text>
+            </Pressable>
+          </View>
+
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Resend code"
-            accessibilityState={{ disabled: secondsLeft > 0 || resending }}
-            disabled={secondsLeft > 0 || resending}
-            onPress={resend}
-            hitSlop={8}>
-            <Text style={[type.label, { color: secondsLeft > 0 || resending ? colors.textSecondary : colors.primary }]}>
-              {resending ? 'Sending…' : 'Resend code'}
-            </Text>
+            accessibilityLabel="Change mobile number"
+            onPress={changeNumber}
+            hitSlop={8}
+            style={styles.changeLink}>
+            <Text style={[type.labelStrong, { color: colors.primary }]}>Change number</Text>
           </Pressable>
-        </View>
 
-        <Pressable accessibilityRole="button" accessibilityLabel="Change mobile number" onPress={changeNumber} hitSlop={8}>
-          <Text style={[type.label, { color: colors.primary }]}>Change number</Text>
-        </Pressable>
-
-        <Text style={[type.meta, { color: colors.textSecondary }]}>
-          Demo build: this code is generated locally, never sent by SMS, and never written to a log. The demo code is in
-          the project README.
-        </Text>
-      </ScrollView>
+          <Text style={[type.label, { color: colors.textSubtle }]}>
+            Demo build: this code is generated locally, never sent by SMS, and never written to a log. The demo code is in
+            the project README.
+          </Text>
+        </ScrollView>
+      </Screen>
     </KeyboardAvoidingView>
   );
 }
@@ -219,21 +225,21 @@ export default function OtpScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   content: {
-    paddingHorizontal: screenPadding,
+    paddingHorizontal: layout.screen,
+    paddingTop: spacing.sm,
     gap: spacing.lg,
     width: '100%',
-    maxWidth: maxContentWidth,
+    maxWidth: layout.maxWidth,
     alignSelf: 'center',
     flexGrow: 1,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center' },
-  intro: { gap: spacing.xs, marginTop: spacing.sm },
-  cellsRow: { flexDirection: 'row', gap: spacing.xs, justifyContent: 'space-between' },
+  intro: { gap: spacing.xs, paddingHorizontal: spacing.sm },
+  cellsRow: { flexDirection: 'row', gap: layout.gap, justifyContent: 'space-between', paddingHorizontal: spacing.sm },
   cell: {
     flex: 1,
     height: 60,
-    borderRadius: radius.input,
-    borderWidth: 1.5,
+    borderRadius: radius.sm,
+    borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
     alignItems: 'center',
@@ -241,6 +247,6 @@ const styles = StyleSheet.create({
   },
   /** Visually hidden, but keeps paste and one-time-code autofill working. */
   hiddenInput: { position: 'absolute', opacity: 0, height: 1, width: 1 },
-  errorBlock: { marginTop: -spacing.sm },
-  resendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap' },
+  resendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', paddingHorizontal: spacing.sm },
+  changeLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm },
 });

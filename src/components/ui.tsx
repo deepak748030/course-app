@@ -1,21 +1,28 @@
 /**
- * Core UI kit: text, layout, buttons, fields, chips, feedback states.
- * Every visual value comes from @/constants/theme — no ad-hoc colors or spacing.
+ * Core UI kit for Rasoi Studio.
+ *
+ * Every value comes from @/constants/theme. Rules honoured here:
+ * - No shadows: separation comes from surface colour + 1px hairlines.
+ * - Hairline dividers instead of gaps inside data lists (last row has none).
+ * - Buttons: 48px tall, radius 8, disabled stays readable rather than just faded.
+ * - Sticky bars: flush to the edges, no corner radius, safe-area aware.
  */
 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
-import { ArrowLeft, ChevronDown, CircleAlert, Lock, Star, WifiOff } from 'lucide-react-native';
-import { type ReactNode, useEffect, useState } from 'react';
+import { ArrowLeft, ChevronDown, ChevronRight, CircleAlert, Info, WifiOff } from 'lucide-react-native';
+import { Children, type ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  Switch,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
+  type LayoutChangeEvent,
   type StyleProp,
   type TextInputProps,
   type TextProps,
@@ -32,16 +39,16 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, font, maxContentWidth, radius, screenPadding, spacing, touchTarget, type } from '@/constants/theme';
+import { colors, font, layout, radius, spacing, tabularNums, type, type TypeToken } from '@/constants/theme';
 import { feedback } from '@/lib/util';
 
 /* ------------------------------------------------------------------ *
- * Motion helpers
+ * Motion
  * ------------------------------------------------------------------ */
 
-/** Card/button press: quick 0.98 compression, skipped when reduced motion is on. */
+/** Press compression. Feedback only: under 100ms, skipped with reduced motion. */
 export function usePressScale(scaleTo = 0.98) {
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
@@ -51,11 +58,11 @@ export function usePressScale(scaleTo = 0.98) {
     style,
     onPressIn: () => {
       if (reduced) return;
-      scale.value = withSpring(scaleTo, { damping: 20, stiffness: 340, mass: 0.6 });
+      scale.value = withSpring(scaleTo, { damping: 20, stiffness: 360, mass: 0.6 });
     },
     onPressOut: () => {
       if (reduced) return;
-      scale.value = withSpring(1, { damping: 18, stiffness: 280, mass: 0.6 });
+      scale.value = withSpring(1, { damping: 18, stiffness: 300, mass: 0.6 });
     },
   };
 }
@@ -64,52 +71,170 @@ export function usePressScale(scaleTo = 0.98) {
  * Layout
  * ------------------------------------------------------------------ */
 
-type ScreenContainerProps = {
-  children: ReactNode;
-  scroll?: boolean;
-  padded?: boolean;
-  edges?: Edge[];
-  style?: StyleProp<ViewStyle>;
-  contentStyle?: StyleProp<ViewStyle>;
-  footer?: ReactNode;
-};
-
-export function ScreenContainer({
+export function Screen({
   children,
   scroll = true,
-  padded = true,
-  edges = ['top'],
-  style,
-  contentStyle,
+  header,
   footer,
-}: ScreenContainerProps) {
-  const padding = padded ? { paddingHorizontal: screenPadding } : null;
-  const inner = (
-    <>
-      {children}
-      {footer}
-    </>
-  );
-
+  contentStyle,
+  style,
+}: {
+  children: ReactNode;
+  scroll?: boolean;
+  header?: ReactNode;
+  footer?: ReactNode;
+  contentStyle?: StyleProp<ViewStyle>;
+  style?: StyleProp<ViewStyle>;
+}) {
   return (
-    <SafeAreaView edges={edges} style={[styles.screen, style]}>
+    <View style={[styles.root, style]}>
+      {header}
       {scroll ? (
         <ScrollView
           style={styles.flex}
-          contentContainerStyle={[styles.scrollContent, padding, contentStyle]}
+          contentContainerStyle={[styles.scrollContent, contentStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {inner}
+          {children}
         </ScrollView>
       ) : (
-        <View style={[styles.flex, padding, contentStyle]}>{inner}</View>
+        <View style={[styles.flex, contentStyle]}>{children}</View>
       )}
-    </SafeAreaView>
+      {footer}
+    </View>
   );
 }
 
-export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.divider, style]} />;
+/** Full-bleed horizontal scroller: no side padding, 8px gaps between items. */
+export function Rail({ children, contentStyle }: { children: ReactNode; contentStyle?: StyleProp<ViewStyle> }) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={[styles.rail, contentStyle]}>
+      {children}
+    </ScrollView>
+  );
+}
+
+/** Vertical data list: 8px side padding, hairline dividers between rows, none after the last. */
+export function DataList({
+  children,
+  dividerInset = 0,
+  style,
+}: {
+  children: ReactNode;
+  /** Align the divider with the row's text when the row has a leading icon or avatar. */
+  dividerInset?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const rows = Children.toArray(children).filter(Boolean);
+  return (
+    <View style={[styles.list, style]}>
+      {rows.map((row, index) => (
+        <View key={index}>
+          {row}
+          {index < rows.length - 1 ? <View style={[styles.listDivider, { marginLeft: dividerInset }]} /> : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
+export function Divider({ inset = 0, style }: { inset?: number; style?: StyleProp<ViewStyle> }) {
+  return <View style={[styles.divider, { marginLeft: inset }, style]} />;
+}
+
+/** Header: 56px, hairline bottom, centred single-line title, max two trailing actions. */
+export function AppBar({
+  title,
+  onBack,
+  backLabel = 'Go back',
+  right,
+  borderless = false,
+}: {
+  title?: string;
+  onBack?: () => void;
+  backLabel?: string;
+  right?: ReactNode;
+  borderless?: boolean;
+}) {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/home')));
+
+  return (
+    <View style={[styles.appBar, { paddingTop: insets.top }, !borderless && styles.appBarBorder]}>
+      <View style={styles.appBarSide}>
+        {onBack !== undefined || true ? (
+          <IconButton icon={ArrowLeft} accessibilityLabel={backLabel} onPress={back} />
+        ) : null}
+      </View>
+      <Text style={[type.subheading, styles.appBarTitle, { color: colors.text }]} numberOfLines={1}>
+        {title}
+      </Text>
+      <View style={[styles.appBarSide, styles.appBarRight]}>{right}</View>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Text
+ * ------------------------------------------------------------------ */
+
+export function AppText({
+  variant = 'body',
+  color,
+  children,
+  style,
+  ...rest
+}: TextProps & { variant?: TypeToken; color?: string; children: ReactNode }) {
+  const token = type[variant];
+  const tabular = variant === 'bodyStrong' || variant === 'title' || variant === 'display';
+  return (
+    <Text
+      {...rest}
+      style={[token as TextStyle, tabular ? tabularNums : null, color ? { color } : null, style]}>
+      {children}
+    </Text>
+  );
+}
+
+export function SectionHeader({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  subtitle?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.flex}>
+        <AppText variant="subheading">{title}</AppText>
+        {subtitle ? (
+          <AppText variant="label" color={colors.textMuted} style={styles.sectionSubtitle}>
+            {subtitle}
+          </AppText>
+        ) : null}
+      </View>
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          onPress={onAction}
+          hitSlop={8}
+          style={({ pressed }) => [styles.sectionAction, pressed && { opacity: 0.6 }]}>
+          <AppText variant="labelStrong" color={colors.primary}>
+            {actionLabel}
+          </AppText>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 export function Badge({
@@ -119,63 +244,36 @@ export function Badge({
 }: {
   label: string;
   icon?: LucideIcon;
-  tone?: 'neutral' | 'primary' | 'sage' | 'gold' | 'success' | 'error';
+  tone?: 'neutral' | 'primary' | 'sage' | 'success' | 'error' | 'gold';
 }) {
   const tones = {
-    neutral: { bg: colors.surfaceWarm, fg: colors.textSecondary },
+    neutral: { bg: colors.surfaceAlt, fg: colors.textMuted },
     primary: { bg: colors.primarySoft, fg: colors.primary },
     sage: { bg: colors.sageSoft, fg: colors.sage },
-    gold: { bg: colors.goldSoft, fg: '#7A5C22' },
     success: { bg: colors.successSoft, fg: colors.success },
     error: { bg: colors.errorSoft, fg: colors.error },
+    gold: { bg: colors.goldSoft, fg: '#7A5C22' },
   }[tone];
 
   return (
     <View style={[styles.badge, { backgroundColor: tones.bg }]}>
       {Icon ? <Icon size={12} color={tones.fg} strokeWidth={2} /> : null}
-      <Text style={[styles.badgeText, { color: tones.fg }]}>{label}</Text>
-    </View>
-  );
-}
-
-/** Small icon + label pair used for course metadata. */
-export function MetaItem({
-  icon: Icon,
-  label,
-  color = colors.textSecondary,
-}: {
-  icon: LucideIcon;
-  label: string;
-  color?: string;
-}) {
-  return (
-    <View style={styles.metaItem}>
-      <Icon size={14} color={color} strokeWidth={1.9} />
-      <Text style={[type.meta, { color }]} numberOfLines={1}>
+      <Text style={[type.labelStrong, { color: tones.fg }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Text
- * ------------------------------------------------------------------ */
-
-type AppTextVariant = keyof typeof type | 'title';
-
-export function AppText({
-  variant = 'body',
-  color = colors.text,
-  children,
-  style,
-  ...rest
-}: TextProps & { variant?: AppTextVariant; color?: string; children: ReactNode }) {
-  const variantStyle = variant === 'title' ? { fontFamily: font.serifSemibold, fontSize: 26, lineHeight: 33 } : type[variant];
+/** Icon + text pair for metadata (duration, level, lessons...). */
+export function MetaItem({ icon: Icon, label, color = colors.textMuted }: { icon: LucideIcon; label: string; color?: string }) {
   return (
-    <Text {...rest} style={[variantStyle as TextStyle, { color }, style]}>
-      {children}
-    </Text>
+    <View style={styles.metaItem}>
+      <Icon size={13} color={color} strokeWidth={1.75} />
+      <Text style={[type.label, tabularNums, { color }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
   );
 }
 
@@ -185,35 +283,31 @@ export function AppText({
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
-type PrimaryButtonProps = {
-  label: string;
-  onPress: () => void;
-  variant?: ButtonVariant;
-  icon?: LucideIcon;
-  iconRight?: LucideIcon;
-  disabled?: boolean;
-  loading?: boolean;
-  fullWidth?: boolean;
-  style?: StyleProp<ViewStyle>;
-  accessibilityHint?: string;
-};
-
-export function PrimaryButton({
+export function Button({
   label,
   onPress,
   variant = 'primary',
   icon: Icon,
-  iconRight: IconRight,
   disabled = false,
   loading = false,
   fullWidth = true,
   style,
   accessibilityHint,
-}: PrimaryButtonProps) {
+}: {
+  label: string;
+  onPress: () => void;
+  variant?: ButtonVariant;
+  icon?: LucideIcon;
+  disabled?: boolean;
+  loading?: boolean;
+  fullWidth?: boolean;
+  style?: StyleProp<ViewStyle>;
+  accessibilityHint?: string;
+}) {
   const press = usePressScale(0.985);
   const inactive = disabled || loading;
 
-  const palette = {
+  const tones = {
     primary: { bg: colors.primary, fg: colors.textInverse, border: 'transparent' },
     secondary: { bg: colors.surface, fg: colors.text, border: colors.border },
     ghost: { bg: 'transparent', fg: colors.primary, border: 'transparent' },
@@ -237,21 +331,21 @@ export function PrimaryButton({
         style={({ pressed }) => [
           styles.button,
           {
-            backgroundColor: variant === 'primary' && pressed ? colors.primaryPressed : palette.bg,
-            borderColor: palette.border,
+            backgroundColor: variant === 'primary' && pressed ? colors.primaryPressed : tones.bg,
+            borderColor: tones.border,
             borderWidth: variant === 'secondary' ? 1 : 0,
-            opacity: inactive ? 0.5 : 1,
+            // Disabled stays legible: the label explains what is missing elsewhere on screen.
+            opacity: inactive ? 0.55 : 1,
           },
         ]}>
         {loading ? (
-          <ActivityIndicator color={palette.fg} size="small" />
+          <ActivityIndicator color={tones.fg} size="small" />
         ) : (
           <>
-            {Icon ? <Icon size={18} color={palette.fg} strokeWidth={2} /> : null}
-            <Text style={[type.button, { color: palette.fg }]} numberOfLines={1}>
+            {Icon ? <Icon size={18} color={tones.fg} strokeWidth={1.9} /> : null}
+            <Text style={[type.bodyStrong, { color: tones.fg }]} numberOfLines={1}>
               {label}
             </Text>
-            {IconRight ? <IconRight size={18} color={palette.fg} strokeWidth={2} /> : null}
           </>
         )}
       </Pressable>
@@ -259,7 +353,17 @@ export function PrimaryButton({
   );
 }
 
-type IconButtonProps = {
+export function IconButton({
+  icon: Icon,
+  onPress,
+  accessibilityLabel,
+  size = layout.touchTarget,
+  iconSize = 20,
+  variant = 'plain',
+  active = false,
+  badge,
+  style,
+}: {
   icon: LucideIcon;
   onPress: () => void;
   accessibilityLabel: string;
@@ -267,30 +371,21 @@ type IconButtonProps = {
   iconSize?: number;
   variant?: 'plain' | 'soft' | 'onImage';
   active?: boolean;
-  showBadge?: boolean;
+  /** Unread count. Capped at 99+ so the badge shape stays stable. */
+  badge?: number;
   style?: StyleProp<ViewStyle>;
-};
-
-export function IconButton({
-  icon: Icon,
-  onPress,
-  accessibilityLabel,
-  size = touchTarget,
-  iconSize = 21,
-  variant = 'plain',
-  active = false,
-  showBadge = false,
-  style,
-}: IconButtonProps) {
+}) {
   const press = usePressScale(0.92);
-  const bg = variant === 'soft' ? colors.surfaceWarm : variant === 'onImage' ? 'rgba(18,20,18,0.55)' : 'transparent';
-  const color = variant === 'onImage' ? colors.onPlayer : active ? colors.primary : colors.text;
+  const bg = variant === 'soft' ? colors.surfaceAlt : variant === 'onImage' ? colors.scrim : 'transparent';
+  const color = variant === 'onImage' ? colors.textInverse : active ? colors.primary : colors.text;
 
   return (
     <Animated.View style={press.style}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={
+          badge ? `${accessibilityLabel}, ${badge > 99 ? 'more than 99' : badge} unread` : accessibilityLabel
+        }
         accessibilityState={{ selected: active }}
         hitSlop={8}
         onPress={() => {
@@ -301,18 +396,22 @@ export function IconButton({
         onPressOut={press.onPressOut}
         style={({ pressed }) => [
           styles.iconButton,
-          { width: size, height: size, backgroundColor: bg, opacity: pressed ? 0.75 : 1 },
+          { width: size, height: size, backgroundColor: bg, opacity: pressed ? 0.7 : 1 },
           style,
         ]}>
-        <Icon size={iconSize} color={color} strokeWidth={1.9} fill={active ? colors.primary : 'none'} />
-        {showBadge ? <View style={styles.iconBadge} /> : null}
+        <Icon size={iconSize} color={color} strokeWidth={1.75} />
+        {badge && badge > 0 ? (
+          <View style={styles.badgeDot}>
+            <Text style={styles.badgeDotText}>{badge > 99 ? '99+' : badge}</Text>
+          </View>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
 }
 
 /* ------------------------------------------------------------------ *
- * Form pieces
+ * Forms
  * ------------------------------------------------------------------ */
 
 type FormFieldProps = TextInputProps & {
@@ -336,40 +435,57 @@ export function FormField({
   style,
   ...rest
 }: FormFieldProps) {
+  const [focused, setFocused] = useState(false);
+
   return (
     <View style={[styles.fieldWrap, containerStyle]}>
       {label ? (
-        <Text style={[type.label, { color: colors.textSecondary }]} nativeID={`${rest.nativeID ?? 'field'}-label`}>
+        <Text style={[type.labelStrong, { color: colors.textMuted }]} nativeID={`${rest.nativeID ?? 'field'}-label`}>
           {label}
         </Text>
       ) : null}
       <View
         style={[
           styles.field,
-          { borderColor: error ? colors.error : colors.border, backgroundColor: colors.surface },
+          {
+            borderColor: error ? colors.error : focused ? colors.primary : colors.border,
+            borderWidth: focused || error ? 1.5 : 1,
+          },
         ]}>
-        {Icon ? <Icon size={19} color={colors.textSecondary} strokeWidth={1.9} /> : null}
-        {prefix ? <Text style={[type.body, styles.fieldPrefix, { color: colors.text }]}>{prefix}</Text> : null}
+        {Icon ? <Icon size={18} color={colors.textSubtle} strokeWidth={1.75} /> : null}
+        {prefix ? <Text style={[type.body, tabularNums, { color: colors.text }]}>{prefix}</Text> : null}
         <TextInput
           {...rest}
+          onFocus={(event) => {
+            setFocused(true);
+            rest.onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            rest.onBlur?.(event);
+          }}
           accessibilityLabel={rest.accessibilityLabel ?? label}
-          placeholderTextColor={colors.textSecondary}
+          placeholderTextColor={colors.textSubtle}
           style={[styles.input, type.body, { color: colors.text }, style]}
         />
         {rightSlot}
       </View>
       {error ? (
         <View style={styles.fieldMessage} accessibilityLiveRegion="polite">
-          <CircleAlert size={14} color={colors.error} strokeWidth={2} />
-          <Text style={[type.supporting, { color: colors.error, flex: 1 }]}>{error}</Text>
+          <CircleAlert size={13} color={colors.error} strokeWidth={2} />
+          <Text style={[type.label, { color: colors.error, flex: 1 }]}>{error}</Text>
         </View>
       ) : hint ? (
-        <Text style={[type.supporting, { color: colors.textSecondary }]}>{hint}</Text>
+        <View style={styles.fieldMessage}>
+          <Info size={13} color={colors.textSubtle} strokeWidth={2} />
+          <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>{hint}</Text>
+        </View>
       ) : null}
     </View>
   );
 }
 
+/** Filter chip: three states (default, selected, disabled). One scrolling row, clear-all always. */
 export function Chip({
   label,
   icon: Icon,
@@ -405,7 +521,7 @@ export function Chip({
             opacity: disabled ? 0.5 : 1,
           },
         ]}>
-        {Icon ? <Icon size={15} color={selected ? colors.textInverse : colors.textSecondary} strokeWidth={1.9} /> : null}
+        {Icon ? <Icon size={14} color={selected ? colors.textInverse : colors.textMuted} strokeWidth={1.9} /> : null}
         <Text style={[type.label, { color: selected ? colors.textInverse : colors.text }]} numberOfLines={1}>
           {label}
         </Text>
@@ -414,42 +530,80 @@ export function Chip({
   );
 }
 
-/* ------------------------------------------------------------------ *
- * Sections & feedback
- * ------------------------------------------------------------------ */
-
-export function SectionHeader({
-  title,
-  subtitle,
-  actionLabel,
-  onAction,
+/** Segmented control (2-4 options). */
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
 }: {
-  title: string;
-  subtitle?: string;
-  actionLabel?: string;
-  onAction?: () => void;
+  options: { id: T; label: string }[];
+  value: T;
+  onChange: (value: T) => void;
 }) {
   return (
-    <View style={styles.sectionHeader}>
-      <View style={styles.flex}>
-        <Text style={[type.section, { color: colors.text }]}>{title}</Text>
-        {subtitle ? (
-          <Text style={[type.supporting, { color: colors.textSecondary, marginTop: spacing.xxs / 2 }]}>{subtitle}</Text>
-        ) : null}
-      </View>
-      {actionLabel && onAction ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={actionLabel} onPress={onAction} hitSlop={8}>
-          <Text style={[type.label, { color: colors.primary }]}>{actionLabel}</Text>
-        </Pressable>
-      ) : null}
+    <View style={styles.segmented}>
+      {options.map((option) => {
+        const active = option.id === value;
+        return (
+          <Pressable
+            key={option.id}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: active }}
+            accessibilityLabel={option.label}
+            onPress={() => {
+              feedback.select();
+              onChange(option.id);
+            }}
+            style={[styles.segment, active && styles.segmentActive]}>
+            <Text
+              style={[active ? type.labelStrong : type.label, { color: active ? colors.textInverse : colors.textMuted }]}
+              numberOfLines={1}>
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
+export function Toggle({
+  label,
+  help,
+  value,
+  onChange,
+}: {
+  label: string;
+  help?: string;
+  value: boolean;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <View style={styles.toggleRow}>
+      <View style={styles.flex}>
+        <Text style={[type.body, { color: colors.text }]}>{label}</Text>
+        {help ? <Text style={[type.label, { color: colors.textMuted }]}>{help}</Text> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        accessibilityLabel={label}
+        accessibilityHint={help}
+        trackColor={{ false: 'rgba(28,26,23,0.16)', true: colors.sage }}
+        thumbColor={colors.surface}
+      />
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Feedback & states
+ * ------------------------------------------------------------------ */
+
 export function ProgressBar({
   value,
-  height = 6,
-  trackColor = colors.surfaceWarm,
+  height = 4,
+  trackColor = colors.surfaceAlt,
   fillColor = colors.primary,
   accessibilityLabel,
 }: {
@@ -461,48 +615,59 @@ export function ProgressBar({
 }) {
   const reduced = useReducedMotion();
   const clamped = Math.max(0, Math.min(1, value));
+  // Numeric width from a measured track: avoids transform-origin edge cases across platforms.
+  const [width, setWidth] = useState(0);
   const progress = useSharedValue(clamped);
 
   useEffect(() => {
     progress.value = reduced ? clamped : withTiming(clamped, { duration: 320 });
   }, [clamped, reduced, progress]);
 
-  const fill = useAnimatedStyle(() => ({ transform: [{ scaleX: Math.max(0.0001, progress.value) }] }));
+  const fillStyle = useAnimatedStyle(() => ({ width: Math.round(progress.value * width) }));
 
   return (
     <View
+      onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
       accessibilityRole="progressbar"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
       style={[styles.progressTrack, { height, backgroundColor: trackColor, borderRadius: height / 2 }]}>
-      <Animated.View
-        style={[
-          styles.progressFill,
-          { backgroundColor: fillColor, borderRadius: height / 2, transformOrigin: 'left' },
-          fill,
-        ]}
-      />
+      <Animated.View style={[styles.progressFill, { backgroundColor: fillColor, borderRadius: height / 2 }, fillStyle]} />
     </View>
   );
 }
 
-export function RatingSummary({
-  rating,
-  reviewCount,
-  size = 13,
+export function Skeleton({
+  width = '100%',
+  height = 12,
+  borderRadius = radius.xs,
+  style,
 }: {
-  rating: number;
-  reviewCount?: number;
-  size?: number;
+  width?: number | `${number}%`;
+  height?: number;
+  borderRadius?: number;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const reduced = useReducedMotion();
+  const pulse = useSharedValue(1);
+
+  useEffect(() => {
+    if (reduced) {
+      pulse.value = 1;
+      return;
+    }
+    pulse.value = withRepeat(withTiming(0.5, { duration: 900 }), -1, true);
+    return () => cancelAnimation(pulse);
+  }, [reduced, pulse]);
+
+  const animated = useAnimatedStyle(() => ({ opacity: reduced ? 1 : pulse.value }));
+
   return (
-    <View style={styles.ratingRow}>
-      <Star size={size} color={colors.gold} strokeWidth={2} fill={colors.gold} />
-      <Text style={[type.meta, { color: colors.text }]}>{rating.toFixed(1)}</Text>
-      {reviewCount !== undefined ? (
-        <Text style={[type.meta, { color: colors.textSecondary }]}>({reviewCount.toLocaleString('en-IN')})</Text>
-      ) : null}
-    </View>
+    <Animated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[{ width, height, borderRadius, backgroundColor: colors.surfaceAlt }, style, animated]}
+    />
   );
 }
 
@@ -522,18 +687,12 @@ export function EmptyState({
   return (
     <View style={styles.stateBlock}>
       <View style={styles.stateIcon}>
-        <Icon size={26} color={colors.primary} strokeWidth={1.8} />
+        <Icon size={24} color={colors.primary} strokeWidth={1.75} />
       </View>
-      <Text style={[type.cardTitle, { color: colors.text, textAlign: 'center' }]}>{title}</Text>
-      <Text style={[type.supporting, { color: colors.textSecondary, textAlign: 'center' }]}>{body}</Text>
+      <Text style={[type.subheading, styles.centerText, { color: colors.text }]}>{title}</Text>
+      <Text style={[type.body, styles.centerText, { color: colors.textMuted }]}>{body}</Text>
       {actionLabel && onAction ? (
-        <PrimaryButton
-          label={actionLabel}
-          onPress={onAction}
-          variant="secondary"
-          fullWidth={false}
-          style={styles.stateAction}
-        />
+        <Button label={actionLabel} onPress={onAction} variant="secondary" fullWidth={false} style={styles.stateAction} />
       ) : null}
     </View>
   );
@@ -553,52 +712,20 @@ export function ErrorState({
   return (
     <View style={styles.stateBlock}>
       <View style={[styles.stateIcon, { backgroundColor: colors.errorSoft }]}>
-        {offline ? <WifiOff size={26} color={colors.error} strokeWidth={1.8} /> : <CircleAlert size={26} color={colors.error} strokeWidth={1.8} />}
+        {offline ? (
+          <WifiOff size={24} color={colors.error} strokeWidth={1.75} />
+        ) : (
+          <CircleAlert size={24} color={colors.error} strokeWidth={1.75} />
+        )}
       </View>
-      <Text style={[type.cardTitle, { color: colors.text, textAlign: 'center' }]}>{title}</Text>
-      <Text style={[type.supporting, { color: colors.textSecondary, textAlign: 'center' }]}>{body}</Text>
-      {onRetry ? (
-        <PrimaryButton label="Try again" onPress={onRetry} variant="secondary" fullWidth={false} style={styles.stateAction} />
-      ) : null}
+      <Text style={[type.subheading, styles.centerText, { color: colors.text }]}>{title}</Text>
+      <Text style={[type.body, styles.centerText, { color: colors.textMuted }]}>{body}</Text>
+      {onRetry ? <Button label="Try again" onPress={onRetry} variant="secondary" fullWidth={false} style={styles.stateAction} /> : null}
     </View>
   );
 }
 
-/** Shimmer placeholder. Only render while data is genuinely loading. */
-export function Skeleton({
-  width = '100%',
-  height = 16,
-  borderRadius = 10,
-  style,
-}: {
-  width?: number | `${number}%`;
-  height?: number;
-  borderRadius?: number;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const reduced = useReducedMotion();
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    if (reduced) {
-      pulse.value = 1;
-      return;
-    }
-    pulse.value = withRepeat(withTiming(0.55, { duration: 900 }), -1, true);
-    return () => cancelAnimation(pulse);
-  }, [reduced, pulse]);
-
-  const animated = useAnimatedStyle(() => ({ opacity: reduced ? 1 : pulse.value }));
-
-  return (
-    <Animated.View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[{ width, height, borderRadius, backgroundColor: colors.surfaceWarm }, style, animated]}
-    />
-  );
-}
-
+/** Settings-style row: icon, label, optional value, chevron. Dividers come from DataList. */
 export function ListRow({
   icon: Icon,
   label,
@@ -622,16 +749,26 @@ export function ListRow({
     <>
       {Icon ? (
         <View style={styles.listRowIcon}>
-          <Icon size={19} color={tone === 'danger' ? colors.error : colors.text} strokeWidth={1.9} />
+          <Icon size={18} color={tone === 'danger' ? colors.error : colors.text} strokeWidth={1.75} />
         </View>
       ) : null}
       <View style={styles.flex}>
-        <Text style={[type.body, { color: tone === 'danger' ? colors.error : colors.text }]}>{label}</Text>
-        {subtitle ? <Text style={[type.supporting, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
+        <Text style={[type.body, { color: tone === 'danger' ? colors.error : colors.text }]} numberOfLines={2}>
+          {label}
+        </Text>
+        {subtitle ? (
+          <Text style={[type.label, { color: colors.textMuted, marginTop: spacing.none }]} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
       </View>
-      {value ? <Text style={[type.supporting, { color: colors.textSecondary }]}>{value}</Text> : null}
+      {value ? (
+        <Text style={[type.label, tabularNums, { color: colors.textMuted }]} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
       {rightSlot}
-      {onPress && chevron ? <Text style={[type.meta, { color: colors.textSecondary }]}>›</Text> : null}
+      {onPress && chevron ? <ChevronRight size={18} color={colors.textSubtle} strokeWidth={1.75} /> : null}
     </>
   );
 
@@ -651,20 +788,60 @@ export function ListRow({
   );
 }
 
-export function LockedNotice({ label = 'Included with the course' }: { label?: string }) {
+/** Accordion: chevron rotates, content fades in, expansion is not animated on layout. */
+export function Accordion({
+  title,
+  subtitle,
+  children,
+  right,
+  defaultOpen = false,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  right?: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const reduced = useReducedMotion();
+  const rotation = useSharedValue(open ? 1 : 0);
+
+  useEffect(() => {
+    rotation.value = withTiming(open ? 1 : 0, { duration: reduced ? 0 : 160 });
+  }, [open, reduced, rotation]);
+
+  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value * 180}deg` }] }));
+
   return (
-    <View style={styles.lockedNotice}>
-      <Lock size={14} color={colors.textSecondary} strokeWidth={2} />
-      <Text style={[type.meta, { color: colors.textSecondary }]}>{label}</Text>
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={subtitle ? `${title}. ${subtitle}` : title}
+        accessibilityState={{ expanded: open }}
+        onPress={() => {
+          feedback.tap();
+          setOpen((value) => !value);
+        }}
+        style={({ pressed }) => [styles.accordionHeader, pressed && { opacity: 0.7 }]}>
+        <View style={styles.flex}>
+          <Text style={[type.bodyStrong, { color: colors.text }]}>{title}</Text>
+          {subtitle ? <Text style={[type.label, { color: colors.textMuted }]}>{subtitle}</Text> : null}
+        </View>
+        {right}
+        <Animated.View style={chevronStyle}>
+          <ChevronDown size={18} color={colors.textSubtle} strokeWidth={1.75} />
+        </Animated.View>
+      </Pressable>
+      {open ? <Animated.View entering={FadeIn.duration(reduced ? 0 : 160)}>{children}</Animated.View> : null}
     </View>
   );
 }
 
-/** Scrim used over photography so native text stays readable. */
-export function Scrim({ style, intensity = 0.55 }: { style?: StyleProp<ViewStyle>; intensity?: number }) {
+/** Bottom scrim for photography. Only used where native text sits over an image. */
+export function Scrim({ from = 'transparent', to = colors.scrim, style }: { from?: string; to?: string; style?: StyleProp<ViewStyle> }) {
   return (
     <LinearGradient
-      colors={[`rgba(18,20,18,0)`, `rgba(18,20,18,${intensity})`]}
+      colors={[from, to]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
       style={[StyleSheet.absoluteFill, style]}
@@ -674,199 +851,135 @@ export function Scrim({ style, intensity = 0.55 }: { style?: StyleProp<ViewStyle
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
+  root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   fullWidth: { alignSelf: 'stretch' },
-  scrollContent: { paddingBottom: spacing.xxl, width: '100%', maxWidth: maxContentWidth, alignSelf: 'center' },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
+  centerText: { textAlign: 'center' },
+  scrollContent: {
+    paddingBottom: spacing.xl,
+    width: '100%',
+    maxWidth: layout.maxWidth,
+    alignSelf: 'center',
+  },
+  rail: { paddingHorizontal: layout.screen, gap: layout.gap },
+  list: { paddingHorizontal: layout.screen },
+  listDivider: { height: 1, backgroundColor: colors.divider },
+
+  divider: { height: 1, backgroundColor: colors.divider },
+
+  appBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: layout.headerHeight,
+    backgroundColor: colors.surface,
+    paddingHorizontal: layout.screen,
+  },
+  appBarBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
+  appBarSide: { width: layout.touchTarget, alignItems: 'flex-start' },
+  appBarRight: { alignItems: 'flex-end', flexDirection: 'row', gap: spacing.sm, width: 'auto', minWidth: layout.touchTarget },
+  appBarTitle: { flex: 1, textAlign: 'center' },
+
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: layout.screen },
+  sectionSubtitle: { marginTop: 2 },
+  sectionAction: { paddingBottom: 2 },
+
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xxs,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xxs,
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
     borderRadius: radius.pill,
+    alignSelf: 'flex-start',
   },
-  badgeText: { ...type.meta, letterSpacing: 0.2 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs / 2, flexShrink: 1 },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
+
   button: {
-    minHeight: 52,
-    borderRadius: radius.button,
+    minHeight: layout.buttonHeight,
+    borderRadius: radius.sm,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    paddingHorizontal: layout.edge,
   },
   iconButton: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  iconBadge: {
+  badgeDot: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: colors.primary,
+    top: 4,
+    right: 2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: radius.pill,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  fieldWrap: { gap: spacing.xs },
+  badgeDotText: { fontFamily: font.semibold, fontSize: 10, lineHeight: 13, color: colors.surface },
+
+  fieldWrap: { gap: spacing.sm },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    borderRadius: radius.input,
+    gap: spacing.sm,
+    minHeight: layout.fieldHeight,
+    borderRadius: radius.sm,
     borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingHorizontal: spacing.md,
-    minHeight: 56,
   },
-  fieldPrefix: { color: colors.textSecondary },
   input: { flex: 1, paddingVertical: spacing.sm },
-  fieldMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, paddingRight: spacing.xs },
+  fieldMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs - 2,
+    gap: spacing.xs,
     paddingHorizontal: spacing.md,
-    minHeight: 40,
+    minHeight: 36,
     borderRadius: radius.pill,
     borderWidth: 1,
   },
-  sectionHeader: {
+  segmented: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    padding: 2,
+    gap: 2,
+    marginHorizontal: layout.screen,
   },
+  segment: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
+  segmentActive: { backgroundColor: colors.primary },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+
   progressTrack: { width: '100%', overflow: 'hidden' },
-  progressFill: { ...StyleSheet.absoluteFill, width: '100%' },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs },
-  stateBlock: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl, paddingHorizontal: spacing.md },
+  progressFill: { height: '100%' },
+
+  stateBlock: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xxl, paddingHorizontal: layout.section },
   stateIcon: {
-    width: 56,
-    height: 56,
+    width: 52,
+    height: 52,
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.xs,
   },
-  stateAction: { marginTop: spacing.xs },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: touchTarget + 8,
-    paddingVertical: spacing.sm,
-  },
-  listRowIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: radius.pill,
-    backgroundColor: colors.surfaceWarm,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockedNotice: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  screenHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    minHeight: touchTarget,
-    paddingVertical: spacing.xxs,
-  },
-  accordion: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  stateAction: { marginTop: spacing.sm },
+
+  listRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, paddingVertical: spacing.sm },
+  listRowIcon: { width: 32, height: 32, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
+
   accordionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.md,
-    minHeight: touchTarget,
+    minHeight: layout.touchTarget,
+    paddingHorizontal: layout.screen,
   },
-  accordionBody: { paddingBottom: spacing.md, gap: spacing.xs },
 });
-
-/* ------------------------------------------------------------------ *
- * Navigation header and accordion
- * ------------------------------------------------------------------ */
-
-export function ScreenHeader({
-  title,
-  onBack,
-  right,
-}: {
-  title?: string;
-  onBack?: () => void;
-  right?: ReactNode;
-}) {
-  const router = useRouter();
-  const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/home')));
-
-  return (
-    <View style={styles.screenHeader}>
-      <IconButton icon={ArrowLeft} accessibilityLabel="Go back" onPress={back} />
-      {title ? (
-        <Text style={[type.cardTitle, { color: colors.text, flex: 1 }]} numberOfLines={1}>
-          {title}
-        </Text>
-      ) : (
-        <View style={styles.flex} />
-      )}
-      {right}
-    </View>
-  );
-}
-
-/** Expansion is animated on the chevron only; content fades in, so no layout thrash. */
-export function Accordion({
-  title,
-  subtitle,
-  children,
-  defaultOpen = false,
-  right,
-}: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  defaultOpen?: boolean;
-  right?: ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-  const reduced = useReducedMotion();
-  const rotation = useSharedValue(open ? 1 : 0);
-
-  useEffect(() => {
-    rotation.value = withTiming(open ? 1 : 0, { duration: reduced ? 0 : 200 });
-  }, [open, reduced, rotation]);
-
-  const chevronStyle = useAnimatedStyle(() => ({ transform: [{ rotate: `${rotation.value * 180}deg` }] }));
-
-  return (
-    <View style={styles.accordion}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${title}${subtitle ? `. ${subtitle}` : ''}`}
-        accessibilityState={{ expanded: open }}
-        onPress={() => {
-          feedback.tap();
-          setOpen((value) => !value);
-        }}
-        style={({ pressed }) => [styles.accordionHeader, pressed && { opacity: 0.75 }]}>
-        <View style={styles.flex}>
-          <Text style={[type.label, { color: colors.text, fontFamily: type.body.fontFamily, fontSize: 15.5 }]}>
-            {title}
-          </Text>
-          {subtitle ? <Text style={[type.meta, { color: colors.textSecondary }]}>{subtitle}</Text> : null}
-        </View>
-        {right}
-        <Animated.View style={chevronStyle}>
-          <ChevronDown size={19} color={colors.textSecondary} strokeWidth={2} />
-        </Animated.View>
-      </Pressable>
-      {open ? (
-        <Animated.View entering={FadeIn.duration(reduced ? 0 : 180)} style={styles.accordionBody}>
-          {children}
-        </Animated.View>
-      ) : null}
-    </View>
-  );
-}

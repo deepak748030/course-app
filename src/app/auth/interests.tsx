@@ -3,8 +3,8 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Chip, PrimaryButton, ScreenContainer } from '@/components/ui';
-import { colors, spacing, type } from '@/constants/theme';
+import { Button, Chip, DataList, ListRow, Screen } from '@/components/ui';
+import { colors, layout, spacing, type } from '@/constants/theme';
 import { interests } from '@/data/catalog';
 import { useStore } from '@/store';
 
@@ -25,40 +25,38 @@ export default function InterestsScreen() {
   const finish = () => router.replace('/home');
 
   return (
-    <View style={styles.root}>
-      <ScreenContainer
-        edges={['top']}
-        contentStyle={{ paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.lg, gap: spacing.lg }}>
-        <Text style={[type.screenTitle, { color: colors.text }]}>What would you like to cook?</Text>
-        <Text style={[type.body, { color: colors.textSecondary }]}>
-          Pick a few and we will put those courses first on your home screen. You can change this anytime.
+    <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.md }}>
+      <View style={styles.intro}>
+        <Text style={[type.title, { color: colors.text }]}>What would you like to cook?</Text>
+        <Text style={[type.body, { color: colors.textMuted }]}>
+          Pick a few and we will put those courses first on your home screen. You can change this anytime in Settings.
         </Text>
+      </View>
 
-        <View style={styles.chips}>
-          {interests.map((interest) => (
-            <Chip
-              key={interest.id}
-              label={interest.label}
-              selected={isInterestSelected(interest.id)}
-              onPress={() => toggleInterest(interest.id)}
-            />
-          ))}
-        </View>
+      <View style={styles.chips}>
+        {interests.map((interest) => (
+          <Chip
+            key={interest.id}
+            label={interest.label}
+            selected={isInterestSelected(interest.id)}
+            onPress={() => toggleInterest(interest.id)}
+          />
+        ))}
+      </View>
 
-        <View style={styles.footer}>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>
-            {selectedCount === 0 ? 'No preferences selected yet — that is fine.' : `${selectedCount} selected`}
-          </Text>
-          <PrimaryButton label="Start learning" onPress={finish} />
-          <PrimaryButton label="Maybe later" onPress={finish} variant="ghost" />
-        </View>
-      </ScreenContainer>
-    </View>
+      <View style={styles.footer}>
+        <Text style={[type.label, { color: colors.textMuted }]}>
+          {selectedCount === 0 ? 'Nothing selected yet — that is fine.' : `${selectedCount} selected`}
+        </Text>
+        <Button label="Start learning" onPress={finish} />
+        <Button label="Maybe later" onPress={finish} variant="ghost" />
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
-  footer: { gap: spacing.xs, marginTop: spacing.md },
+  intro: { gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.md },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: layout.gap, paddingHorizontal: layout.screen, paddingTop: spacing.lg },
+  footer: { gap: spacing.sm, paddingHorizontal: layout.screen, paddingTop: spacing.xl },
 });

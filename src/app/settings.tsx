@@ -2,60 +2,53 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { LogOut, RefreshCcw, ShieldCheck } from 'lucide-react-native';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
-import { AppText, Badge, ListRow, ScreenHeader } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppBar, Badge, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
+import { colors, layout, spacing, type } from '@/constants/theme';
 import { useStore } from '@/store';
 import { formatIndianMobile } from '@/lib/format';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { session, state, setPreference, resetDemoData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-        showsVerticalScrollIndicator={false}>
-        <ScreenHeader title="Settings" />
-
+    <View style={styles.root}>
+      <Screen header={<AppBar title="Settings" />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Notifications</Text>
-          <View style={styles.card}>
-            <SwitchRow
+          <SectionHeader title="Notifications" subtitle="Stored on this device" />
+          <DataList>
+            <Toggle
               label="Course updates"
               help="New lessons added to courses you own"
               value={state.preferences.courseUpdates}
               onChange={(value) => setPreference('courseUpdates', value)}
             />
-            <SwitchRow
+            <Toggle
               label="Learning reminders"
               help="A nudge when you have not watched for a few days"
               value={state.preferences.learningReminders}
               onChange={(value) => setPreference('learningReminders', value)}
             />
-            <SwitchRow
+            <Toggle
               label="Product news"
               help="New instructors and features"
               value={state.preferences.productNews}
               onChange={(value) => setPreference('productNews', value)}
             />
-          </View>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>
-            Preferences are stored on this device. Push delivery is not wired up in this prototype, so these switches
-            only control what the app would send.
+          </DataList>
+          <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
+            Push delivery is not wired up in this prototype, so these switches only control what the app would send.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Account</Text>
-          <View style={styles.card}>
+          <SectionHeader title="Account" />
+          <DataList>
             <ListRow
               label="Mobile number"
               value={session ? formatIndianMobile(session.profile.phone) : 'Not signed in'}
@@ -66,12 +59,12 @@ export default function SettingsScreen() {
               subtitle="Signs you out so you can verify a different number"
               onPress={() => setLogoutOpen(true)}
             />
-          </View>
+          </DataList>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Payments</Text>
-          <View style={styles.card}>
+          <SectionHeader title="Payments" />
+          <DataList>
             <ListRow
               icon={ShieldCheck}
               label="Payment security"
@@ -79,12 +72,12 @@ export default function SettingsScreen() {
               chevron={false}
               rightSlot={<Badge label="Demo" tone="gold" />}
             />
-          </View>
+          </DataList>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Data on this device</Text>
-          <View style={styles.card}>
+          <SectionHeader title="Data on this device" />
+          <DataList>
             <ListRow
               icon={RefreshCcw}
               label="Reset demo data"
@@ -98,27 +91,27 @@ export default function SettingsScreen() {
               subtitle="Also removes the learning data stored for this session"
               onPress={() => setLogoutOpen(true)}
             />
-          </View>
+          </DataList>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Policies</Text>
-          <View style={styles.card}>
-            <ListRow label="Terms of use" subtitle="Sample document" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
-            <ListRow label="Privacy" subtitle="Sample document" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
+          <SectionHeader title="Policies" subtitle="Sample documents" />
+          <DataList>
+            <ListRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
+            <ListRow label="Privacy" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
             <ListRow label="Help and support" onPress={() => router.push('/help')} />
-          </View>
+          </DataList>
         </View>
 
         <View style={styles.about}>
-          <AppText variant="meta" color={colors.textSecondary}>
+          <Text style={[type.label, { color: colors.textSubtle }]}>
             Rasoi Studio {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
-          </AppText>
-          <AppText variant="meta" color={colors.textSecondary}>
+          </Text>
+          <Text style={[type.label, { color: colors.textSubtle }]}>
             Prototype build: sample catalog, demo authentication, demo payments.
-          </AppText>
+          </Text>
         </View>
-      </ScrollView>
+      </Screen>
 
       <ConfirmSheet
         visible={resetOpen}
@@ -150,52 +143,9 @@ export default function SettingsScreen() {
   );
 }
 
-function SwitchRow({
-  label,
-  help,
-  value,
-  onChange,
-}: {
-  label: string;
-  help: string;
-  value: boolean;
-  onChange: (value: boolean) => void;
-}) {
-  return (
-    <View style={styles.switchRow}>
-      <View style={styles.flex}>
-        <Text style={[type.body, { color: colors.text }]}>{label}</Text>
-        <Text style={[type.supporting, { color: colors.textSecondary }]}>{help}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        accessibilityHint={help}
-        trackColor={{ false: colors.border, true: colors.sage }}
-        thumbColor={colors.surface}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  flex: { flex: 1 },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
-  section: { gap: spacing.sm },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-  },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.sm },
-  about: { gap: spacing.xxs, marginTop: spacing.sm },
+  section: { gap: layout.gap },
+  note: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
+  about: { gap: spacing.xs, paddingHorizontal: layout.section, paddingTop: spacing.sm },
 });

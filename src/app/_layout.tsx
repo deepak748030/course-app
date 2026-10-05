@@ -1,10 +1,4 @@
-import {
-  DMSans_400Regular,
-  DMSans_500Medium,
-  DMSans_600SemiBold,
-  DMSans_700Bold,
-} from '@expo-google-fonts/dm-sans';
-import { Lora_500Medium, Lora_600SemiBold } from '@expo-google-fonts/lora';
+import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -44,14 +38,10 @@ function Bootstrap({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
-  // Bundled font files, loaded locally — no network request at launch.
+  // One family, two weights — bundled locally, no network request at launch.
   const [fontsLoaded, fontError] = useFonts({
     [font.regular]: DMSans_400Regular,
-    [font.medium]: DMSans_500Medium,
     [font.semibold]: DMSans_600SemiBold,
-    [font.bold]: DMSans_700Bold,
-    [font.serif]: Lora_500Medium,
-    [font.serifSemibold]: Lora_600SemiBold,
   });
 
   const fontsReady = fontsLoaded || Boolean(fontError);

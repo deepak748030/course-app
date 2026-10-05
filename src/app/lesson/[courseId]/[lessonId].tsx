@@ -33,14 +33,15 @@ import {
   Text,
   TextInput,
   View,
+  type LayoutChangeEvent,
 } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
-import { Badge, EmptyState, IconButton, PrimaryButton, ScreenHeader } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen, SectionHeader } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, instructorById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';
 import { useStore } from '@/store';
@@ -156,8 +157,7 @@ export default function LessonPlayerScreen() {
 
   if (!course || !lesson) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <ScreenHeader onBack={() => router.replace('/learning')} />
+      <Screen header={<AppBar onBack={() => router.replace('/learning')} />}>
         <EmptyState
           icon={Clapperboard}
           title="Lesson not found"
@@ -165,14 +165,13 @@ export default function LessonPlayerScreen() {
           actionLabel="Go to My learning"
           onAction={() => router.replace('/learning')}
         />
-      </View>
+      </Screen>
     );
   }
 
   if (!unlocked) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <ScreenHeader onBack={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })} />
+      <Screen header={<AppBar onBack={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })} />}>
         <EmptyState
           icon={Lock}
           title="This lesson is locked"
@@ -180,7 +179,7 @@ export default function LessonPlayerScreen() {
           actionLabel="See what is included"
           onAction={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
         />
-      </View>
+      </Screen>
     );
   }
 
@@ -192,6 +191,7 @@ export default function LessonPlayerScreen() {
   const baseServings = recipe?.servings ?? 1;
   const currentServings = servings ?? baseServings;
   const factor = currentServings / baseServings;
+  const currentSection = course.sections.find((section) => section.id === lesson.sectionId);
 
   const seekTo = (seconds: number) => {
     const clamped = Math.max(0, Math.min(seconds, duration || seconds));
@@ -228,7 +228,8 @@ export default function LessonPlayerScreen() {
     <View style={styles.root}>
       <StatusBar style="light" />
 
-      <View style={[styles.playerWrap, { paddingTop: 0 }]}>
+      {/* Player: full-bleed, no side gap, controls float over the surface. */}
+      <View style={styles.playerWrap}>
         <VideoView
           ref={videoRef}
           player={player}
@@ -249,17 +250,17 @@ export default function LessonPlayerScreen() {
         {status === 'loading' ? (
           <View style={styles.centerOverlay} pointerEvents="none">
             <ActivityIndicator color={colors.onPlayer} />
-            <Text style={[type.meta, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
+            <Text style={[type.label, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
           </View>
         ) : null}
 
         {error ? (
           <View style={styles.centerOverlay}>
             <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
-            <Text style={[type.supporting, { color: colors.onPlayer, textAlign: 'center' }]}>
+            <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
               This lesson video could not be played.
             </Text>
-            <PrimaryButton
+            <Button
               label="Try again"
               variant="secondary"
               fullWidth={false}
@@ -281,10 +282,10 @@ export default function LessonPlayerScreen() {
                 onPress={() => (router.canGoBack() ? router.back() : router.replace('/learning'))}
               />
               <View style={styles.playerTitleWrap}>
-                <Text style={[type.meta, { color: colors.onPlayerMuted }]} numberOfLines={1}>
+                <Text style={[type.label, { color: colors.onPlayerMuted }]} numberOfLines={1}>
                   {course.title}
                 </Text>
-                <Text style={[type.label, { color: colors.onPlayer }]} numberOfLines={1}>
+                <Text style={[type.bodyStrong, { color: colors.onPlayer }]} numberOfLines={1}>
                   {lesson.title}
                 </Text>
               </View>
@@ -327,14 +328,13 @@ export default function LessonPlayerScreen() {
             </View>
 
             <View style={styles.playerBottom}>
-              <Text style={[type.meta, { color: colors.onPlayerMuted }]}>{formatClock(position)}</Text>
+              <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(position)}</Text>
               <SeekBar
                 progress={progressPercent}
-                duration={duration}
                 onSeek={(ratio) => seekTo(ratio * duration)}
                 accessibilityLabel="Seek within the lesson"
               />
-              <Text style={[type.meta, { color: colors.onPlayerMuted }]}>{formatClock(duration)}</Text>
+              <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(duration)}</Text>
             </View>
 
             <View style={styles.playerActions}>
@@ -344,7 +344,7 @@ export default function LessonPlayerScreen() {
                 onPress={() => setSpeedOpen(true)}
                 style={styles.playerAction}>
                 <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                <Text style={[type.meta, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
+                <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -352,7 +352,7 @@ export default function LessonPlayerScreen() {
                 onPress={() => void videoRef.current?.enterFullscreen()}
                 style={styles.playerAction}>
                 <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                <Text style={[type.meta, { color: colors.onPlayer }]}>Fullscreen</Text>
+                <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
               </Pressable>
             </View>
           </Animated.View>
@@ -369,11 +369,10 @@ export default function LessonPlayerScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.lessonHeader}>
             <View style={styles.flex}>
-              <Text style={[type.section, { color: colors.text }]}>{lesson.title}</Text>
+              <Text style={[type.subheading, { color: colors.text }]}>{lesson.title}</Text>
               <View style={styles.metaRow}>
-                <Text style={[type.meta, { color: colors.textSecondary }]}>{instructor?.name}</Text>
-                <Text style={[type.meta, { color: colors.textSecondary }]}>·</Text>
-                <Text style={[type.meta, { color: colors.textSecondary }]}>{lesson.minutes} min</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{instructor?.name}</Text>
+                <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{lesson.minutes} min</Text>
                 {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
                 {completed ? <Badge label="Completed" tone="success" icon={CircleCheck} /> : null}
               </View>
@@ -395,36 +394,30 @@ export default function LessonPlayerScreen() {
 
           {tab === 'overview' ? (
             <View style={styles.tabBody}>
-              <Text style={[type.body, { color: colors.textSecondary }]}>{lesson.description}</Text>
+              <Text style={[type.body, styles.prose, { color: colors.text }]}>{lesson.description}</Text>
               <View style={styles.sectionCard}>
-                <Text style={[type.label, { color: colors.textSecondary }]}>Section</Text>
-                <Text style={[type.body, { color: colors.text }]}>
-                  {course.sections.find((section) => section.id === lesson.sectionId)?.title}
-                </Text>
+                <Text style={[type.labelStrong, { color: colors.textMuted }]}>Section</Text>
+                <Text style={[type.body, { color: colors.text }]}>{currentSection?.title}</Text>
               </View>
               <View style={styles.overviewActions}>
-                <PrimaryButton
+                <Button
                   label={completed ? 'Completed — mark as not done' : 'Mark lesson as complete'}
                   variant={completed ? 'secondary' : 'primary'}
                   icon={completed ? CircleCheck : Check}
                   onPress={() => markComplete(!completed)}
                 />
                 {upcoming ? (
-                  <PrimaryButton
-                    label={`Next: ${upcoming.title}`}
-                    variant="ghost"
-                    onPress={() => goToLesson(upcoming.id)}
-                  />
+                  <Button label={`Next: ${upcoming.title}`} variant="ghost" onPress={() => goToLesson(upcoming.id)} />
                 ) : (
-                  <PrimaryButton
+                  <Button
                     label="You have reached the last lesson"
                     variant="ghost"
                     onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
                   />
                 )}
-                <PrimaryButton label="All lessons in this course" variant="ghost" onPress={() => setLessonListOpen(true)} />
+                <Button label="All lessons in this course" variant="ghost" onPress={() => setLessonListOpen(true)} />
               </View>
-              <Text style={[type.meta, { color: colors.textSecondary }]}>
+              <Text style={[type.label, styles.prose, { color: colors.textSubtle }]}>
                 Playback position is saved on this device, so you can leave and come back.
               </Text>
             </View>
@@ -434,10 +427,10 @@ export default function LessonPlayerScreen() {
             <View style={styles.tabBody}>
               <View style={styles.recipeHead}>
                 <View style={styles.flex}>
-                  <Text style={[type.cardTitle, { color: colors.text }]}>{recipe.title}</Text>
+                  <Text style={[type.subheading, { color: colors.text }]}>{recipe.title}</Text>
                   <View style={styles.metaRow}>
-                    <Clock size={14} color={colors.textSecondary} strokeWidth={1.9} />
-                    <Text style={[type.meta, { color: colors.textSecondary }]}>
+                    <Clock size={14} color={colors.textMuted} strokeWidth={1.9} />
+                    <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
                       {recipe.prepMinutes} min prep · {recipe.cookMinutes} min cook
                     </Text>
                   </View>
@@ -452,7 +445,7 @@ export default function LessonPlayerScreen() {
               </View>
 
               <View style={styles.servingsRow}>
-                <Text style={[type.label, { color: colors.textSecondary }]}>Servings</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>Servings</Text>
                 <View style={styles.stepper}>
                   <IconButton
                     icon={Minus}
@@ -462,7 +455,7 @@ export default function LessonPlayerScreen() {
                     accessibilityLabel="Fewer servings"
                     onPress={() => setServings(Math.max(1, currentServings - 1))}
                   />
-                  <Text style={[type.cardTitle, { color: colors.text, minWidth: 28, textAlign: 'center' }]}>
+                  <Text style={[type.bodyStrong, tabularNums, styles.servingValue, { color: colors.text }]}>
                     {currentServings}
                   </Text>
                   <IconButton
@@ -478,48 +471,48 @@ export default function LessonPlayerScreen() {
 
               <View style={styles.sectionCard}>
                 <View style={styles.ingredientHead}>
-                  <ShoppingBasket size={17} color={colors.sage} strokeWidth={1.9} />
-                  <Text style={[type.label, { color: colors.text }]}>Ingredients</Text>
+                  <ShoppingBasket size={16} color={colors.sage} strokeWidth={1.9} />
+                  <Text style={[type.labelStrong, { color: colors.text }]}>Ingredients</Text>
                 </View>
                 {recipe.ingredients.map((ingredient) => (
                   <View key={ingredient.item} style={styles.ingredientRow}>
-                    <Text style={[type.body, { color: colors.text, flex: 1, fontSize: 15.5 }]}>{ingredient.item}</Text>
-                    <Text style={[type.body, { color: colors.textSecondary, fontSize: 15.5 }]}>
+                    <Text style={[type.body, { color: colors.text, flex: 1 }]}>{ingredient.item}</Text>
+                    <Text style={[type.body, tabularNums, { color: colors.textMuted }]}>
                       {scaleQuantity(ingredient.quantity, factor)}
                     </Text>
                   </View>
                 ))}
                 {factor !== 1 ? (
-                  <Text style={[type.meta, { color: colors.textSecondary }]}>
+                  <Text style={[type.label, { color: colors.textSubtle }]}>
                     Quantities scaled from the original {baseServings} servings.
                   </Text>
                 ) : null}
               </View>
 
               <View style={styles.sectionCard}>
-                <Text style={[type.label, { color: colors.text }]}>Method</Text>
+                <Text style={[type.labelStrong, { color: colors.text }]}>Method</Text>
                 {recipe.steps.map((step, index) => (
                   <View key={step} style={styles.stepRow}>
                     <View style={styles.stepNumber}>
-                      <Text style={[type.meta, { color: colors.primary }]}>{index + 1}</Text>
+                      <Text style={[type.labelStrong, tabularNums, { color: colors.primary }]}>{index + 1}</Text>
                     </View>
-                    <Text style={[type.body, { color: colors.text, flex: 1, fontSize: 15.5 }]}>{step}</Text>
+                    <Text style={[type.body, { color: colors.text, flex: 1 }]}>{step}</Text>
                   </View>
                 ))}
               </View>
 
               {recipe.tips.length > 0 ? (
                 <View style={[styles.sectionCard, styles.tipsCard]}>
-                  <Text style={[type.label, { color: colors.text }]}>Chef&apos;s notes</Text>
+                  <Text style={[type.labelStrong, { color: colors.text }]}>Chef&apos;s notes</Text>
                   {recipe.tips.map((tip) => (
-                    <Text key={tip} style={[type.supporting, { color: colors.textSecondary }]}>
+                    <Text key={tip} style={[type.body, { color: colors.textMuted }]}>
                       • {tip}
                     </Text>
                   ))}
                 </View>
               ) : null}
 
-              <Text style={[type.meta, { color: colors.textSecondary }]}>
+              <Text style={[type.label, styles.prose, { color: colors.textSubtle }]}>
                 Sample recipe content for learning. This is not professional dietary, allergy or food-safety advice.
               </Text>
             </View>
@@ -527,7 +520,7 @@ export default function LessonPlayerScreen() {
 
           {tab === 'notes' ? (
             <View style={styles.tabBody}>
-              <Text style={[type.supporting, { color: colors.textSecondary }]}>
+              <Text style={[type.body, styles.prose, { color: colors.textMuted }]}>
                 Notes are private to this device and stay with “{lesson.title}”.
               </Text>
               <TextInput
@@ -542,12 +535,12 @@ export default function LessonPlayerScreen() {
                 }}
                 multiline
                 placeholder="What did you change? What will you try next time?"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={colors.textSubtle}
                 accessibilityLabel={`Notes for ${lesson.title}`}
                 style={[styles.notesInput, type.body, { color: colors.text }]}
               />
               <View style={styles.notesFooter}>
-                <PrimaryButton
+                <Button
                   label="Save note"
                   variant="secondary"
                   fullWidth={false}
@@ -557,7 +550,7 @@ export default function LessonPlayerScreen() {
                     feedback.tap();
                   }}
                 />
-                <Text style={[type.meta, { color: colors.textSecondary, flex: 1 }]}>
+                <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
                   {noteSaved ? 'Saved on this device' : 'Unsaved changes'}
                 </Text>
               </View>
@@ -574,20 +567,22 @@ export default function LessonPlayerScreen() {
         scrollable>
         {course.sections.map((section, index) => (
           <View key={section.id} style={styles.sheetSection}>
-            <Text style={[type.label, { color: colors.textSecondary }]}>
+            <Text style={[type.labelStrong, { color: colors.text }]}>
               {index + 1}. {section.title}
             </Text>
-            {course.lessons
-              .filter((entry) => entry.sectionId === section.id)
-              .map((entry, lessonIndex) => (
-                <LessonRow
-                  key={entry.id}
-                  lesson={entry}
-                  index={lessonIndex + 1}
-                  state={stateFor(entry.id)}
-                  onPress={() => goToLesson(entry.id)}
-                />
-              ))}
+            <DataList>
+              {course.lessons
+                .filter((entry) => entry.sectionId === section.id)
+                .map((entry, lessonIndex) => (
+                  <LessonRow
+                    key={entry.id}
+                    lesson={entry}
+                    index={lessonIndex + 1}
+                    state={stateFor(entry.id)}
+                    onPress={() => goToLesson(entry.id)}
+                  />
+                ))}
+            </DataList>
           </View>
         ))}
       </BottomSheet>
@@ -604,9 +599,7 @@ export default function LessonPlayerScreen() {
               setSpeedOpen(false);
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.body, { color: colors.text }]}>
-              {speed === 1 ? 'Normal (1×)' : `${speed}×`}
-            </Text>
+            <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
             {player.playbackRate === speed ? <Check size={18} color={colors.primary} strokeWidth={2.2} /> : null}
           </Pressable>
         ))}
@@ -622,7 +615,6 @@ function SeekBar({
   accessibilityLabel,
 }: {
   progress: number;
-  duration: number;
   onSeek: (ratio: number) => void;
   accessibilityLabel: string;
 }) {
@@ -634,20 +626,20 @@ function SeekBar({
     value.value = reduced ? progress : withTiming(progress, { duration: 120 });
   }, [progress, reduced, value]);
 
-  const fillStyle = useAnimatedStyle(() => ({ transform: [{ scaleX: Math.max(0.0001, value.value) }] }));
+  const fillStyle = useAnimatedStyle(() => ({ width: Math.round(Math.max(0, Math.min(1, value.value)) * width) }));
 
   return (
     <Pressable
       accessibilityRole="adjustable"
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
-      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+      onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
       onPress={(event) => {
         if (width <= 0) return;
         onSeek(Math.max(0, Math.min(1, event.nativeEvent.locationX / width)));
       }}
       style={styles.seekTrack}>
-      <Animated.View style={[styles.seekFill, { transformOrigin: 'left' }, fillStyle]} />
+      <Animated.View style={[styles.seekFill, fillStyle]} />
     </Pressable>
   );
 }
@@ -673,7 +665,7 @@ function TabButton({
       disabled={disabled}
       onPress={onPress}
       style={[styles.tabButton, active && styles.tabButtonActive, disabled && { opacity: 0.45 }]}>
-      <Text style={[type.label, { color: active ? colors.text : colors.textSecondary }]} numberOfLines={1}>
+      <Text style={[active ? type.labelStrong : type.label, { color: active ? colors.text : colors.textMuted }]} numberOfLines={1}>
         {label}
       </Text>
     </Pressable>
@@ -686,34 +678,35 @@ const styles = StyleSheet.create({
   playerWrap: { backgroundColor: colors.player },
   video: { width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.player },
   centerOverlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     backgroundColor: 'rgba(18,20,18,0.55)',
+    paddingHorizontal: layout.section,
   },
   playerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: screenPadding,
-    paddingBottom: spacing.xs,
+    gap: spacing.sm,
+    paddingHorizontal: layout.screen,
+    paddingBottom: spacing.sm,
   },
-  playerTitleWrap: { flex: 1, gap: 1 },
+  playerTitleWrap: { flex: 1, alignItems: 'center', gap: 2 },
   playerCenter: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.lg,
+    gap: spacing.xl,
+    flex: 1,
   },
   playButton: {
     width: 68,
     height: 68,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(18,20,18,0.55)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: colors.scrim,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -721,68 +714,70 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingHorizontal: screenPadding,
+    paddingHorizontal: layout.section,
+    paddingBottom: spacing.sm,
   },
-  seekTrack: {
-    flex: 1,
-    height: 26,
-    justifyContent: 'center',
-  },
-  seekFill: {
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: colors.primary,
-    width: '100%',
-  },
+  seekTrack: { flex: 1, height: 22, justifyContent: 'center' },
+  seekFill: { height: 4, borderRadius: 2, backgroundColor: colors.gold },
   playerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: screenPadding,
-    paddingVertical: spacing.sm,
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.section,
+    paddingBottom: spacing.md,
   },
-  playerAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, paddingVertical: 4 },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.md,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-    paddingTop: spacing.md,
-  },
-  lessonHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', marginTop: 2 },
-  tabs: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceWarm,
-    borderRadius: radius.pill,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  tabButton: { flex: 1, minHeight: 40, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  tabButtonActive: { backgroundColor: colors.surface },
-  tabBody: { gap: spacing.md },
-  sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  tipsCard: { backgroundColor: colors.goldSoft, borderColor: colors.goldSoft },
-  overviewActions: { gap: spacing.xs },
-  recipeHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  servingsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  ingredientHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  ingredientRow: {
+  playerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.xxs,
+    gap: spacing.xs,
+    minHeight: layout.touchTarget,
+    paddingHorizontal: spacing.sm,
   },
+
+  content: { gap: layout.gap, paddingTop: spacing.sm },
+  lessonHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    paddingHorizontal: layout.section,
+  },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
+
+  tabs: {
+    flexDirection: 'row',
+    gap: layout.gap,
+    paddingHorizontal: layout.screen,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  tabButton: { flex: 1, minHeight: layout.touchTarget, alignItems: 'center', justifyContent: 'center' },
+  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
+
+  tabBody: { gap: layout.gap, paddingTop: layout.gap, paddingHorizontal: layout.screen },
+  prose: { paddingHorizontal: spacing.sm },
+  sectionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  tipsCard: { backgroundColor: colors.surfaceAlt, borderColor: 'transparent' },
+  overviewActions: { gap: layout.gap, paddingTop: spacing.sm },
+
+  recipeHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingHorizontal: spacing.sm },
+  servingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.sm,
+  },
+  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  servingValue: { minWidth: 28, textAlign: 'center' },
+  ingredientHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  ingredientRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md },
   stepRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
   stepNumber: {
     width: 22,
@@ -791,25 +786,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
+
   notesInput: {
-    minHeight: 140,
+    minHeight: 160,
+    textAlignVertical: 'top',
     backgroundColor: colors.surface,
-    borderRadius: radius.input,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
     padding: spacing.md,
-    textAlignVertical: 'top',
   },
-  notesFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  sheetSection: { gap: spacing.xxs, marginBottom: spacing.sm },
+  notesFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+
+  sheetSection: { gap: spacing.sm, paddingBottom: spacing.md },
   sheetRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 48,
-    paddingVertical: spacing.xs,
+    minHeight: layout.touchTarget,
+    paddingVertical: spacing.sm,
   },
 });
-

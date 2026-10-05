@@ -2,12 +2,13 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CircleCheck, ShieldCheck, Tag } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { PriceSummary } from '@/components/course-cards';
-import { AppText, Badge, ErrorState, FormField, PrimaryButton, ScreenHeader } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { PriceSummary, StickyBar } from '@/components/course-cards';
+import { AppBar, AppText, Badge, Button, DataList, ErrorState, FormField, MetaItem, Screen, SectionHeader } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { Clapperboard, Clock } from 'lucide-react-native';
 import { courseById, instructorById } from '@/data/catalog';
 import { demoCoupons, purchaseTerms } from '@/data/content';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
@@ -35,10 +36,13 @@ export default function CheckoutScreen() {
 
   if (!course) {
     return (
-      <View style={[styles.root, { paddingTop: insets.top }]}>
-        <ScreenHeader onBack={() => router.replace('/explore')} />
-        <ErrorState title="Course unavailable" body="We could not load this course. Start again from the catalog." onRetry={() => router.replace('/explore')} />
-      </View>
+      <Screen header={<AppBar title="Checkout" onBack={() => router.replace('/explore')} />}>
+        <ErrorState
+          title="Course unavailable"
+          body="We could not load this course. Start again from the catalog."
+          onRetry={() => router.replace('/explore')}
+        />
+      </Screen>
     );
   }
 
@@ -62,11 +66,7 @@ export default function CheckoutScreen() {
   const pay = async () => {
     setProcessing(true);
     setOutcome(null);
-    const result = await demoPaymentService.authorize({
-      courseId: course.id,
-      amountInr: payable,
-      scenario,
-    });
+    const result = await demoPaymentService.authorize({ courseId: course.id, amountInr: payable, scenario });
     setProcessing(false);
 
     if (result.status === 'paid') {
@@ -88,186 +88,189 @@ export default function CheckoutScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingTop: insets.top + spacing.sm, paddingBottom: insets.bottom + 150 },
-        ]}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}>
-        <ScreenHeader title="Checkout" />
-
-        <View style={styles.summaryCard}>
-          <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={150} />
-          <View style={styles.flex}>
-            <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={2}>
-              {course.title}
-            </Text>
-            <Text style={[type.supporting, { color: colors.textSecondary }]} numberOfLines={1}>
-              {instructor?.name}
-            </Text>
-            <Text style={[type.meta, { color: colors.textSecondary }]}>
-              {course.lessonCount} lessons · {formatDuration(course.hours * 60)} · {course.level}
-            </Text>
+      <Screen
+        header={<AppBar title="Checkout" />}
+        contentStyle={{ paddingBottom: insets.bottom + 150, gap: layout.sectionGap }}>
+        <DataList>
+          <View style={styles.summaryRow}>
+            <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={150} />
+            <View style={styles.flex}>
+              <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+                {course.title}
+              </Text>
+              <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+                {instructor?.name}
+              </Text>
+              <View style={styles.metaRow}>
+                <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
+                <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
+              </View>
+            </View>
           </View>
-        </View>
+        </DataList>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>What you get</Text>
+          <SectionHeader title="What you get" />
           <View style={styles.termsList}>
             {purchaseTerms.map((term) => (
               <View key={term} style={styles.termRow}>
-                <CircleCheck size={17} color={colors.sage} strokeWidth={1.9} />
-                <Text style={[type.body, { color: colors.textSecondary, flex: 1, fontSize: 15.5 }]}>{term}</Text>
+                <CircleCheck size={16} color={colors.sage} strokeWidth={1.9} />
+                <Text style={[type.body, { color: colors.text, flex: 1 }]}>{term}</Text>
               </View>
             ))}
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Coupon</Text>
-          {coupon ? (
-            <View style={styles.appliedCoupon}>
-              <Tag size={16} color={colors.success} strokeWidth={2} />
-              <Text style={[type.label, { color: colors.success, flex: 1 }]}>
-                {coupon.code} applied · {coupon.percentOff}% off
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Remove coupon"
-                onPress={() => setCoupon(null)}
-                hitSlop={8}>
-                <Text style={[type.meta, { color: colors.textSecondary }]}>Remove</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <FormField
-              value={couponInput}
-              onChangeText={(text) => {
-                setCouponInput(text);
-                if (couponError) setCouponError(null);
-              }}
-              placeholder="Enter a demo code"
-              autoCapitalize="characters"
-              autoCorrect={false}
-              error={couponError}
-              hint={`Try ${demoCoupons[0].code} — demo codes only, nothing is charged.`}
-              returnKeyType="done"
-              onSubmitEditing={applyCoupon}
-              rightSlot={
+          <SectionHeader title="Coupon" subtitle="Demo codes only — nothing is charged" />
+          <View style={styles.pad}>
+            {coupon ? (
+              <View style={styles.appliedCoupon}>
+                <Tag size={16} color={colors.success} strokeWidth={2} />
+                <Text style={[type.labelStrong, { color: colors.success, flex: 1 }]}>
+                  {coupon.code} applied · {coupon.percentOff}% off
+                </Text>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Apply coupon"
-                  onPress={applyCoupon}
-                  hitSlop={8}
-                  disabled={couponInput.trim().length === 0}>
-                  <Text
-                    style={[
-                      type.label,
-                      { color: couponInput.trim().length === 0 ? colors.textSecondary : colors.primary },
-                    ]}>
-                    Apply
-                  </Text>
+                  accessibilityLabel="Remove coupon"
+                  onPress={() => setCoupon(null)}
+                  hitSlop={8}>
+                  <Text style={[type.label, { color: colors.textMuted }]}>Remove</Text>
                 </Pressable>
-              }
-            />
-          )}
+              </View>
+            ) : (
+              <FormField
+                value={couponInput}
+                onChangeText={(text) => {
+                  setCouponInput(text);
+                  if (couponError) setCouponError(null);
+                }}
+                placeholder="Enter a demo code"
+                autoCapitalize="characters"
+                autoCorrect={false}
+                error={couponError}
+                hint={`Try ${demoCoupons[0].code}.`}
+                returnKeyType="done"
+                onSubmitEditing={applyCoupon}
+                rightSlot={
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Apply coupon"
+                    onPress={applyCoupon}
+                    hitSlop={8}
+                    disabled={couponInput.trim().length === 0}>
+                    <Text
+                      style={[
+                        type.labelStrong,
+                        { color: couponInput.trim().length === 0 ? colors.textSubtle : colors.primary },
+                      ]}>
+                      Apply
+                    </Text>
+                  </Pressable>
+                }
+              />
+            )}
+          </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={[type.section, { color: colors.text }]}>Price details</Text>
-          <PriceSummary course={course} couponPercent={coupon?.percentOff ?? 0} couponCode={coupon?.code} />
+          <SectionHeader title="Price details" />
+          <View style={styles.pad}>
+            <PriceSummary course={course} couponPercent={coupon?.percentOff ?? 0} couponCode={coupon?.code} />
+          </View>
         </View>
 
         <View style={styles.section}>
           <View style={styles.sectionHead}>
-            <Text style={[type.section, { color: colors.text }]}>Demo payment mode</Text>
-            <Badge label="No real payment" tone="gold" />
+            <SectionHeader title="Demo payment mode" subtitle="Pick which outcome the demo should reproduce" />
+            <View style={styles.badgeWrap}>
+              <Badge label="No real payment" tone="gold" />
+            </View>
           </View>
-          <Text style={[type.supporting, { color: colors.textSecondary }]}>
-            This build has no payment gateway connected. Choose which scenario the demo should reproduce — no card
-            details are ever collected.
-          </Text>
-          <View style={styles.scenarioList}>
-            {demoScenarios.map((option) => {
-              const selected = scenario === option.id;
-              return (
-                <Pressable
-                  key={option.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${option.label}. ${option.help}`}
-                  onPress={() => {
-                    feedback.select();
-                    setScenario(option.id);
-                    setOutcome(null);
-                  }}
-                  style={[styles.scenarioRow, selected && styles.scenarioRowSelected]}>
-                  <View style={[styles.radio, selected && styles.radioSelected]}>
-                    {selected ? <View style={styles.radioDot} /> : null}
-                  </View>
-                  <View style={styles.flex}>
-                    <Text style={[type.body, { color: colors.text, fontSize: 15.5 }]}>{option.label}</Text>
-                    <Text style={[type.meta, { color: colors.textSecondary }]}>{option.help}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+          <View style={styles.pad}>
+            <View style={styles.scenarioList}>
+              {demoScenarios.map((option) => {
+                const selected = scenario === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${option.label}. ${option.help}`}
+                    onPress={() => {
+                      feedback.select();
+                      setScenario(option.id);
+                      setOutcome(null);
+                    }}
+                    style={[styles.scenarioRow, selected && styles.scenarioRowSelected]}>
+                    <View style={[styles.radio, selected && styles.radioSelected]}>
+                      {selected ? <View style={styles.radioDot} /> : null}
+                    </View>
+                    <View style={styles.flex}>
+                      <Text style={[type.body, { color: colors.text }]}>{option.label}</Text>
+                      <Text style={[type.label, { color: colors.textMuted }]}>{option.help}</Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={styles.securityRow}>
+              <ShieldCheck size={16} color={colors.sage} strokeWidth={1.9} />
+              <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
+                No card, UPI or bank details are requested or stored. A demo purchase only unlocks the course locally.
+              </Text>
+            </View>
+
+            {outcome?.kind === 'failed' ? (
+              <ErrorState title="Payment failed" body={`${outcome.message} Nothing was charged.`} onRetry={pay} />
+            ) : null}
+
+            {outcome?.kind === 'cancelled' ? (
+              <View style={styles.notice}>
+                <Badge label="Cancelled" tone="neutral" />
+                <Text style={[type.body, { color: colors.text }]}>
+                  You closed the demo payment before it finished. Nothing was charged and the course stays locked.
+                </Text>
+                <Button label="Try the demo payment again" variant="secondary" onPress={pay} />
+              </View>
+            ) : null}
+
+            {enrolled ? (
+              <View style={styles.notice}>
+                <Badge label="Already purchased" tone="success" icon={CircleCheck} />
+                <Text style={[type.body, { color: colors.text }]}>
+                  This course is already unlocked on your account. Buying again would only create a duplicate demo
+                  enrolment.
+                </Text>
+                <Button
+                  label="Go to the course"
+                  variant="secondary"
+                  onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
+                />
+              </View>
+            ) : null}
           </View>
         </View>
+      </Screen>
 
-        <View style={styles.securityRow}>
-          <ShieldCheck size={18} color={colors.sage} strokeWidth={1.9} />
-          <Text style={[type.supporting, { color: colors.textSecondary, flex: 1 }]}>
-            No card, UPI or bank details are requested or stored. A demo purchase only unlocks the course locally.
-          </Text>
-        </View>
-
-        {outcome?.kind === 'failed' ? (
-          <ErrorState title="Payment failed" body={`${outcome.message} Nothing was charged.`} onRetry={pay} />
-        ) : null}
-
-        {outcome?.kind === 'cancelled' ? (
-          <View style={styles.cancelled}>
-            <Badge label="Cancelled" tone="neutral" />
-            <Text style={[type.supporting, { color: colors.textSecondary }]}>
-              You closed the demo payment before it finished. Nothing was charged and the course stays locked.
-            </Text>
-            <PrimaryButton label="Try the demo payment again" variant="secondary" onPress={pay} />
-          </View>
-        ) : null}
-
-        {enrolled ? (
-          <View style={styles.owned}>
-            <Badge label="Already purchased" tone="success" icon={CircleCheck} />
-            <Text style={[type.supporting, { color: colors.textSecondary }]}>
-              This course is already unlocked on your account. Buying again would only create a duplicate demo
-              enrolment.
-            </Text>
-            <PrimaryButton
-              label="Go to the course"
-              variant="secondary"
-              onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
-            />
-          </View>
-        ) : null}
-      </ScrollView>
-
-      <View style={[styles.stickyBar, { paddingBottom: insets.bottom + spacing.sm }]}>
+      <StickyBar bottomInset={insets.bottom}>
         <View style={styles.flex}>
-          <AppText variant="cardTitle">{formatInr(payable)}</AppText>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>
-            {coupon ? `${coupon.code} applied · ` : ''}Total payable
+          <AppText variant="subheading" style={tabularNums}>
+            {formatInr(payable)}
+          </AppText>
+          <Text style={[type.label, { color: colors.textMuted }]}>
+            {coupon ? `${coupon.code} applied · total` : 'Total payable'}
           </Text>
         </View>
-        <PrimaryButton
-          label={processing ? 'Processing demo payment' : `Pay ${formatInr(payable)} (demo)`}
+        <Button
+          label={processing ? 'Processing' : `Pay ${formatInr(payable)}`}
           onPress={pay}
           loading={processing}
           disabled={enrolled}
           fullWidth={false}
         />
-      </View>
+      </StickyBar>
     </View>
   );
 }
@@ -275,72 +278,55 @@ export default function CheckoutScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
-  summaryCard: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.sm,
-  },
-  thumb: { width: 92, height: 72, borderRadius: radius.image, backgroundColor: colors.surfaceWarm },
-  section: { gap: spacing.sm },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  termsList: { gap: spacing.sm },
+  pad: { paddingHorizontal: layout.section },
+  summaryRow: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
+  thumb: { width: 88, height: 68, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  metaRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs, flexWrap: 'wrap' },
+  section: { gap: layout.gap },
+  sectionHead: { gap: spacing.xs },
+  badgeWrap: { paddingHorizontal: layout.section, marginTop: spacing.xs },
+  termsList: { gap: spacing.sm, paddingHorizontal: layout.section },
   termRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
   appliedCoupon: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     backgroundColor: colors.successSoft,
-    borderRadius: radius.input,
-    padding: spacing.sm,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    minHeight: layout.fieldHeight,
   },
-  scenarioList: { gap: spacing.xs, marginTop: spacing.xxs },
+  scenarioList: { gap: layout.gap },
   scenarioRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.input,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: spacing.sm,
+    padding: spacing.md,
     minHeight: 60,
   },
   scenarioRowSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   radio: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: radius.pill,
     borderWidth: 1.5,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
   radioSelected: { borderColor: colors.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
-  securityRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  cancelled: { gap: spacing.sm, backgroundColor: colors.surfaceWarm, borderRadius: radius.card, padding: spacing.md },
-  owned: { gap: spacing.sm, backgroundColor: colors.surfaceWarm, borderRadius: radius.card, padding: spacing.md },
-  stickyBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingHorizontal: screenPadding,
-    paddingTop: spacing.sm,
-    backgroundColor: colors.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+  radioDot: { width: 10, height: 10, borderRadius: radius.pill, backgroundColor: colors.primary },
+  securityRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start', paddingTop: spacing.md },
+  notice: {
+    gap: spacing.sm,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+    marginTop: spacing.md,
+    alignItems: 'flex-start',
   },
 });

@@ -2,20 +2,18 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { Bell, Bookmark, BookOpen, CircleCheck, Clock, LogOut, Settings, ShieldCheck } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
-import { AppText, ListRow } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppText, Badge, Button, DataList, ListRow, Screen } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
-import { useStore } from '@/store';
 import { formatDuration, maskPhone } from '@/lib/format';
+import { useStore } from '@/store';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { session, state, courseProgressRatio, completedCount, signOut } = useStore();
+  const { session, state, signOut } = useStore();
   const [logoutOpen, setLogoutOpen] = useState(false);
 
   const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments]);
@@ -40,82 +38,78 @@ export default function ProfileScreen() {
     : null;
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: spacing.xxxl }]}
-        showsVerticalScrollIndicator={false}>
-        <AppText variant="title">Profile</AppText>
+    <Screen contentStyle={styles.content}>
+      <Text style={[type.display, styles.title, { color: colors.text }]}>Profile</Text>
 
-        <View style={styles.identity}>
+      <View style={styles.pad}>
+        <View style={styles.identityCard}>
           <View style={styles.avatar}>
-            <Text style={[type.screenTitle, { color: colors.primary, fontSize: 26, lineHeight: 32 }]}>{initial}</Text>
+            <Text style={[type.title, { color: colors.primary }]}>{initial}</Text>
           </View>
           <View style={styles.flex}>
-            <Text style={[type.cardTitle, { color: colors.text }]}>{session?.profile.name ?? 'Signed out'}</Text>
-            <Text style={[type.supporting, { color: colors.textSecondary }]}>
+            <Text style={[type.title, { color: colors.text }]} numberOfLines={1}>
+              {session?.profile.name ?? 'Signed out'}
+            </Text>
+            <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
               {session ? maskPhone(session.profile.phone) : 'No active session'}
             </Text>
-            {joined ? (
-              <Text style={[type.meta, { color: colors.textSecondary }]}>Member since {joined}</Text>
-            ) : null}
+            {joined ? <Text style={[type.label, { color: colors.textSubtle }]}>Member since {joined}</Text> : null}
           </View>
         </View>
 
-        <View style={styles.statsRow}>
+        <View style={styles.statsCard}>
           <Stat icon={BookOpen} label="Courses" value={String(stats.courses)} />
+          <View style={styles.statDivider} />
           <Stat icon={CircleCheck} label="Lessons done" value={String(stats.lessons)} />
+          <View style={styles.statDivider} />
           <Stat icon={Clock} label="Time learned" value={formatDuration(stats.minutes)} />
         </View>
+      </View>
 
+      <View style={styles.group}>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Your library</Text>
         <View style={styles.card}>
-          <ListRow
-            icon={Bookmark}
-            label="Saved courses"
-            subtitle={`${state.savedCourseIds.length} saved · ${state.savedRecipeIds.length} recipes`}
-            onPress={() => router.push('/saved')}
-          />
-          <ListRow
-            icon={Bell}
-            label="Notifications"
-            value={state.notificationsRead ? 'All read' : 'New'}
-            onPress={() => router.push('/notifications')}
-          />
-          <ListRow icon={Settings} label="Settings" subtitle="Notifications, account, data" onPress={() => router.push('/settings')} />
-          <ListRow
-            icon={ShieldCheck}
-            label="Help and support"
-            subtitle="Answers and how to reach us"
-            onPress={() => router.push('/help')}
-          />
+          <DataList dividerInset={layout.screen + 32 + spacing.md}>
+            <ListRow
+              icon={Bookmark}
+              label="Saved"
+              subtitle={`${state.savedCourseIds.length} courses · ${state.savedRecipeIds.length} recipes`}
+              onPress={() => router.push('/saved')}
+            />
+            <ListRow
+              icon={Bell}
+              label="Notifications"
+              value={state.notificationsRead ? 'All read' : 'New'}
+              onPress={() => router.push('/notifications')}
+            />
+          </DataList>
         </View>
+      </View>
 
+      <View style={styles.group}>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Settings & support</Text>
         <View style={styles.card}>
-          <ListRow
-            icon={LogOut}
-            label="Log out"
-            tone="danger"
-            chevron={false}
-            subtitle="Clears this session and the learning data stored for it"
-            onPress={() => setLogoutOpen(true)}
-          />
+          <DataList dividerInset={layout.screen + 32 + spacing.md}>
+            <ListRow icon={Settings} label="Settings" subtitle="Notifications, account, app data" onPress={() => router.push('/settings')} />
+            <ListRow icon={ShieldCheck} label="Help and support" subtitle="Answers and how to reach us" onPress={() => router.push('/help')} />
+          </DataList>
         </View>
+      </View>
 
+      <View style={styles.pad}>
+        <Button label="Log out" variant="danger" icon={LogOut} onPress={() => setLogoutOpen(true)} />
         <View style={styles.about}>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>
-            Rasoi Studio {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
-          </Text>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>
-            Sample catalog, demo authentication and demo payments. No real transactions.
-          </Text>
-          <View style={styles.progressNote}>
-            {enrolled.map((course) => (
-              <Text key={course.id} style={[type.meta, { color: colors.textSecondary }]}>
-                {course.title}: {completedCount(course)}/{course.lessonCount} · {Math.round(courseProgressRatio(course) * 100)}%
-              </Text>
-            ))}
+          <View style={styles.aboutRow}>
+            <AppText variant="label" color={colors.textSubtle}>
+              Rasoi Studio {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
+            </AppText>
+            <Badge label="Demo" tone="gold" />
           </View>
+          <AppText variant="label" color={colors.textSubtle}>
+            Sample catalog, demo authentication and demo payments. No real transactions.
+          </AppText>
         </View>
-      </ScrollView>
+      </View>
 
       <ConfirmSheet
         visible={logoutOpen}
@@ -130,18 +124,18 @@ export default function ProfileScreen() {
         }}
         onCancel={() => setLogoutOpen(false)}
       />
-    </View>
+    </Screen>
   );
 }
 
 function Stat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: string; value: string }) {
   return (
     <View style={styles.stat}>
-      <Icon size={17} color={colors.sage} strokeWidth={1.9} />
-      <Text style={[type.cardTitle, { color: colors.text, fontSize: 17 }]} numberOfLines={1}>
+      <Icon size={16} color={colors.sage} strokeWidth={1.75} />
+      <AppText variant="subheading" style={tabularNums}>
         {value}
-      </Text>
-      <Text style={[type.meta, { color: colors.textSecondary }]} numberOfLines={1}>
+      </AppText>
+      <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -149,46 +143,42 @@ function Stat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: stri
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    paddingTop: spacing.sm,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
+  content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  identity: {
+  title: { paddingHorizontal: layout.section, paddingTop: spacing.sm },
+  pad: { paddingHorizontal: layout.screen, gap: layout.gap },
+  identityCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
     backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
   },
   avatar: {
-    width: 64,
-    height: 64,
+    width: 56,
+    height: 56,
     borderRadius: radius.pill,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statsRow: { flexDirection: 'row', gap: spacing.xs },
-  stat: {
-    flex: 1,
-    backgroundColor: colors.surfaceWarm,
-    borderRadius: radius.input,
-    padding: spacing.sm,
-    gap: spacing.xxs,
-  },
-  card: {
+  statsCard: {
+    flexDirection: 'row',
     backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
+    marginTop: layout.gap,
   },
-  about: { gap: spacing.xxs },
-  progressNote: { gap: 2, marginTop: spacing.xs },
+  stat: { flex: 1, alignItems: 'center', gap: spacing.xs },
+  statDivider: { width: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
+  group: { gap: spacing.sm },
+  groupTitle: { paddingHorizontal: layout.section },
+  card: { backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  about: { gap: spacing.xs, paddingTop: spacing.md },
+  aboutRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 });

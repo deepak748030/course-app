@@ -2,22 +2,20 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Bookmark, BookmarkCheck, BookOpen, ShoppingBasket } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { CourseCardLarge } from '@/components/course-cards';
-import { Badge, EmptyState, IconButton, ScreenHeader } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppBar, Badge, DataList, EmptyState, IconButton, MetaItem, Screen, Segmented } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, courses, instructorById } from '@/data/catalog';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 import { formatDuration } from '@/lib/format';
+import { Clock, CookingPot } from 'lucide-react-native';
 
 type Segment = 'courses' | 'recipes';
 
 export default function SavedScreen() {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { state, toggleSavedRecipe } = useStore();
   const [segment, setSegment] = useState<Segment>('courses');
 
@@ -35,46 +33,66 @@ export default function SavedScreen() {
   );
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-        showsVerticalScrollIndicator={false}>
-        <ScreenHeader title="Saved" />
+    <Screen header={<AppBar title="Saved" />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.gap }}>
+      <View style={styles.segmentWrap}>
+        <Segmented<Segment>
+          options={[
+            { id: 'courses', label: `Courses · ${savedCourses.length}` },
+            { id: 'recipes', label: `Recipes · ${savedRecipes.length}` },
+          ]}
+          value={segment}
+          onChange={setSegment}
+        />
+      </View>
 
-        <View style={styles.segment}>
-          <SegmentButton label={`Courses (${savedCourses.length})`} active={segment === 'courses'} onPress={() => setSegment('courses')} />
-          <SegmentButton label={`Recipes (${savedRecipes.length})`} active={segment === 'recipes'} onPress={() => setSegment('recipes')} />
-        </View>
-
-        {segment === 'courses' ? (
-          savedCourses.length === 0 ? (
-            <EmptyState
-              icon={BookOpen}
-              title="Nothing saved yet"
-              body="Tap the bookmark on any course card and it will be waiting here, even while you decide."
-              actionLabel="Browse courses"
-              onAction={() => router.push('/explore')}
-            />
-          ) : (
-            <View style={styles.list}>
-              {savedCourses.map((course) => (
-                <CourseCardLarge key={course.id} course={course} />
-              ))}
-            </View>
-          )
-        ) : savedRecipes.length === 0 ? (
+      {segment === 'courses' ? (
+        savedCourses.length === 0 ? (
           <EmptyState
-            icon={ShoppingBasket}
-            title="No saved recipes"
-            body="Recipes live inside lessons. Open a lesson, go to the Recipe tab and save the ones you cook often."
-            actionLabel="Find a lesson"
+            icon={BookOpen}
+            title="Nothing saved yet"
+            body="Tap the bookmark on any course card and it will be waiting here, even while you decide."
+            actionLabel="Browse courses"
             onAction={() => router.push('/explore')}
           />
         ) : (
-          <View style={styles.list}>
-            {savedRecipes.map(({ course, lesson }) => (
+          <DataList>
+            {savedCourses.map((course) => (
               <Pressable
-                key={lesson.id}
+                key={course.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${course.title}, saved. Open course.`}
+                onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
+                style={({ pressed }) => [styles.courseRow, pressed && { opacity: 0.75 }]}>
+                <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
+                <View style={styles.flex}>
+                  <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+                    {course.title}
+                  </Text>
+                  <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+                    {instructorById(course.instructorId)?.name}
+                  </Text>
+                  <View style={styles.metaRow}>
+                    <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
+                    <Badge label={course.level} tone="neutral" />
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+          </DataList>
+        )
+      ) : savedRecipes.length === 0 ? (
+        <EmptyState
+          icon={ShoppingBasket}
+          title="No saved recipes"
+          body="Recipes live inside lessons. Open a lesson, go to the Recipe tab and save the ones you cook often."
+          actionLabel="Find a lesson"
+          onAction={() => router.push('/explore')}
+        />
+      ) : (
+        <DataList>
+          {savedRecipes.map(({ course, lesson }) => (
+            <View key={lesson.id} style={styles.recipeRow}>
+              <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${lesson.recipe!.title}, from ${course.title}. Open the recipe.`}
                 onPress={() =>
@@ -83,90 +101,54 @@ export default function SavedScreen() {
                     params: { courseId: course.id, lessonId: lesson.id, tab: 'recipe' },
                   })
                 }
-                style={({ pressed }) => [styles.recipeCard, pressed && { opacity: 0.85 }]}>
-                <Image source={course.cover} style={styles.recipeThumb} contentFit="cover" transition={150} />
+                style={({ pressed }) => [styles.recipeInner, pressed && { opacity: 0.75 }]}>
+                <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
                 <View style={styles.flex}>
-                  <Text style={[type.cardTitle, { color: colors.text }]} numberOfLines={2}>
+                  <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
                     {lesson.recipe!.title}
                   </Text>
-                  <Text style={[type.meta, { color: colors.textSecondary }]} numberOfLines={1}>
+                  <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
                     {course.title} · {instructorById(course.instructorId)?.name}
                   </Text>
-                  <View style={styles.recipeMeta}>
-                    <Badge label={`Serves ${lesson.recipe!.servings}`} tone="neutral" />
-                    <Text style={[type.meta, { color: colors.textSecondary }]}>
-                      {formatDuration(lesson.recipe!.prepMinutes + lesson.recipe!.cookMinutes)}
-                    </Text>
+                  <View style={styles.metaRow}>
+                    <MetaItem icon={CookingPot} label={`Serves ${lesson.recipe!.servings}`} />
+                    <MetaItem
+                      icon={Clock}
+                      label={formatDuration(lesson.recipe!.prepMinutes + lesson.recipe!.cookMinutes)}
+                    />
                   </View>
                 </View>
-                <IconButton
-                  icon={BookmarkCheck}
-                  active
-                  accessibilityLabel={`Remove ${lesson.recipe!.title} from saved recipes`}
-                  onPress={() => toggleSavedRecipe(lesson.recipe!.id)}
-                  variant="soft"
-                  size={40}
-                />
               </Pressable>
-            ))}
-          </View>
-        )}
+              <IconButton
+                icon={BookmarkCheck}
+                active
+                accessibilityLabel={`Remove ${lesson.recipe!.title} from saved recipes`}
+                onPress={() => toggleSavedRecipe(lesson.recipe!.id)}
+                variant="soft"
+                size={layout.touchTarget}
+              />
+            </View>
+          ))}
+        </DataList>
+      )}
 
-        <View style={styles.footNote}>
-          <Bookmark size={15} color={colors.textSecondary} strokeWidth={1.9} />
-          <Text style={[type.meta, { color: colors.textSecondary, flex: 1 }]}>
-            Saved items are stored on this device with your session.
-          </Text>
-        </View>
-      </ScrollView>
-    </View>
-  );
-}
-
-function SegmentButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={[styles.segmentButton, active && styles.segmentButtonActive]}>
-      <Text style={[type.label, { color: active ? colors.textInverse : colors.text }]} numberOfLines={1}>
-        {label}
-      </Text>
-    </Pressable>
+      <View style={styles.footNote}>
+        <Bookmark size={14} color={colors.textSubtle} strokeWidth={1.9} />
+        <Text style={[type.label, { color: colors.textSubtle, flex: 1 }]}>
+          Saved items are stored on this device with your session.
+        </Text>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: colors.surfaceWarm,
-    borderRadius: radius.pill,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  segmentButton: { flex: 1, minHeight: 42, alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
-  segmentButtonActive: { backgroundColor: colors.primary },
-  list: { gap: spacing.md },
-  recipeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.sm,
-  },
-  recipeThumb: { width: 72, height: 72, borderRadius: radius.image, backgroundColor: colors.surfaceWarm },
-  recipeMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginTop: spacing.xxs },
-  footNote: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  segmentWrap: { paddingHorizontal: 0 },
+  courseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  thumb: { width: 72, height: 72, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
+  recipeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
+  recipeInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
+  footNote: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.sm },
 });

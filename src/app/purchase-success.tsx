@@ -5,8 +5,8 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Badge, PrimaryButton, ScreenContainer } from '@/components/ui';
-import { colors, radius, spacing, type } from '@/constants/theme';
+import { AppText, Badge, Button, DataList, Divider, Screen } from '@/components/ui';
+import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, firstPlayableLesson } from '@/data/catalog';
 import { useStore } from '@/store';
 import { formatInr } from '@/lib/format';
@@ -36,61 +36,71 @@ export default function PurchaseSuccessScreen() {
 
   if (!course) {
     return (
-      <ScreenContainer contentStyle={{ paddingTop: insets.top + spacing.xxl, gap: spacing.lg }}>
-        <Text style={[type.screenTitle, { color: colors.text }]}>Course not found</Text>
-        <PrimaryButton label="Back to My learning" onPress={() => router.replace('/learning')} />
-      </ScreenContainer>
+      <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.xl, paddingTop: spacing.xxl, gap: layout.gap }}>
+        <View style={styles.markWrap}>
+          <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>Course not found</Text>
+          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
+            This confirmation link is out of date, so the purchase cannot be shown.
+          </Text>
+        </View>
+        <View style={styles.pad}>
+          <Button label="Back to My learning" onPress={() => router.replace('/learning')} />
+        </View>
+      </Screen>
     );
   }
 
   const firstLesson = firstPlayableLesson(course);
 
   return (
-    <ScreenContainer
+    <Screen
       contentStyle={{
-        paddingTop: insets.top + spacing.xxxl,
+        paddingTop: spacing.xxl,
         paddingBottom: insets.bottom + spacing.xl,
-        gap: spacing.lg,
         flexGrow: 1,
+        gap: layout.sectionGap,
       }}>
       <View style={styles.markWrap}>
         <Animated.View style={[styles.mark, markStyle]}>
-          <CircleCheck size={46} color={colors.success} strokeWidth={1.8} />
+          <CircleCheck size={44} color={colors.success} strokeWidth={1.8} />
         </Animated.View>
-        <Text style={[type.screenTitle, { color: colors.text, textAlign: 'center' }]}>You&apos;re in</Text>
-        <Text style={[type.body, { color: colors.textSecondary, textAlign: 'center' }]}>
+        <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>You&apos;re in</Text>
+        <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
           {course.title} is unlocked. All {course.lessonCount} lessons are ready whenever you are.
         </Text>
       </View>
 
-      <View style={styles.summary}>
+      <DataList>
         <View style={styles.summaryRow}>
-          <Text style={[type.supporting, { color: colors.textSecondary }]}>Course</Text>
-          <Text style={[type.label, { color: colors.text, flex: 1, textAlign: 'right' }]} numberOfLines={2}>
+          <Text style={[type.label, { color: colors.textMuted }]}>Course</Text>
+          <Text style={[type.bodyStrong, styles.right]} numberOfLines={2}>
             {course.title}
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[type.supporting, { color: colors.textSecondary }]}>Paid (demo)</Text>
-          <Text style={[type.label, { color: colors.text }]}>
+          <Text style={[type.label, { color: colors.textMuted }]}>Paid (demo)</Text>
+          <AppText variant="bodyStrong" style={[tabularNums, styles.right]}>
             {enrollment ? formatInr(enrollment.priceInr) : '—'}
-          </Text>
+          </AppText>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[type.supporting, { color: colors.textSecondary }]}>Reference</Text>
-          <Text style={[type.meta, { color: colors.textSecondary }]}>local demo enrolment</Text>
+          <Text style={[type.label, { color: colors.textMuted }]}>Reference</Text>
+          <Text style={[type.label, styles.right, { color: colors.textMuted }]}>local demo enrolment</Text>
         </View>
+      </DataList>
+
+      <View style={styles.pad}>
         <Badge label="Demo purchase — no payment was processed" tone="gold" />
       </View>
 
       {!isEnrolled(course.id) ? (
-        <Text style={[type.meta, { color: colors.error }]}>
+        <Text style={[type.label, styles.pad, { color: colors.error }]}>
           This enrolment is not on your account. Return to the course page to buy it again.
         </Text>
       ) : null}
 
-      <View style={styles.actions}>
-        <PrimaryButton
+      <View style={[styles.actions, { paddingBottom: 0 }]}>
+        <Button
           label="Start the first lesson"
           icon={Play}
           onPress={() =>
@@ -100,32 +110,30 @@ export default function PurchaseSuccessScreen() {
             })
           }
         />
-        <PrimaryButton label="Go to My learning" variant="secondary" onPress={() => router.replace('/learning')} />
-        <PrimaryButton label="Back to course page" variant="ghost" onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })} />
+        <Button label="Go to My learning" variant="secondary" onPress={() => router.replace('/learning')} />
+        <Button
+          label="Back to course page"
+          variant="ghost"
+          onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
+        />
       </View>
-    </ScreenContainer>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  markWrap: { alignItems: 'center', gap: spacing.sm },
+  pad: { paddingHorizontal: layout.screen },
+  markWrap: { alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.section },
   mark: {
-    width: 96,
-    height: 96,
+    width: 92,
+    height: 92,
     borderRadius: radius.pill,
     backgroundColor: colors.successSoft,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
   },
-  summary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-  },
-  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  actions: { gap: spacing.xs, marginTop: 'auto' },
+  summaryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md },
+  right: { flex: 1, textAlign: 'right' },
+  actions: { gap: layout.gap, marginTop: 'auto', paddingHorizontal: layout.screen },
 });

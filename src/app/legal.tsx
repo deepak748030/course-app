@@ -1,9 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { AppText, Badge, PrimaryButton, ScreenHeader } from '@/components/ui';
-import { colors, maxContentWidth, radius, screenPadding, spacing, type } from '@/constants/theme';
+import { AppBar, Badge, Button, Divider, Screen } from '@/components/ui';
+import { colors, layout, spacing, type } from '@/constants/theme';
 import { legalDocs } from '@/data/content';
 
 type DocKey = keyof typeof legalDocs;
@@ -11,61 +10,47 @@ type DocKey = keyof typeof legalDocs;
 export default function LegalScreen() {
   const { doc } = useLocalSearchParams<{ doc?: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const key: DocKey = doc === 'privacy' ? 'privacy' : 'terms';
   const document = legalDocs[key];
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
-        showsVerticalScrollIndicator={false}>
-        <ScreenHeader title={document.title} />
+    <Screen header={<AppBar title={document.title} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
+      <View style={styles.header}>
+        <Text style={[type.title, { color: colors.text }]}>{document.title}</Text>
+        <Badge label={document.updated} tone="gold" />
+      </View>
 
-        <View style={styles.header}>
-          <Text style={[type.screenTitle, { color: colors.text, fontSize: 25, lineHeight: 32 }]}>
-            {document.title}
-          </Text>
-          <Badge label={document.updated} tone="gold" />
-        </View>
-
-        <View style={styles.card}>
-          {document.paragraphs.map((paragraph, index) => (
-            <Text key={index} style={[type.body, { color: colors.textSecondary }]}>
-              {paragraph}
-            </Text>
-          ))}
-        </View>
-
-        <AppText variant="meta" color={colors.textSecondary}>
+      <View style={styles.pad}>
+        <Text style={[type.label, { color: colors.textSubtle }]}>
           Before distributing Rasoi Studio, replace this placeholder with documents reviewed by a lawyer.
-        </AppText>
+        </Text>
+      </View>
 
-        <PrimaryButton
-          label="Other document"
+      <View style={styles.paragraphs}>
+        {document.paragraphs.map((paragraph, index) => (
+          <View key={index}>
+            {index > 0 ? <Divider style={styles.divider} /> : null}
+            <Text style={[type.body, styles.paragraph, { color: colors.text }]}>{paragraph}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.pad}>
+        <Button
+          label={key === 'terms' ? 'Read the privacy policy' : 'Read the terms of use'}
           variant="secondary"
           onPress={() => router.replace({ pathname: '/legal', params: { doc: key === 'terms' ? 'privacy' : 'terms' } })}
         />
-      </ScrollView>
-    </View>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.background },
-  content: {
-    paddingHorizontal: screenPadding,
-    gap: spacing.lg,
-    width: '100%',
-    maxWidth: maxContentWidth,
-    alignSelf: 'center',
-  },
-  header: { gap: spacing.xs, alignItems: 'flex-start' },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
+  pad: { paddingHorizontal: layout.screen },
+  header: { gap: spacing.sm, alignItems: 'flex-start', paddingHorizontal: layout.section, paddingTop: spacing.sm },
+  paragraphs: { paddingHorizontal: layout.screen },
+  paragraph: { paddingVertical: spacing.md },
+  divider: { marginLeft: 0 },
 });
