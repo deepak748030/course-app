@@ -9,10 +9,12 @@ import {
   Check,
   CircleAlert,
   CircleCheck,
+  CirclePlay,
   ChartNoAxesColumnIncreasing,
   Clapperboard,
   Clock,
   Gauge,
+  ListVideo,
   Lock,
   Maximize2,
   Minus,
@@ -22,6 +24,7 @@ import {
   ShoppingBasket,
   SkipBack,
   SkipForward,
+  Trophy,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -42,10 +45,22 @@ import {
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AnimatedCheck } from '@/components/animated-icons';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
-import { AppBar, Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen } from '@/components/ui';
+import {
+  AppBar,
+  Badge,
+  Button,
+  DataList,
+  EmptyState,
+  IconButton,
+  ListRow,
+  MetaItem,
+  ProgressBar,
+  Screen,
+} from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';
@@ -493,22 +508,25 @@ export default function LessonPlayerScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {/* Title block under the video: overline, title, facts and progress, then a hairline
-              so the tabs read as a separate control instead of more body copy. */}
+          {/* Title block under the video: section and status on one line, then the title, the
+              facts and the progress — four short lines instead of a stack of loose labels, and
+              then a hairline so the tabs read as a separate control instead of more body copy. */}
           <View style={styles.lessonHead}>
-            <Text style={[type.overline, { color: colors.textSubtle }]} numberOfLines={1}>
-              {currentSection?.title ?? course.title}
-            </Text>
+            <View style={styles.kickerRow}>
+              <Text style={[type.overline, styles.flex, { color: colors.textSubtle }]} numberOfLines={1}>
+                {currentSection?.title ?? course.title}
+              </Text>
+              {lesson.isPreview ? <Badge label="Free preview" tone="sage" icon={CirclePlay} /> : null}
+            </View>
             <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
             <View style={styles.metaWrap}>
               <MetaItem icon={Clapperboard} label={`Lesson ${lessonNumber} of ${course.lessonCount}`} />
               <MetaItem icon={Clock} label={`${lesson.minutes} min`} />
               <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
             </View>
-            {lesson.isPreview || completed ? (
+            {completed ? (
               <View style={styles.badgeRow}>
-                {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
-                {completed ? <Badge label="Completed" tone="success" icon={CircleCheck} /> : null}
+                <Badge label="Completed" tone="success" icon={CircleCheck} />
               </View>
             ) : null}
             <View style={styles.progressBlock}>
@@ -538,26 +556,43 @@ export default function LessonPlayerScreen() {
 
           {tab === 'overview' ? (
             <View style={styles.tabBody}>
-              <Text style={[type.body, styles.prose, { color: colors.text }]}>{lesson.description}</Text>
-              <View style={styles.overviewActions}>
-                <Button
-                  label={completed ? 'Completed — mark as not done' : 'Mark lesson as complete'}
-                  variant={completed ? 'secondary' : 'primary'}
-                  icon={completed ? CircleCheck : Check}
-                  onPress={() => markComplete(!completed)}
-                />
-                {upcoming ? (
-                  <Button label={`Next: ${upcoming.title}`} variant="ghost" onPress={() => goToLesson(upcoming.id)} />
-                ) : (
-                  <Button
-                    label="You have reached the last lesson"
-                    variant="ghost"
-                    onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
+              <Text style={[type.body, { color: colors.text }]}>{lesson.description}</Text>
+              <Button
+                label={completed ? 'Mark as not done' : 'Mark lesson as complete'}
+                variant={completed ? 'secondary' : 'primary'}
+                icon={completed ? CircleCheck : undefined}
+                iconNode={completed ? undefined : <AnimatedCheck size={18} color={colors.onAccent} />}
+                accessibilityHint={completed ? 'Removes the completed mark from this lesson' : undefined}
+                onPress={() => markComplete(!completed)}
+              />
+              {/* Where to go next lives in one hairline list: a row with an icon tile and a chevron
+                  reads as somewhere to tap, which three stacked text links did not. */}
+              <View style={styles.actionCard}>
+                <DataList dividerInset={layout.screen + 32 + spacing.md}>
+                  {upcoming ? (
+                    <ListRow
+                      icon={Play}
+                      label={upcoming.title}
+                      subtitle={`Next lesson · ${upcoming.minutes} min`}
+                      onPress={() => goToLesson(upcoming.id)}
+                    />
+                  ) : (
+                    <ListRow
+                      icon={Trophy}
+                      label="You have reached the last lesson"
+                      subtitle="Open the course for what comes next"
+                      onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
+                    />
+                  )}
+                  <ListRow
+                    icon={ListVideo}
+                    label="All lessons in this course"
+                    subtitle={`${course.lessonCount} lessons`}
+                    onPress={() => setLessonListOpen(true)}
                   />
-                )}
-                <Button label="All lessons in this course" variant="ghost" onPress={() => setLessonListOpen(true)} />
+                </DataList>
               </View>
-              <Text style={[type.label, styles.prose, { color: colors.textSubtle }]}>
+              <Text style={[type.label, { color: colors.textSubtle }]}>
                 Playback position is saved on this device, so you can leave and come back.
               </Text>
             </View>
@@ -652,7 +687,7 @@ export default function LessonPlayerScreen() {
                 </View>
               ) : null}
 
-              <Text style={[type.label, styles.prose, { color: colors.textSubtle }]}>
+              <Text style={[type.label, { color: colors.textSubtle }]}>
                 Sample recipe content for learning. This is not professional dietary, allergy or food-safety advice.
               </Text>
             </View>
@@ -660,7 +695,7 @@ export default function LessonPlayerScreen() {
 
           {tab === 'notes' ? (
             <View style={styles.tabBody}>
-              <Text style={[type.body, styles.prose, { color: colors.textMuted }]}>
+              <Text style={[type.body, { color: colors.textMuted }]}>
                 Notes are private to this device and stay with “{lesson.title}”.
               </Text>
               <TextInput
@@ -901,14 +936,16 @@ const styles = createStyles(() => StyleSheet.create({
 
   content: { gap: layout.gap },
   lessonHead: {
-    paddingHorizontal: layout.section,
-    paddingTop: spacing.lg,
+    paddingHorizontal: layout.screen,
+    paddingTop: spacing.md,
     paddingBottom: spacing.md,
-    gap: spacing.md,
+    gap: spacing.xs,
   },
-  metaWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
+  kickerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  metaWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap', marginTop: spacing.xs },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  progressBlock: { gap: spacing.xs },
+  /** A little air above the bar, so progress reads as its own group under the facts. */
+  progressBlock: { gap: spacing.xs, marginTop: spacing.md },
   progressHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rule: { height: 1, backgroundColor: colors.divider },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
@@ -924,7 +961,6 @@ const styles = createStyles(() => StyleSheet.create({
   tabButtonActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
 
   tabBody: { gap: layout.gap, paddingTop: layout.gap, paddingHorizontal: layout.screen },
-  prose: { paddingHorizontal: spacing.sm },
   sectionCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.sm,
@@ -934,15 +970,21 @@ const styles = createStyles(() => StyleSheet.create({
     gap: spacing.sm,
   },
   tipsCard: { backgroundColor: colors.surfaceAlt, borderColor: 'transparent' },
-  overviewActions: { gap: layout.gap, paddingTop: spacing.sm },
+  /** Full-bleed list out of the body's 8pt gutter, the same shape as the groups on Profile. */
+  actionCard: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+    marginHorizontal: -layout.screen,
+  },
 
-  recipeHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, paddingHorizontal: spacing.sm },
+  recipeHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   servingsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing.sm,
-    paddingHorizontal: spacing.sm,
   },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   servingValue: { minWidth: 28, textAlign: 'center' },

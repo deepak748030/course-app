@@ -137,6 +137,11 @@ The UI follows the project's design rules document and is generated from one tok
   from then on the whole overlay is a three-second peek: it shows on a tap on the picture or any
   transport action and hides again while the video is playing. A paused picture keeps its controls, so
   a learner who stops to read the frame is never left with a blank one.
+- **The lesson screen keeps the app gutter under the picture.** Section and status share the first
+  line — the status is a badge with its own glyph — and the title, the facts and the course progress
+  follow on a 4 / 8 / 12 rhythm instead of four evenly-spaced lines. The tabs' body stays on the 8pt
+  gutter, and the lesson's neighbours (the next lesson, the whole curriculum) are one hairline list
+  with icon tiles rather than three stacked text links.
 - **Hairlines over boxes.** Data lists draw a divider between rows (none after the last) instead of
   spacing every row apart, and dividers inset to the row content when a row has a leading icon.
 - **Concentric radii** (4 / 8 / 12 / 16, pill only for single-line content) and 44pt minimum touch
