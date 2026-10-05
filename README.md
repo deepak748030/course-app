@@ -1,26 +1,137 @@
-# courses-app
+# Rasoi Studio
 
-An [Expo](https://expo.dev) app (React Native + Expo Router) for Android, iOS and web.
+A premium Indian cooking-education app built with Expo (SDK 57), Expo Router and TypeScript.
+Learners browse structured video courses, buy them, and learn inside an immersive lesson player.
 
-## Get started
+> **Prototype build.** The catalog, instructors, prices, ratings and reviews are fictional sample
+> content. Authentication and payments are demo implementations; nothing is charged and no SMS is
+> sent. Anything not implemented is said so in the UI rather than shown as a working control.
+
+## Run it
 
 ```bash
-npm install
-npx expo start
+npm install          # or: bun install
+npx expo start       # then press i / a / w, or scan with Expo Go
 ```
 
-Then open the app in a development build, Android emulator, iOS simulator, Expo Go or the web
-(use `npx expo start --web`).
+Handy scripts:
+
+```bash
+npm run check        # tsc --noEmit + the runnable self-check (scripts/selfcheck.ts)
+npm run typecheck    # TypeScript only
+npx expo start --web # web build
+```
+
+Expo Go can run most of the app. Screens that depend on native modules added by this project
+(`expo-video`, `expo-secure-store`, `expo-haptics`) need a development build:
+
+```bash
+npx expo run:android   # or: npx expo run:ios, or: eas build --profile development
+```
+
+## Demo authentication
+
+There is no SMS provider. `src/services/auth.ts` ships a demo adapter, and both auth screens say so.
+
+- **Demo code: `246810`** (6 digits). Documented here only — it is never shown in the app and never logged.
+- After **3 wrong attempts** the flow returns an “expired” state so that error path is reproducible.
+- `9000000000` is reserved to simulate a request that cannot reach the server.
+- Resend countdown starts at 30 seconds and is a UX affordance only; real rate limiting belongs on the server.
+- The session token is stored with `expo-secure-store` on native devices. On **web** there is no secure
+  store, so it falls back to `AsyncStorage` — acceptable for a demo, not for production.
+
+To go live, implement `AuthService` against your provider and swap the export at the bottom of the file.
+Nothing else in the app changes.
+
+## Demo payments
+
+There is no payment gateway. `src/services/payments.ts` never touches the network, never collects card,
+UPI or bank details, and never claims a real settlement.
+
+Checkout lets you pick which scenario the demo reproduces:
+
+| Scenario | Result |
+| --- | --- |
+| Successful payment | Enrols you and unlocks every lesson of the course |
+| Failed payment | Shows the failure + retry state (nothing is charged) |
+| Cancelled by user | Returns to checkout with an explanatory note |
+
+Demo coupons: `RASOI10` (10% off) and `FOUNDATIONS20` (20% off). Every coupon is applied to a
+simulated total only.
 
 ## Project structure
 
 ```text
 src/
-  app/           # Expo Router screens (file-based routing)
-    _layout.tsx  # Root navigator
-    index.tsx    # Home screen
-  constants/     # Theme tokens (colors, fonts, spacing)
-  hooks/         # Shared React hooks
-assets/
-  images/        # App icon, splash and other static images
+  app/                     Expo Router routes (file = screen)
+    index.tsx              entry gate: onboarding → sign-in → app
+    onboarding.tsx         three-slide introduction
+    auth/phone.tsx         +91 mobile number entry
+    auth/otp.tsx           six-digit code, resend timer, error states
+    auth/interests.tsx     optional preference chips
+    (tabs)/                Home · Explore · My learning · Profile
+    course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)
+    instructor/[id].tsx    instructor profile
+    checkout/[id].tsx      demo checkout with scenarios and coupons
+    purchase-success.tsx   confirmation → first lesson
+    lesson/[courseId]/[lessonId].tsx   player: Overview · Recipe · Notes
+    saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
+  components/              UI kit (ui.tsx), course cards, bottom sheet, brand marks
+  constants/theme.ts       colors, spacing, radii, typography, motion, shadows
+  data/                    catalog.ts (courses/instructors), content.ts (FAQ, coupons, legal)
+  lib/format.ts            pure formatters/validators (runnable outside the app)
+  lib/util.ts              haptics feedback
+  media.ts                 the only place that maps data keys → bundled assets
+  services/                auth.ts, payments.ts (swappable boundaries)
+  store.tsx                single context: session, enrollments, progress, notes, saved, prefs
+  types/index.ts           typed data models
 ```
+
+State is one React context with `AsyncStorage` persistence — no state library for a project this size.
+
+## Assets and placeholders
+
+Photography in `assets/images` was **AI-generated for this prototype** using the art direction in the
+project brief (warm editorial culinary style). Photography is used for illustration only; every course
+cover and instructor portrait corresponds to fictional sample content.
+
+Generated so far: three onboarding plates, the home hero, six course covers, and five instructor
+portraits. Two covers (`course-eggless-desserts.jpg`, `course-knife-skills.jpg`) and any other missing
+photograph fall back to `placeholder-panel-4x3.jpg` / `placeholder-portrait.jpg` — deliberately branded
+warm panels so nothing ever renders as a broken image. Replace them with real photography using the
+same file names; no code changes are needed.
+
+Derived media is reproducible and documented in scripts:
+
+```bash
+bash scripts/generate-media.sh        # demo lesson clips (ffmpeg) + placeholder panels
+bash scripts/generate-brand-assets.sh # app icon, splash, favicon, Android adaptive layers
+```
+
+`assets/videos/demo-clip-*.mp4` are short, silent demo clips (a slow push-in over a still) used as
+placeholder lesson and trailer footage until real course video exists. They are real, playable files —
+no invented streaming URLs are used anywhere.
+
+The brand mark (bowl + steam + play triangle) is vector geometry in `src/components/marks.tsx` and is
+mirrored by the icon generator, so the app icon and the in-app mark stay in sync.
+
+## What is intentionally not included
+
+- **No offline downloads, captions, casting or picture-in-picture**, so the player shows no controls for them.
+- **No push notifications.** The bell shows clearly-labelled sample notifications; the delivery service is not wired up.
+- **No support inbox.** Help offers shareable feedback instead of a contact form that pretends to send.
+- **No dark theme.** The brand identity is light-first with one immersive dark player surface.
+- **No legal documents.** Terms and Privacy are marked placeholder copy that must be replaced before shipping.
+
+Demo data lives on the device: logging out clears the learning data stored for the session, while
+onboarding completion and app preferences are kept.
+
+## Verification performed
+
+- `npx tsc --noEmit` (also run with `--noUnusedLocals`) — clean.
+- `bun scripts/selfcheck.ts` — 7 assertions over phone normalisation/validation, masking, quantity
+  scaling, INR/clock/duration formatting and the greeting helper; all pass.
+- Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
+  returned HTTP 200 from the dev server.
+- Not performed: device/emulator runs, EAS builds, and real end-to-end UI interaction (no browser or
+  simulator in this environment) — layouts and gestures have not been verified on hardware.

@@ -1,30 +1,15 @@
-import Constants from 'expo-constants';
-import { StyleSheet, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from 'expo-router';
 
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { useStore } from '@/store';
 
-export default function HomeScreen() {
-  const theme = useTheme();
-  const appName = Constants.expoConfig?.name ?? 'App';
+/**
+ * Entry gate. Deep links and cold starts both land here and are routed to the right place:
+ * onboarding until it is completed, sign-in until there is a session, then the app itself.
+ */
+export default function Index() {
+  const { session, state } = useStore();
 
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <Text style={[styles.title, { color: theme.textSecondary }]}>{appName}</Text>
-    </SafeAreaView>
-  );
+  if (!state.onboardingDone) return <Redirect href="/onboarding" />;
+  if (!session) return <Redirect href="/auth/phone" />;
+  return <Redirect href="/home" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.four,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-});
