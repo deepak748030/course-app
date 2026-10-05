@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, DataList, EmptyState, IconButton, MetaItem, Screen, Segmented } from '@/components/ui';
 import { colors, layout, radius, spacing, type } from '@/constants/theme';
-import { courseById, courses, instructorById } from '@/data/catalog';
+import { courseById, courses } from '@/data/catalog';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 import { formatDuration } from '@/lib/format';
@@ -69,7 +69,7 @@ export default function SavedScreen() {
                     {course.title}
                   </Text>
                   <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-                    {instructorById(course.instructorId)?.name}
+                    {course.promise}
                   </Text>
                   <View style={styles.metaRow}>
                     <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
@@ -108,7 +108,7 @@ export default function SavedScreen() {
                     {lesson.recipe!.title}
                   </Text>
                   <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-                    {course.title} · {instructorById(course.instructorId)?.name}
+                    {course.title}
                   </Text>
                   <View style={styles.metaRow}>
                     <MetaItem icon={CookingPot} label={`Serves ${lesson.recipe!.servings}`} />

@@ -2,12 +2,12 @@
  * Sample catalog for Rasoi Studio.
  *
  * Everything here is FICTIONAL sample content authored for this prototype: courses, prices,
- * ratings, review counts, instructor biographies and reviews are not verified real-world facts.
+ * ratings, review counts and reviews are not verified real-world facts.
  * Lesson counts and durations are derived from the authored lessons so the numbers stay coherent.
  */
 
 import { images } from '@/media';
-import type { Category, Course, Id, Instructor, Lesson, Recipe, Review, VideoKey } from '@/types';
+import type { Category, Course, Id, Lesson, Recipe, Review, VideoKey } from '@/types';
 
 type RecipeSeed = Omit<Recipe, 'id' | 'title'> & { title: string };
 type LessonSeed = {
@@ -25,7 +25,6 @@ type CourseSeed = {
   title: string;
   promise: string;
   description: string;
-  instructorId: Id;
   cover: Course['cover'];
   video: VideoKey;
   categoryId: Id;
@@ -44,79 +43,6 @@ type CourseSeed = {
   isBeginnerPick?: boolean;
 };
 
-export const instructors: Instructor[] = [
-  {
-    id: 'meera',
-    name: 'Meera Iyer',
-    portrait: images.meera,
-    headline: 'Baking and breads, taught slowly',
-    city: 'Bengaluru',
-    yearsTeaching: 12,
-    expertise: ['Breads', 'Eggless baking', 'Laminated doughs'],
-    languages: ['English', 'English + Hindi'],
-    teachingStyle:
-      'Calm and methodical. Meera explains what each ingredient is doing before she touches the dough, so you can fix a bake instead of guessing why it failed.',
-    bio: 'Meera ran a neighbourhood bakery for eight years before moving to teaching full time. Her courses are built around the handful of habits that separate a reliable bake from a lucky one.',
-    verified: true,
-  },
-  {
-    id: 'arjun',
-    name: 'Arjun Malhotra',
-    portrait: images.arjun,
-    headline: 'Biryani, gravies and slow cooking',
-    city: 'Lucknow',
-    yearsTeaching: 15,
-    expertise: ['Biryani', 'Awadhi cooking', 'Restaurant gravies'],
-    languages: ['English', 'English + Hindi'],
-    teachingStyle:
-      'Story-led lessons with restaurant precision. Arjun shows the restaurant method first, then the home-kitchen version that actually fits your evening.',
-    bio: 'Arjun spent a decade in hotel kitchens before teaching. He is known for breaking long, intimidating recipes into steps you can practise one at a time.',
-    verified: true,
-  },
-  {
-    id: 'rhea',
-    name: 'Rhea Nair',
-    portrait: images.rhea,
-    headline: 'Everyday South Indian cooking',
-    city: 'Kochi',
-    yearsTeaching: 9,
-    expertise: ['Breakfasts', 'Fermentation', 'Weeknight meals'],
-    languages: ['English', 'English + Hindi'],
-    teachingStyle:
-      'Practical and quick. Rhea teaches the version of a dish you can cook on a Tuesday, then shows how to take it further when you have time.',
-    bio: 'Rhea grew up cooking in a Kerala kitchen and now teaches home cooks how to get consistent results from simple, everyday ingredients.',
-    verified: true,
-  },
-  {
-    id: 'vikram',
-    name: 'Vikram Deshmukh',
-    portrait: images.vikram,
-    headline: 'Knife skills and kitchen foundations',
-    city: 'Pune',
-    yearsTeaching: 18,
-    expertise: ['Knife skills', 'Stocks', 'Mise en place'],
-    languages: ['English'],
-    teachingStyle:
-      'Foundation first. Vikram spends the lesson on grip, board height and rhythm, because those three fix most of the speed problems in a home kitchen.',
-    bio: 'Vikram trained in professional kitchens and now teaches the unglamorous basics that make everything else faster and safer.',
-    verified: true,
-  },
-  {
-    id: 'nandini',
-    name: 'Nandini Sharma',
-    portrait: images.nandini,
-    headline: 'Eggless desserts and plating',
-    city: 'Delhi',
-    yearsTeaching: 11,
-    expertise: ['Chocolate', 'Plated desserts', 'Eggless cakes'],
-    languages: ['English', 'English + Hindi'],
-    teachingStyle:
-      'Precise and reassuring. Nandini treats eggless baking as its own craft, not a substitution, and shows you the texture cues to look for.',
-    bio: 'Nandini consulted for dessert menus across Delhi before focusing on teaching home bakers and pastry beginners.',
-    verified: true,
-  },
-];
-
 export const categories: Category[] = [
   { id: 'north-indian', label: 'North Indian', icon: 'CookingPot' },
   { id: 'south-indian', label: 'South Indian', icon: 'Soup' },
@@ -124,7 +50,7 @@ export const categories: Category[] = [
   { id: 'desserts', label: 'Desserts', icon: 'CakeSlice' },
   { id: 'everyday', label: 'Everyday cooking', icon: 'Utensils' },
   { id: 'healthy', label: 'Healthy', icon: 'Salad' },
-  { id: 'foundations', label: 'Foundations', icon: 'ChefHat' },
+  { id: 'foundations', label: 'Foundations', icon: 'CookingPot' },
 ];
 
 export const interests = categories;
@@ -136,7 +62,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Build a layered handi biryani you can be proud of, from rice to dum.',
     description:
       'A structured path through biryani: choosing and soaking rice, building the base, layering and sealing the handi, then the sides that complete the plate. Every technique is demonstrated on camera so you can see how the rice, masala and heat are supposed to behave.',
-    instructorId: 'arjun',
     cover: images.biryani,
     video: 'gravies',
     categoryId: 'north-indian',
@@ -281,7 +206,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Cook a confident, balanced Indian meal on a weeknight — without a recipe open.',
     description:
       'The course for anyone who wants to stop following recipes line by line. You will build a masala dabba, learn tempering and balancing, then cook a full thali repeatedly until it feels routine.',
-    instructorId: 'rhea',
     cover: images.everydayIndian,
     video: 'home-cooking',
     categoryId: 'everyday',
@@ -424,7 +348,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Weigh it right, read the dough, and bake bread and cakes that work every time.',
     description:
       'A complete first course in baking: how ingredients behave, your first loaf, cakes and cookies, and a troubleshooting section for the bakes that did not go to plan.',
-    instructorId: 'meera',
     cover: images.bakingBasics,
     video: 'baking',
     categoryId: 'baking',
@@ -570,7 +493,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Consistent dosa, idli and chutneys — from batter to tawa.',
     description:
       'Fermentation explained in plain language, then the tawa skills that decide whether your dosa is crisp. Includes the chutneys, sambar and podis that complete a weekend breakfast.',
-    instructorId: 'rhea',
     cover: images.southIndian,
     video: 'home-cooking',
     categoryId: 'south-indian',
@@ -668,7 +590,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Four base gravies, and the technique to make any curry taste finished.',
     description:
       'Learn the base gravies that restaurant kitchens keep on hand, then the finishing techniques — bhunao, dhungar, cream and butter balance — that make a home curry taste like a restaurant plate.',
-    instructorId: 'arjun',
     cover: images.gravies,
     video: 'gravies',
     categoryId: 'north-indian',
@@ -770,7 +691,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Balanced dinners in about twenty minutes, built from Indian staples.',
     description:
       'A practical course for busy weeks: a pantry that supports quick cooking, one-pan plates, and lighter versions of the dishes your family already likes.',
-    instructorId: 'rhea',
     cover: images.healthyWeeknight,
     video: 'home-cooking',
     categoryId: 'healthy',
@@ -868,7 +788,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Mousse, baked yoghurt and celebration cakes — without eggs, without compromise.',
     description:
       'Eggless baking treated as its own craft. Learn what eggs do in a recipe, what replaces them convincingly, and how to plate desserts that look like they came from a restaurant.',
-    instructorId: 'nandini',
     cover: images.egglessDesserts,
     video: 'baking',
     categoryId: 'desserts',
@@ -995,7 +914,6 @@ const courseSeeds: CourseSeed[] = [
     promise: 'Cut faster, cut safer, and set up a kitchen that works with you.',
     description:
       'A short, dense course on the fundamentals: your knife, your board, your grip, and the handful of cuts that cover almost everything you cook. Ends with heat control and mise en place.',
-    instructorId: 'vikram',
     cover: images.knifeSkills,
     video: 'foundations',
     categoryId: 'foundations',
@@ -1092,7 +1010,6 @@ function makeCourse(seed: CourseSeed): Course {
     title: seed.title,
     promise: seed.promise,
     description: seed.description,
-    instructorId: seed.instructorId,
     cover: seed.cover,
     video: seed.video,
     categoryId: seed.categoryId,
@@ -1119,14 +1036,6 @@ export const courses: Course[] = courseSeeds.map(makeCourse);
 
 export function courseById(id: string | undefined): Course | undefined {
   return courses.find((course) => course.id === id);
-}
-
-export function instructorById(id: string | undefined): Instructor | undefined {
-  return instructors.find((person) => person.id === id);
-}
-
-export function instructorCourses(instructorId: string): Course[] {
-  return courses.filter((course) => course.instructorId === instructorId);
 }
 
 export function nextLesson(course: Course, lessonId: string): Lesson | undefined {
@@ -1186,13 +1095,12 @@ export function browseCourses(filters: BrowseFilters): Course[] {
   const query = filters.query.trim().toLowerCase();
 
   const matched = courses.filter((course) => {
-    const instructor = instructorById(course.instructorId);
     const matchesQuery =
       query.length === 0 ||
       course.title.toLowerCase().includes(query) ||
       course.promise.toLowerCase().includes(query) ||
+      course.description.toLowerCase().includes(query) ||
       course.level.toLowerCase().includes(query) ||
-      (instructor?.name.toLowerCase().includes(query) ?? false) ||
       course.outcomes.some((outcome) => outcome.toLowerCase().includes(query));
 
     const matchesCategory =

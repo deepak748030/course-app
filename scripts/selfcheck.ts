@@ -25,14 +25,18 @@ if (typeof Bun !== 'undefined') {
 }
 
 import {
+  ageFromDateOfBirth,
+  buildDateOfBirth,
   formatClock,
   formatDuration,
   formatIndianMobile,
+  formatDateOfBirth,
   formatInr,
   maskPhone,
   normalizePhone,
   scaleQuantity,
   timeOfDayGreeting,
+  validateEmail,
   validateIndianMobile,
 } from '../src/lib/format';
 
@@ -189,7 +193,12 @@ function scanWorkletCallbacks(): string[] {
       const args = source.slice(start + 1, end);
       if (!/=>/.test(args)) continue; // no callback at all — always safe
       if (/runOnJS\s*\(|scheduleOnRN\s*\(/.test(args)) continue; // correctly hop to the JS thread
-      offenders.push(`${file.split('/src/')[1]}:${lineAt(match.index)} ${match[0]}`);
+      const stateCall = args.match(REACT_STATE_CALL);
+      offenders.push(
+        `${file.split('/src/')[1]}:${lineAt(match.index)} with${match[1]}() callback${
+          stateCall ? ` -> ${stateCall[0]}` : ' -> a plain JS function'
+        }`,
+      );
     }
   }
 
@@ -212,7 +221,7 @@ function scanWorkletCallbacks(): string[] {
       const body = source.slice(start + 1, end);
       const bad = body.match(REACT_STATE_CALL);
       if (!bad) continue;
-      const at = match.index + match[0].length + body.indexOf(bad[0]);
+      const at = match.index + match[0].length - 1 + bad.index;
       offenders.push(`${file.split('/src/')[1]}:${lineAt(at)} ${match[1]}() -> ${bad[0]}()`);
     }
   }
@@ -226,6 +235,31 @@ check('worklet callbacks and hook bodies never touch React state', () => {
     [],
     `these run on the UI runtime but touch React state — hop to the JS thread (runOnJS) or use a timer instead:\n  ${offenders.join('\n  ')}`,
   );
+});
+
+check('profile fields validate email and date of birth', () => {
+  assert.equal(validateEmail(''), null);
+  assert.equal(validateEmail('deepak@example.com'), null);
+  assert.ok(validateEmail('deepak@example'));
+  assert.ok(validateEmail('deepak example.com'));
+
+  const today = new Date(2026, 9, 5); // 5 October 2026
+  assert.equal(ageFromDateOfBirth('1996-03-12', today), 30);
+  assert.equal(ageFromDateOfBirth('1996-10-05', today), 30);
+  assert.equal(ageFromDateOfBirth('1996-10-06', today), 29);
+  assert.equal(ageFromDateOfBirth('1996-02-30', today), null);
+  assert.equal(formatDateOfBirth('1996-03-12'), '12 March 1996');
+  assert.equal(formatDateOfBirth(undefined), null);
+
+  assert.deepEqual(buildDateOfBirth('', '', '', today), { ok: false, error: null });
+  assert.equal(buildDateOfBirth('12', '', '1996', today).ok, false);
+  // One-digit month/day is accepted on purpose: "3" means March.
+  assert.deepEqual(buildDateOfBirth('12', '3', '1996', today), { ok: true, date: '1996-03-12' });
+  assert.deepEqual(buildDateOfBirth('12', '03', '1996', today), { ok: true, date: '1996-03-12' });
+  assert.deepEqual(buildDateOfBirth('31', '02', '1996', today), { ok: false, error: 'That date does not exist.' });
+  assert.equal(buildDateOfBirth('05', '10', '2030', today).ok, false);
+  assert.equal(buildDateOfBirth('05', '10', '2020', today).ok, false);
+  assert.equal(buildDateOfBirth('05', '10', '1890', today).ok, false);
 });
 
 void formatIndianMobile;

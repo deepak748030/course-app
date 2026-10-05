@@ -1,5 +1,5 @@
 /**
- * Course, instructor, lesson and price components.
+ * Course, lesson and price components.
  *
  * Rules honoured here:
  * - No shadows. Cards are built from a white surface + hairline border; artwork fills the
@@ -12,7 +12,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
-  BadgeCheck,
   Bookmark,
   ChartNoAxesColumnIncreasing,
   CircleCheck,
@@ -27,24 +26,19 @@ import Animated from 'react-native-reanimated';
 
 import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { instructorById } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
-import type { Course, Instructor, Lesson, Review } from '@/types';
+import type { Course, Lesson, Review } from '@/types';
 
 function priceLabel(course: Course) {
   return course.priceInr === 0 ? 'Free' : formatInr(course.priceInr);
-}
-
-function instructorName(course: Course) {
-  return instructorById(course.instructorId)?.name ?? 'Rasoi Studio instructor';
 }
 
 function openCourse(router: ReturnType<typeof useRouter>, id: string) {
   router.push({ pathname: '/course/[id]', params: { id } });
 }
 
-/** Rail card: fixed width, 4:3 artwork, title, instructor, rating + price row. */
+/** Rail card: fixed width, 4:3 artwork, title, level, rating + price row. */
 export function CourseCard({ course, style }: { course: Course; style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
@@ -56,7 +50,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
       <Pressable
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`${course.title} by ${instructorName(course)}. ${course.level}, ${course.lessonCount} lessons, ${formatDuration(
+        accessibilityLabel={`${course.title}. ${course.level}, ${course.lessonCount} lessons, ${formatDuration(
           course.hours * 60,
         )}, ${priceLabel(course)}.`}
         onPress={() => openCourse(router, course.id)}
@@ -74,7 +68,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
             {course.title}
           </Text>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-            {instructorName(course)}
+            {course.level} · {course.lessonCount} lessons
           </Text>
 
           <View style={styles.cardMeta}>
@@ -121,9 +115,9 @@ export function CourseRow({ course }: { course: Course }) {
     <Pressable
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`${course.title} by ${instructorName(course)}. ${course.level}, ${formatDuration(
-        course.hours * 60,
-      )}, ${priceLabel(course)}.`}
+      accessibilityLabel={`${course.title}. ${course.level}, ${formatDuration(course.hours * 60)}, ${priceLabel(
+        course,
+      )}.`}
       onPress={() => openCourse(router, course.id)}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
       <Image source={course.cover} style={styles.rowImage} contentFit="cover" transition={140} />
@@ -133,7 +127,7 @@ export function CourseRow({ course }: { course: Course }) {
           {course.title}
         </Text>
         <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-          {instructorName(course)}
+          {course.promise}
         </Text>
         <View style={styles.rowMeta}>
           <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
@@ -193,7 +187,7 @@ export function ContinueCard({
         onPressOut={press.onPressOut}
         style={({ pressed }) => [styles.continueRow, pressed && { opacity: 0.75 }]}>
         <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={140} />
-        <View style={styles.flex}>
+        <View style={styles.continueCopy}>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
             {course.title}
           </Text>
@@ -201,8 +195,14 @@ export function ContinueCard({
             {lessonTitle}
           </Text>
           <View style={styles.continueProgress}>
-            <ProgressBar value={progress} accessibilityLabel={`${course.title} progress`} />
-            <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{Math.round(progress * 100)}%</Text>
+            {/* The track takes the leftover width; the number keeps its own box so the two
+                never overlap the play button on a narrow screen. */}
+            <View style={styles.flex}>
+              <ProgressBar value={progress} accessibilityLabel={`${course.title} progress`} />
+            </View>
+            <Text style={[type.label, tabularNums, styles.continuePercent, { color: colors.textMuted }]}>
+              {Math.round(progress * 100)}%
+            </Text>
           </View>
         </View>
         <View style={styles.continuePlay}>
@@ -210,37 +210,6 @@ export function ContinueCard({
         </View>
       </Pressable>
     </Animated.View>
-  );
-}
-
-export function InstructorRow({ instructor, onPress }: { instructor: Instructor; onPress?: () => void }) {
-  const router = useRouter();
-  const open = onPress ?? (() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } }));
-
-  return (
-    <Pressable
-      accessible
-      accessibilityRole="button"
-      accessibilityLabel={`${instructor.name}, ${instructor.headline}. Open profile.`}
-      onPress={open}
-      style={({ pressed }) => [styles.instructorRow, pressed && { opacity: 0.7 }]}>
-      <Image source={instructor.portrait} style={styles.instructorAvatar} contentFit="cover" transition={140} />
-      <View style={styles.flex}>
-        <View style={styles.instructorName}>
-          <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
-            {instructor.name}
-          </Text>
-          {instructor.verified ? <BadgeCheck size={14} color={colors.sage} strokeWidth={2} /> : null}
-        </View>
-        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
-          {instructor.headline}
-        </Text>
-        <View style={styles.rowMeta}>
-          <MetaItem icon={Clapperboard} label={`${instructor.yearsTeaching} yrs teaching`} />
-          <MetaItem icon={ChartNoAxesColumnIncreasing} label={instructor.city} />
-        </View>
-      </View>
-    </Pressable>
   );
 }
 
@@ -454,8 +423,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.screen,
     paddingVertical: spacing.md,
   },
-  continueImage: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
+  continueCopy: { flex: 1, minWidth: 0 },
+  continueImage: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
   continueProgress: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
+  continuePercent: { minWidth: 34, textAlign: 'right' },
   continuePlay: {
     width: 36,
     height: 36,
@@ -463,11 +434,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
   },
 
-  instructorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
-  instructorAvatar: { width: 48, height: 48, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  instructorName: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
 
   lessonRow: {
     flexDirection: 'row',

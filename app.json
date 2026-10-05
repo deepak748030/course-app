@@ -38,6 +38,12 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Rasoi Studio uses your photo library so you can add a picture to your profile."
+        }
+      ],
       "expo-system-ui"
     ],
     "experiments": {

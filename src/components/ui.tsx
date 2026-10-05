@@ -8,6 +8,7 @@
  * - Sticky bars: flush to the edges, no corner radius, safe-area aware.
  */
 
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
@@ -870,14 +871,23 @@ export function Scrim({ from = 'transparent', to = colors.scrim, style }: { from
  * ------------------------------------------------------------------ */
 
 /** Initials avatar: one yellow tint, hairline ring, no photo needed for sample content. */
-export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 40, uri }: { name: string; size?: number; uri?: string | null }) {
   const initial = (name.trim().charAt(0) || 'R').toUpperCase();
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       style={[styles.avatar, { width: size, height: size }]}>
-      <Text style={{ fontFamily: font.semibold, fontSize: Math.round(size * 0.42), color: colors.accentText }}>{initial}</Text>
+      {uri ? (
+        <Image
+          source={uri}
+          style={{ width: size, height: size, borderRadius: radius.pill }}
+          contentFit="cover"
+          transition={160}
+        />
+      ) : (
+        <Text style={{ fontFamily: font.semibold, fontSize: Math.round(size * 0.42), color: colors.accentText }}>{initial}</Text>
+      )}
     </View>
   );
 }
@@ -887,11 +897,13 @@ export function AvatarButton({
   onPress,
   accessibilityLabel,
   size = 40,
+  uri,
 }: {
   name: string;
   onPress: () => void;
   accessibilityLabel: string;
   size?: number;
+  uri?: string | null;
 }) {
   const press = usePressScale(0.94);
   return (
@@ -970,7 +982,7 @@ export function BrandTile({ size = 40, children }: { size?: number; children: Re
  * Search
  * ------------------------------------------------------------------ */
 
-export const SEARCH_PLACEHOLDER = 'Search courses, chefs or a dish';
+export const SEARCH_PLACEHOLDER = 'Search courses, skills or a dish';
 
 /** Pill search field. Focus raises the border and reveals a Cancel action, iOS style. */
 export function SearchField({
@@ -1049,30 +1061,6 @@ export function SearchField({
         </Pressable>
       ) : null}
     </View>
-  );
-}
-
-/** Same pill as SearchField, but it opens the search screen instead of typing in place. */
-export function SearchEntry({ onPress, placeholder = SEARCH_PLACEHOLDER, style }: { onPress: () => void; placeholder?: string; style?: StyleProp<ViewStyle> }) {
-  const press = usePressScale(0.99);
-  return (
-    <Animated.View style={[press.style, style]}>
-      <Pressable
-        accessibilityRole="search"
-        accessibilityLabel={placeholder}
-        onPress={() => {
-          feedback.tap();
-          onPress();
-        }}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={({ pressed }) => [styles.search, pressed && styles.pressed]}>
-        <Search size={18} color={colors.textSubtle} strokeWidth={1.9} />
-        <Text style={[type.body, styles.searchInput, { color: colors.textSubtle }]} numberOfLines={1}>
-          {placeholder}
-        </Text>
-      </Pressable>
-    </Animated.View>
   );
 }
 

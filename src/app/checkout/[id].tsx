@@ -9,7 +9,7 @@ import { PriceSummary, StickyBar } from '@/components/course-cards';
 import { AppBar, AppText, Badge, Button, DataList, ErrorState, FormField, MetaItem, Screen, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { Clapperboard, Clock } from 'lucide-react-native';
-import { courseById, instructorById } from '@/data/catalog';
+import { courseById } from '@/data/catalog';
 import { demoCoupons, purchaseTerms } from '@/data/content';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
 import { useStore } from '@/store';
@@ -25,7 +25,6 @@ export default function CheckoutScreen() {
   const { isEnrolled, addEnrollment } = useStore();
 
   const course = useMemo(() => courseById(id), [id]);
-  const instructor = course ? instructorById(course.instructorId) : undefined;
 
   const [couponInput, setCouponInput] = useState('');
   const [coupon, setCoupon] = useState<{ code: string; percentOff: number } | null>(null);
@@ -99,7 +98,7 @@ export default function CheckoutScreen() {
                 {course.title}
               </Text>
               <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-                {instructor?.name}
+                {course.promise}
               </Text>
               <View style={styles.metaRow}>
                 <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />

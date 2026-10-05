@@ -205,6 +205,7 @@ const styles = StyleSheet.create({
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
   completedMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.sm, flexWrap: 'wrap' },
   replay: {
+    flexShrink: 0,
     width: 36,
     height: 36,
     borderRadius: radius.pill,

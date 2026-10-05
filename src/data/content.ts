@@ -24,8 +24,8 @@ export const notifications: NotificationItem[] = [
   },
   {
     id: 'n3',
-    kind: 'instructor',
-    title: 'New from Arjun Malhotra',
+    kind: 'course-update',
+    title: 'Dal makhani, step by step',
     body: '“Restaurant-Style Gravies” now includes a longer dal makhani walkthrough.',
     minutesAgo: 1450,
     courseId: 'restaurant-gravies',
@@ -98,7 +98,7 @@ export const legalDocs = {
     updated: 'Sample document',
     paragraphs: [
       'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before Rasoi Studio is distributed.',
-      'In this build, courses, prices, instructors and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
+      'In this build, courses, prices and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
       'You are responsible for how you use the cooking techniques shown. Recipes are educational sample material, not dietary, allergy or food-safety advice.',
     ],
   },

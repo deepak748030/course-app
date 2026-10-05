@@ -25,12 +25,6 @@ export const images = {
   healthyWeeknight: require('@/assets/images/course-healthy-weeknight.jpg') as ImageSource,
   egglessDesserts: require('@/assets/images/course-eggless-desserts.jpg') as ImageSource,
   knifeSkills: require('@/assets/images/course-knife-skills.jpg') as ImageSource,
-
-  meera: require('@/assets/images/instructor-meera.jpg') as ImageSource,
-  arjun: require('@/assets/images/instructor-arjun.jpg') as ImageSource,
-  rhea: require('@/assets/images/instructor-rhea.jpg') as ImageSource,
-  vikram: require('@/assets/images/instructor-vikram.jpg') as ImageSource,
-  nandini: require('@/assets/images/instructor-nandini.jpg') as ImageSource,
 } as const;
 
 /** Demo clips. Replace with real lesson media; keys stay the same. */

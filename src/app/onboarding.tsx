@@ -42,7 +42,7 @@ const slides: Slide[] = [
     key: 'guided',
     image: images.onboardingGuided,
     headline: 'Learn the why,\nnot just the recipe.',
-    support: 'Follow clear, step-by-step video lessons from passionate culinary instructors.',
+    support: 'Follow clear, step-by-step video lessons, from the first chop to the plated dish.',
     cta: 'Next',
   },
   {

@@ -1,11 +1,11 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Bell, Clapperboard, Clock, Play, Star } from 'lucide-react-native';
+import { Bell, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { CourseCard, CourseRow, ContinueCard, InstructorRow } from '@/components/course-cards';
+import { CourseCard, CourseRow, ContinueCard } from '@/components/course-cards';
 import {
   AvatarButton,
   BrandTile,
@@ -16,14 +16,13 @@ import {
   Rail,
   Scrim,
   Screen,
-  SearchEntry,
   SectionHeader,
   TabHeader,
   usePressScale,
 } from '@/components/ui';
 import { BrandMark } from '@/components/marks';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courses, instructorById, instructors } from '@/data/catalog';
+import { categories, courses } from '@/data/catalog';
 import { notifications } from '@/data/content';
 import { images } from '@/media';
 import { formatDuration } from '@/lib/format';
@@ -54,7 +53,6 @@ export default function HomeScreen() {
 
   const quickSkills = useMemo(() => [...courses].sort((a, b) => a.hours - b.hours).slice(0, 4), []);
   const beginnerPicks = useMemo(() => courses.filter((course) => course.isBeginnerPick).slice(0, 3), []);
-  const spotlight = useMemo(() => instructorById(popular[0]?.instructorId) ?? instructorById('rhea')!, [popular]);
 
   const activeCourse = useMemo(() => {
     const enrolledIds = Object.keys(state.enrollments);
@@ -70,16 +68,22 @@ export default function HomeScreen() {
       header={
         /* Identity header: the brand, not a greeting, plus the two things reached from home. */
         <TabHeader
-          bordered
+          style={styles.headerFlush}
           leading={
             <BrandTile size={40}>
               <BrandMark size={26} color={colors.onAccent} />
             </BrandTile>
           }
           title="Rasoi Studio"
-          meta={`${courses.length} courses · ${instructors.length} chefs`}
+          meta={`${courses.length} courses · ${categories.length} skills`}
           actions={
             <>
+              <IconButton
+                icon={Search}
+                variant="soft"
+                accessibilityLabel="Search courses"
+                onPress={() => router.push('/explore')}
+              />
               <IconButton
                 icon={Bell}
                 variant="soft"
@@ -96,11 +100,6 @@ export default function HomeScreen() {
           }
         />
       }>
-      {/* Search entry: full width inside the 8px screen padding. */}
-      <View style={styles.searchWrap}>
-        <SearchEntry onPress={() => router.push('/explore')} />
-      </View>
-
       {/* Banner: full-bleed — zero left/right gap by design. */}
       <HeroBanner course={featured} />
 
@@ -148,13 +147,6 @@ export default function HomeScreen() {
             <CourseCard key={course.id} course={course} />
           ))}
         </Rail>
-      </View>
-
-      <View style={styles.block}>
-        <SectionHeader title="Instructor spotlight" />
-        <DataList>
-          <InstructorRow instructor={spotlight} />
-        </DataList>
       </View>
 
       <View style={styles.block}>
@@ -232,7 +224,7 @@ const styles = StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
-  searchWrap: { paddingHorizontal: layout.screen },
+  headerFlush: { paddingBottom: 0 },
   hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },

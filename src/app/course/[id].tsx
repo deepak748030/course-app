@@ -1,11 +1,9 @@
-import { Image, type ImageSource } from 'expo-image';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  BadgeCheck,
   Bookmark,
   ChartNoAxesColumnIncreasing,
-  ChefHat,
   CircleCheck,
   Clapperboard,
   Clock,
@@ -19,10 +17,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
-import { LessonRow, PriceSummary, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { LessonRow, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, instructorById } from '@/data/catalog';
+import { courseById } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Lesson } from '@/types';
@@ -35,9 +33,8 @@ export default function CourseDetailsScreen() {
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
   const course = useMemo(() => courseById(id), [id]);
-  const instructor = course ? instructorById(course.instructorId) : undefined;
 
-  if (!course || !instructor) {
+  if (!course) {
     return (
       <Screen header={<CourseAppBar />}>
         <EmptyState
@@ -137,16 +134,6 @@ export default function CourseDetailsScreen() {
           ) : null}
         </View>
 
-        <DataList>
-          <PopularInstructorRow
-            name={instructor.name}
-            headline={instructor.headline}
-            portrait={instructor.portrait}
-            verified={instructor.verified}
-            onPress={() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } })}
-          />
-        </DataList>
-
         <View style={styles.section}>
           <SectionHeader title="What you'll learn" />
           <View style={styles.bullets}>
@@ -191,34 +178,6 @@ export default function CourseDetailsScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Your instructor" />
-          <View style={styles.instructorCard}>
-            <View style={styles.instructorHead}>
-              <Image source={instructor.portrait} style={styles.instructorPortrait} contentFit="cover" transition={160} />
-              <View style={styles.flex}>
-                <View style={styles.nameRow}>
-                  <Text style={[type.bodyStrong, { color: colors.text }]}>{instructor.name}</Text>
-                  {instructor.verified ? <BadgeCheck size={15} color={colors.sage} strokeWidth={2} /> : null}
-                </View>
-                <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
-                  {instructor.city} · {instructor.yearsTeaching} years teaching
-                </Text>
-              </View>
-            </View>
-            <Text style={[type.body, { color: colors.textMuted }]}>{instructor.bio}</Text>
-            <View style={styles.teachingRow}>
-              <ChefHat size={16} color={colors.sage} strokeWidth={1.75} />
-              <Text style={[type.body, { color: colors.text, flex: 1 }]}>{instructor.teachingStyle}</Text>
-            </View>
-            <Button
-              label="View instructor profile"
-              variant="secondary"
-              onPress={() => router.push({ pathname: '/instructor/[id]', params: { id: instructor.id } })}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
           <SectionHeader title="Reviews" subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`} />
         </View>
         <DataList>
@@ -230,12 +189,6 @@ export default function CourseDetailsScreen() {
           Ratings and reviews in this prototype are authored sample content, not verified facts.
         </Text>
 
-        <View style={styles.section}>
-          <SectionHeader title="Price" />
-          <View style={styles.priceWrap}>
-            <PriceSummary course={course} />
-          </View>
-        </View>
       </Screen>
 
       <StickyBar bottomInset={insets.bottom}>
@@ -313,40 +266,6 @@ function CourseAppBar() {
     <View style={[styles.simpleBar, { paddingTop: insets.top + spacing.xs }]}>
       <IconButton icon={ArrowLeft} accessibilityLabel="Go back" onPress={() => router.replace('/explore')} />
     </View>
-  );
-}
-
-function PopularInstructorRow({
-  name,
-  headline,
-  portrait,
-  verified,
-  onPress,
-}: {
-  name: string;
-  headline: string;
-  portrait: ImageSource;
-  verified: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${name}, ${headline}. Open instructor profile.`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.tutorRow, pressed && { opacity: 0.7 }]}>
-      <Image source={portrait as never} style={styles.tutorAvatar} contentFit="cover" transition={140} />
-      <View style={styles.flex}>
-        <View style={styles.nameRow}>
-          <Text style={[type.bodyStrong, { color: colors.text }]}>{name}</Text>
-          {verified ? <BadgeCheck size={15} color={colors.sage} strokeWidth={2} /> : null}
-        </View>
-        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
-          {headline}
-        </Text>
-      </View>
-      <Text style={[type.label, { color: colors.accentText }]}>Profile</Text>
-    </Pressable>
   );
 }
 
@@ -435,10 +354,6 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   progressBlock: { gap: spacing.xs, marginTop: spacing.xs },
 
-  tutorRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
-  tutorAvatar: { width: 40, height: 40, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-
   section: { paddingHorizontal: layout.screen, paddingTop: spacing.xl, gap: layout.gap },
   sectionNote: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
   bullets: { gap: spacing.sm, paddingHorizontal: layout.section },
@@ -456,19 +371,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  instructorCard: {
-    marginHorizontal: layout.section,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  instructorHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  instructorPortrait: { width: 52, height: 52, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt },
-  teachingRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-
-  priceWrap: { paddingHorizontal: layout.section },
   paywallActions: { gap: spacing.sm },
 });

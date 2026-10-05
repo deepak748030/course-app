@@ -25,7 +25,6 @@ import {
   courses,
   durationOptions,
   emptyFilters,
-  instructors,
   priceBandOptions,
   sortOptions,
   type BrowseFilters,
@@ -75,7 +74,6 @@ export default function ExploreScreen() {
       .filter((word) => word.length > 3 && !stopWords.has(word.toLowerCase()));
 
     const seeds = [
-      ...instructors.slice(0, 3).map((instructor) => ({ term: instructor.name.split(' ')[0], badge: 'Chef' })),
       ...words.map((word) => ({ term: word, badge: 'Course' })),
       ...categories.map((category) => ({ term: category.label, badge: 'Cuisine' })),
     ];

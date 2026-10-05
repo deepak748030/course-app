@@ -18,6 +18,7 @@ import type {
   LessonProgress,
   NotificationPrefs,
   Session,
+  UserProfile,
 } from '@/types';
 
 const STORAGE_KEY = 'rasoi.state.v1';
@@ -33,6 +34,11 @@ type PersistedState = {
   notes: Record<Id, string>;
   notificationsRead: boolean;
   preferences: NotificationPrefs;
+  /**
+   * Profile photo chosen on this device, as a data URI (web) or a local file URI (native).
+   * It lives here rather than in the session because SecureStore refuses values over ~2 KB.
+   */
+  profileAvatarUri: string | null;
 };
 
 /** The demo account starts with one course already in progress so Home is not empty. */
@@ -61,6 +67,7 @@ function seedState(): PersistedState {
     notes: {},
     notificationsRead: false,
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
+    profileAvatarUri: null,
   };
 }
 
@@ -71,6 +78,9 @@ type StoreValue = {
 
   signIn: (session: Session) => void;
   signOut: () => Promise<void>;
+  /** Merges profile edits into the session and writes it back to the secure store. */
+  updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
+  setProfileAvatar: (uri: string | null) => void;
   completeOnboarding: () => void;
 
   toggleInterest: (id: string) => void;
@@ -171,6 +181,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       state,
 
       signIn: (next) => setSession(next),
+      updateProfile: async (patch) => {
+        const current = session;
+        if (!current) return;
+        const next: Session = { ...current, profile: { ...current.profile, ...patch } };
+        setSession(next);
+        await authService.saveSession(next);
+      },
+
+      setProfileAvatar: (uri) => setState((prev) => ({ ...prev, profileAvatarUri: uri })),
+
       signOut: async () => {
         await authService.clearSession();
         setSession(null);

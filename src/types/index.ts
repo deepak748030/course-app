@@ -7,21 +7,6 @@ export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Language = 'English' | 'Hindi' | 'English + Hindi';
 export type VideoKey = 'home-cooking' | 'gravies' | 'baking' | 'foundations';
 
-export interface Instructor {
-  id: Id;
-  name: string;
-  portrait: ImageSource;
-  headline: string;
-  bio: string;
-  city: string;
-  yearsTeaching: number;
-  expertise: string[];
-  teachingStyle: string;
-  languages: Language[];
-  /** Sample data flag — badges in the UI must be driven by this, never invented. */
-  verified: boolean;
-}
-
 export interface Ingredient {
   item: string;
   quantity: string;
@@ -70,7 +55,6 @@ export interface Course {
   title: string;
   promise: string;
   description: string;
-  instructorId: Id;
   cover: ImageSource;
   video: VideoKey;
   categoryId: Id;
@@ -122,7 +106,7 @@ export interface CourseProgress {
 
 export interface NotificationItem {
   id: Id;
-  kind: 'course-update' | 'learning-reminder' | 'instructor' | 'product';
+  kind: 'course-update' | 'learning-reminder' | 'product';
   title: string;
   body: string;
   minutesAgo: number;
@@ -140,6 +124,13 @@ export interface UserProfile {
   name: string;
   phone: string;
   joinedAt: string;
+  /* Optional: the user fills these in from Profile -> Edit. */
+  email?: string;
+  /** ISO calendar date, `YYYY-MM-DD`. */
+  dateOfBirth?: string;
+  city?: string;
+  /** Short cooking goal picked from a fixed list — see profile editor. */
+  goal?: string;
 }
 
 export interface Session {

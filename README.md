@@ -3,7 +3,7 @@
 A premium Indian cooking-education app built with Expo (SDK 57), Expo Router and TypeScript.
 Learners browse structured video courses, buy them, and learn inside an immersive lesson player.
 
-> **Prototype build.** The catalog, instructors, prices, ratings and reviews are fictional sample
+> **Prototype build.** The catalog, prices, ratings and reviews are fictional sample
 > content. Authentication and payments are demo implementations; nothing is charged and no SMS is
 > sent. Anything not implemented is said so in the UI rather than shown as a working control.
 
@@ -71,14 +71,13 @@ src/
     auth/interests.tsx     optional preference chips
     (tabs)/                Home · Explore · My learning · Profile
     course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)
-    instructor/[id].tsx    instructor profile
     checkout/[id].tsx      demo checkout with scenarios and coupons
     purchase-success.tsx   confirmation → first lesson
     lesson/[courseId]/[lessonId].tsx   player: Overview · Recipe · Notes
     saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
   components/              UI kit (ui.tsx), course cards, bottom sheet, brand marks
   constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
-  data/                    catalog.ts (courses/instructors), content.ts (FAQ, coupons, legal)
+  data/                    catalog.ts (courses, categories, recipes), content.ts (FAQ, coupons, legal)
   lib/format.ts            pure formatters/validators (runnable outside the app)
   lib/util.ts              haptics feedback
   media.ts                 the only place that maps data keys → bundled assets
@@ -93,12 +92,11 @@ State is one React context with `AsyncStorage` persistence — no state library 
 
 Photography in `assets/images` was **AI-generated for this prototype** using the art direction in the
 project brief (warm editorial culinary style). Photography is used for illustration only; every course
-cover and instructor portrait corresponds to fictional sample content.
+cover corresponds to fictional sample content.
 
-Generated so far: three onboarding plates, the home hero, six course covers, and five instructor
-portraits. Two covers (`course-eggless-desserts.jpg`, `course-knife-skills.jpg`) and any other missing
-photograph fall back to `placeholder-panel-4x3.jpg` / `placeholder-portrait.jpg` — deliberately branded
-warm panels so nothing ever renders as a broken image. Replace them with real photography using the
+Generated so far: three onboarding plates, the home hero and six course covers. Two covers
+(`course-eggless-desserts.jpg`, `course-knife-skills.jpg`) and any other missing photograph fall back to
+`placeholder-panel-4x3.jpg` — a deliberately branded warm panel so nothing ever renders as a broken image. Replace them with real photography using the
 same file names; no code changes are needed.
 
 Derived media is reproducible and documented in scripts:

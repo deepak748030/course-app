@@ -82,7 +82,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>
-              Courses, instructors, prices and reviews are sample content. Authentication and payments are demo
+              Courses, prices and reviews are sample content. Authentication and payments are demo
               implementations. Anything that is not implemented in the app is said so plainly rather than shown as a
               working control.
             </Text>

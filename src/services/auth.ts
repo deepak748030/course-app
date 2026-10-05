@@ -25,6 +25,8 @@ export interface AuthService {
   requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
   verifyOtp(phone: string, code: string): Promise<{ ok: true; session: Session } | { ok: false; error: OtpFailure }>;
   getSession(): Promise<Session | null>;
+  /** Persists profile edits made in the app. Same storage as the session token. */
+  saveSession(session: Session): Promise<void>;
   clearSession(): Promise<void>;
 }
 
@@ -101,6 +103,10 @@ export const authService: AuthService = {
     } catch {
       return null;
     }
+  },
+
+  async saveSession(session) {
+    await writeStored(SESSION_KEY, JSON.stringify(session));
   },
 
   async clearSession() {

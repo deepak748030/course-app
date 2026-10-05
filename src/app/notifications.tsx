@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Bell, BellRing, ChefHat, Clapperboard, Sparkles } from 'lucide-react-native';
+import { Bell, BellRing, Clapperboard, Sparkles } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -12,7 +12,6 @@ import { minutesAgoLabel } from '@/lib/format';
 const kindIcon = {
   'course-update': Clapperboard,
   'learning-reminder': BellRing,
-  instructor: ChefHat,
   product: Sparkles,
 } as const;
 

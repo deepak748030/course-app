@@ -42,7 +42,7 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
 import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, instructorById, nextLesson } from '@/data/catalog';
+import { courseById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';
 import { useStore } from '@/store';
 import { formatClock, scaleQuantity } from '@/lib/format';
@@ -183,7 +183,6 @@ export default function LessonPlayerScreen() {
     );
   }
 
-  const instructor = instructorById(course.instructorId);
   const upcoming = nextLesson(course, lesson.id);
   const completed = storedPosition.completed;
   const progressPercent = duration > 0 ? position / duration : 0;
@@ -371,7 +370,9 @@ export default function LessonPlayerScreen() {
             <View style={styles.flex}>
               <Text style={[type.subheading, { color: colors.text }]}>{lesson.title}</Text>
               <View style={styles.metaRow}>
-                <Text style={[type.label, { color: colors.textMuted }]}>{instructor?.name}</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>
+                  {course.level} · {course.lessonCount} lessons
+                </Text>
                 <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{lesson.minutes} min</Text>
                 {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
                 {completed ? <Badge label="Completed" tone="success" icon={CircleCheck} /> : null}
@@ -503,7 +504,7 @@ export default function LessonPlayerScreen() {
 
               {recipe.tips.length > 0 ? (
                 <View style={[styles.sectionCard, styles.tipsCard]}>
-                  <Text style={[type.labelStrong, { color: colors.text }]}>Chef&apos;s notes</Text>
+                  <Text style={[type.labelStrong, { color: colors.text }]}>Notes for this lesson</Text>
                   {recipe.tips.map((tip) => (
                     <Text key={tip} style={[type.body, { color: colors.textMuted }]}>
                       • {tip}

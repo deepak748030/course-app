@@ -36,7 +36,7 @@ export default function SettingsScreen() {
             />
             <Toggle
               label="Product news"
-              help="New instructors and features"
+              help="New courses and features"
               value={state.preferences.productNews}
               onChange={(value) => setPreference('productNews', value)}
             />
