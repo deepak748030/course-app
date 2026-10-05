@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Bookmark, BookmarkCheck, BookOpen, ShoppingBasket } from 'lucide-react-native';
+import { Bookmark, BookOpen, ShoppingBasket } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppBar, Badge, DataList, EmptyState, IconButton, MetaItem, Screen, Segmented } from '@/components/ui';
+import { SaveButton } from '@/components/save-button';
+import { AppBar, Badge, DataList, EmptyState, MetaItem, Screen, Segmented } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { courseById, courses } from '@/data/catalog';
 import { useStore } from '@/store';
@@ -119,13 +120,15 @@ export default function SavedScreen() {
                   </View>
                 </View>
               </Pressable>
-              <IconButton
-                icon={BookmarkCheck}
-                active
-                accessibilityLabel={`Remove ${lesson.recipe!.title} from saved batch sheets`}
-                onPress={() => toggleSavedRecipe(lesson.recipe!.id)}
+              <SaveButton
+                saved
                 variant="soft"
                 size={layout.touchTarget}
+                accessibilityLabel={`Remove ${lesson.recipe!.title} from saved batch sheets`}
+                onToggle={() => {
+                  // The row leaves the list once this runs, so give the icon its pop first.
+                  setTimeout(() => toggleSavedRecipe(lesson.recipe!.id), UNLIST_MS);
+                }}
               />
             </View>
           ))}
@@ -141,6 +144,9 @@ export default function SavedScreen() {
     </Screen>
   );
 }
+
+/** How long the remove animation gets before the row leaves the list. */
+const UNLIST_MS = 280;
 
 const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1 },

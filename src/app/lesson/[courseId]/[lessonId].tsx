@@ -4,8 +4,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   ArrowLeft,
-  Bookmark,
-  BookmarkCheck,
   Check,
   CircleAlert,
   CircleCheck,
@@ -49,6 +47,7 @@ import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useShare
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedCheck } from '@/components/animated-icons';
+import { SaveButton } from '@/components/save-button';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
@@ -662,12 +661,11 @@ export default function LessonPlayerScreen() {
                     </Text>
                   </View>
                 </View>
-                <IconButton
-                  icon={isRecipeSaved(recipe.id) ? BookmarkCheck : Bookmark}
+                <SaveButton
+                  saved={isRecipeSaved(recipe.id)}
                   variant="soft"
-                  active={isRecipeSaved(recipe.id)}
                   accessibilityLabel={isRecipeSaved(recipe.id) ? 'Remove batch sheet from saved' : 'Save batch sheet'}
-                  onPress={() => toggleSavedRecipe(recipe.id)}
+                  onToggle={() => toggleSavedRecipe(recipe.id)}
                 />
               </View>
 

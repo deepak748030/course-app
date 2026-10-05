@@ -12,7 +12,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
-  Bookmark,
   ChartNoAxesColumnIncreasing,
   CircleCheck,
   Clapperboard,
@@ -25,7 +24,8 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import Animated from 'react-native-reanimated';
 
 import { OfferBadge } from '@/components/offer-tag';
-import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
+import { SaveButton } from '@/components/save-button';
+import { Badge, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
@@ -95,14 +95,13 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
       </Pressable>
 
       <View style={styles.cardBookmark}>
-        <IconButton
-          icon={Bookmark}
+        <SaveButton
+          saved={saved}
           size={32}
           iconSize={16}
           variant="onImage"
-          active={saved}
           accessibilityLabel={saved ? `Remove ${course.title} from saved` : `Save ${course.title}`}
-          onPress={() => toggleSavedCourse(course.id)}
+          onToggle={() => toggleSavedCourse(course.id)}
         />
       </View>
     </Animated.View>
@@ -154,14 +153,13 @@ export function CourseRow({ course }: { course: Course }) {
         </View>
       </View>
 
-      <IconButton
-        icon={Bookmark}
+      <SaveButton
+        saved={saved}
         size={32}
         iconSize={16}
         variant={saved ? 'soft' : 'plain'}
-        active={saved}
         accessibilityLabel={saved ? `Remove ${course.title} from saved` : `Save ${course.title}`}
-        onPress={() => toggleSavedCourse(course.id)}
+        onToggle={() => toggleSavedCourse(course.id)}
       />
     </Pressable>
   );

@@ -174,6 +174,21 @@ The UI follows the project's design rules document and is generated from one tok
   price line, plus the checkout's *Total payable*, are all `accentText` — amber on white+yellow, deep
   green on white+green — the same colour as the sticky bars. The struck-through list price stays
   muted grey on cards and red on the two bars where it sits next to the amount you pay.
+- **The home banner is a carousel that pages itself.** The top banner is now a full-bleed horizontal
+  `ScrollView` holding the featured courses — the ranked popular pick first, then the next two, each
+  carrying its own artwork, offer badge and copy. It advances every 4.5 seconds and wraps from the last
+  slide back to the first, so the strip keeps moving without an end; a hand-swipe pauses the timer and
+  the snap position decides which page dot is filled. Native uses `pagingEnabled`, web augments it with
+  `scroll-snap-align` on every slide, and the timer's page jump is a `scrollTo`. Under reduced motion,
+  or with a single featured course, the timer never starts and the first banner simply sits there.
+- **Every save icon celebrates the tap.** `src/components/save-button.tsx` replaces the four bookmark
+  `IconButton`s (course card, course row, course hero, lesson batch sheet, saved list) and animates on
+  the tap itself — save or remove — rather than on the state change, so a tap always answers:
+  the glyph pops up past its size and settles back below it, eight accent motes fly out left and right
+  on a 150°→30° fan up to ~34px with a ring opening behind them, and the button gives the usual press
+  feedback. Reducing the motion drops the motes and the spring entirely; the clamped animated values
+  mean a burst that has not started can never draw an inverted one. Motes park outside the button box,
+  so a parent that clips (a card edge) will clip them — the cards, the hero and the sheet do not.
 - **Money wears two colours.** The amount you pay uses the theme accent (amber on white+yellow, deep
   green on white+green) and the price it replaced is struck through in red — `#B42318`, 6.3:1 on
   white, because the amber this design language uses for decoration cannot clear 4.5:1 at 12px. Both
@@ -287,6 +302,17 @@ onboarding completion and app preferences are kept.
   `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Sheet/Notes,
   the sort/filter sheets opening and closing, and focusing the search field (recent searches +
   suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
+- The home carousel and the save burst were read back from the exported web bundle in JSDOM
+  (`/tmp/domtest/mote-probe.mjs`, `snap-check.mjs`, `saves-probe.mjs` at 390x844): the banner reports
+  *Featured courses, 3 banners*, three 390px slides with the milk-foundations, paneer-craft and
+  artisan-cheese artwork, `scrollSnapAlign=start` under a `scroll-snap-type: x mandatory` scroller, and
+  the page dots went `18/6/6 → 6/18/6 → 6/6/18` at 5.2 s and 10.4 s before wrapping back to `18/6/6`
+  with `scrollLeft` 0 at 15.6 s. Tapping a save control renders eight round/sliver motes plus a 44px
+  ring — `rgb(138, 98, 0)` in the yellow theme, `rgb(20, 83, 45)` in the green one — and on the course
+  hero the glyph trail read `0.92 → 1.31 → 1.22 → 0.95` while the ring opened `0.40 → 0.70 → 1.23 →
+  1.60` and the outer motes flew out ±24px, which is the pop and the left/right burst the tap is
+  supposed to produce. Same probe on the lesson route: the sheet tab's control flips the saved count to
+  0 and bursts. This is a DOM check, not a visual one.
 - Status bar. Android has two modes and both are covered, because the black bar came from the second
   one while the first fix (a strip painted in-app) only covered the first:
   1. edge-to-edge (Android 15+): the bar is transparent, so it shows what is painted behind it —

@@ -2,7 +2,6 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
-  Bookmark,
   ChartNoAxesColumnIncreasing,
   CircleCheck,
   Clapperboard,
@@ -20,6 +19,7 @@ import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon, AnimatedPercent } from '@/components/animated-icons';
 import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { RatingStar } from '@/components/rating-star';
+import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courseById, discountPercent } from '@/data/catalog';
@@ -93,12 +93,11 @@ export default function CourseDetailsScreen() {
                 accessibilityLabel="Go back"
                 onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
               />
-              <IconButton
-                icon={Bookmark}
+              <SaveButton
+                saved={saved}
                 variant="onImage"
-                active={saved}
                 accessibilityLabel={saved ? 'Remove from saved courses' : 'Save this course'}
-                onPress={() => toggleSavedCourse(course.id)}
+                onToggle={() => toggleSavedCourse(course.id)}
               />
             </View>
             <Pressable

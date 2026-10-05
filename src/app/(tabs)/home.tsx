@@ -1,9 +1,18 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
-import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  type ViewStyle,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import Animated, { useReducedMotion } from 'react-native-reanimated';
 
 import { AnimatedBellRing } from '@/components/animated-icons';
 import { OfferBadge } from '@/components/offer-tag';
@@ -26,7 +35,6 @@ import { BrandMark } from '@/components/marks';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courses, discountPercent } from '@/data/catalog';
 import { notifications } from '@/data/content';
-import { images } from '@/media';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
@@ -38,9 +46,12 @@ export default function HomeScreen() {
 
   const rankByInterest = (course: Course) => (interestIds.includes(course.categoryId) ? 0 : 1);
 
+  // Banner slides: the ranked popular pick first, then the rest of the catalog so the carousel fills.
   const featured = useMemo(() => {
     const popular = courses.filter((course) => course.isPopular);
-    return [...popular].sort((a, b) => rankByInterest(a) - rankByInterest(b) || b.rating - a.rating)[0] ?? courses[0];
+    const ranked = [...popular].sort((a, b) => rankByInterest(a) - rankByInterest(b) || b.rating - a.rating);
+    const rest = courses.filter((course) => !course.isPopular);
+    return [...ranked, ...rest].slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interestIds]);
 
@@ -103,8 +114,8 @@ export default function HomeScreen() {
           }
         />
       }>
-      {/* Banner: full-bleed — zero left/right gap by design. */}
-      <HeroBanner course={featured} />
+      {/* Banner: full-bleed — zero left/right gap by design. It scrolls, and it pages itself. */}
+      <HeroCarousel courses={featured} />
 
       {activeCourse && resume ? (
         <View style={styles.block}>
@@ -189,48 +200,130 @@ export default function HomeScreen() {
   );
 }
 
-/** Editorial hero: artwork fills the screen edge to edge, native copy sits on the scrim. */
-function HeroBanner({ course }: { course: Course }) {
+/** Banner slides advance on their own every four and a half seconds; a swipe takes over. */
+const SLIDE_MS = 4500;
+
+/**
+ * Featured carousel: full-bleed, one slide per featured course. It scrolls by hand *and* pages
+ * itself forever. Reduced-motion users get the first slide, static and swipeable.
+ */
+function HeroCarousel({ courses: slides }: { courses: Course[] }) {
+  const reduced = useReducedMotion();
+  const window = useWindowDimensions();
+  const scroller = useRef<ScrollView>(null);
+  const [step, setStep] = useState(window.width);
+  const [index, setIndex] = useState(0);
+  const indexRef = useRef(0);
+  const dragging = useRef(false);
+  const paused = useRef(false);
+  const page = Math.max(step, 1);
+
+  const show = (next: number) => {
+    indexRef.current = next;
+    setIndex(next);
+    scroller.current?.scrollTo({ x: next * page, y: 0, animated: true });
+  };
+
+  useEffect(() => {
+    if (reduced || slides.length < 2) return;
+    const timer = setInterval(() => {
+      if (dragging.current || paused.current) return;
+      show((indexRef.current + 1) % slides.length);
+    }, SLIDE_MS);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reduced, slides.length, page]);
+
+  const settle = (offsetX: number) => {
+    const next = Math.max(0, Math.min(slides.length - 1, Math.round(offsetX / page)));
+    indexRef.current = next;
+    setIndex(next);
+  };
+
+  return (
+    <View style={styles.carousel}>
+      <ScrollView
+        ref={scroller}
+        horizontal
+        pagingEnabled
+        decelerationRate="fast"
+        showsHorizontalScrollIndicator={false}
+        scrollEventThrottle={16}
+        accessibilityLabel={`Featured courses, ${slides.length} banners. Swipe for the next one.`}
+        onLayout={(event) => setStep(Math.round(event.nativeEvent.layout.width))}
+        onScroll={(event) => {
+          if (dragging.current) settle(event.nativeEvent.contentOffset.x);
+        }}
+        onScrollBeginDrag={() => {
+          dragging.current = true;
+        }}
+        onScrollEndDrag={() => {
+          dragging.current = false;
+        }}
+        onMomentumScrollEnd={(event) => {
+          dragging.current = false;
+          paused.current = false;
+          settle(event.nativeEvent.contentOffset.x);
+        }}>
+        {slides.map((course) => (
+          <View key={course.id} style={[styles.hero, { width: page }, Platform.OS === 'web' && styles.snap]}>
+            <HeroSlide course={course} />
+          </View>
+        ))}
+      </ScrollView>
+
+      {slides.length > 1 ? (
+        <View style={styles.dots} pointerEvents="none">
+          {slides.map((course, dot) => (
+            <View key={course.id} style={[styles.dot, dot === index && styles.dotActive]} />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/** One slide: artwork fills the frame edge to edge, native copy sits on the scrim. */
+function HeroSlide({ course }: { course: Course }) {
   const router = useRouter();
   const press = usePressScale(0.99);
   const heroOffer = discountPercent(course);
 
   return (
-    <Animated.View style={press.style}>
+    <Animated.View style={[styles.flex, press.style]}>
       <Pressable
         accessible
         accessibilityRole="button"
         accessibilityLabel={`Featured course: ${course.title}. ${course.promise}`}
         onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
         onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}>
-        <View style={styles.hero}>
-          <Image source={images.heroHome} style={styles.heroImage} contentFit="cover" transition={200} />
-          <Scrim to={colors.scrim} />
-          {heroOffer ? (
-            <View style={styles.heroOffer}>
-              <OfferBadge percent={heroOffer} />
+        onPressOut={press.onPressOut}
+        style={styles.flex}>
+        <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
+        <Scrim to={colors.scrim} />
+        {heroOffer ? (
+          <View style={styles.heroOffer}>
+            <OfferBadge percent={heroOffer} />
+          </View>
+        ) : null}
+        <View style={styles.heroCopy}>
+          <Text style={[type.overline, { color: colors.onPlayerMuted }]}>Featured this week</Text>
+          <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
+            {course.title}
+          </Text>
+          <View style={styles.heroMeta}>
+            <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color={colors.onPlayerMuted} />
+            <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color={colors.onPlayerMuted} />
+            <View style={styles.heroRating}>
+              <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
+              <Text style={[type.labelStrong, tabularNums, { color: colors.textInverse }]}>
+                {course.rating.toFixed(1)}
+              </Text>
             </View>
-          ) : null}
-          <View style={styles.heroCopy}>
-            <Text style={[type.overline, { color: colors.onPlayerMuted }]}>Featured this week</Text>
-            <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
-              {course.title}
-            </Text>
-            <View style={styles.heroMeta}>
-              <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color={colors.onPlayerMuted} />
-              <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color={colors.onPlayerMuted} />
-              <View style={styles.heroRating}>
-                <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
-                <Text style={[type.labelStrong, tabularNums, { color: colors.textInverse }]}>
-                  {course.rating.toFixed(1)}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.heroCta}>
-              <Text style={[type.labelStrong, { color: colors.text }]}>View course</Text>
-              <Play size={13} color={colors.text} strokeWidth={2} fill={colors.text} />
-            </View>
+          </View>
+          <View style={styles.heroCta}>
+            <Text style={[type.labelStrong, { color: colors.text }]}>View course</Text>
+            <Play size={13} color={colors.text} strokeWidth={2} fill={colors.text} />
           </View>
         </View>
       </Pressable>
@@ -246,10 +339,23 @@ const styles = createStyles(() => StyleSheet.create({
   headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm, gap: spacing.xs },
   /* Search and the bell sit almost flush; the avatar keeps its own slot after them. */
   bellWrap: { marginLeft: -spacing.xs },
-  hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
+  carousel: { height: 220, backgroundColor: colors.player },
+  hero: { height: 220, overflow: 'hidden' },
+  /* Native paging snaps by itself; the web scroll-snap container needs each slide to name its point. */
+  snap: { scrollSnapAlign: 'start' } as ViewStyle,
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroOffer: { position: 'absolute', top: spacing.md, left: spacing.md },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },
+  dots: {
+    position: 'absolute',
+    right: spacing.md,
+    bottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  dot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: colors.onPlayerMuted },
+  dotActive: { width: 18, backgroundColor: colors.textInverse },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
   heroRating: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   heroCta: {
