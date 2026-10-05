@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
+import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
@@ -143,7 +143,12 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.block}>
-        <SectionHeader title="Popular courses" actionLabel="See all" onAction={() => router.push('/explore')} />
+        <SectionHeader
+          title="Popular courses"
+          actionLabel="See all"
+          actionIcon={ArrowRight}
+          onAction={() => router.push('/explore')}
+        />
         <Rail>
           {popular.map((course) => (
             <CourseCard key={course.id} course={course} />
@@ -161,7 +166,12 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.block}>
-        <SectionHeader title="Good first courses" actionLabel="Explore" onAction={() => router.push('/explore')} />
+        <SectionHeader
+          title="Good first courses"
+          actionLabel="Explore"
+          actionIcon={ArrowRight}
+          onAction={() => router.push('/explore')}
+        />
         <DataList>
           {beginnerPicks.map((course) => (
             <CourseRow key={course.id} course={course} />

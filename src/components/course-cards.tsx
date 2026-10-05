@@ -84,7 +84,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
               </Text>
             </View>
             <View style={styles.flex} />
-            <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+            <Text style={[type.bodyStrong, tabularNums, { color: colors.accentText }]}>{priceLabel(course)}</Text>
           </View>
 
           <View style={styles.cardFooter}>
@@ -139,7 +139,7 @@ export function CourseRow({ course }: { course: Course }) {
           <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
         </View>
         <View style={styles.rowPriceLine}>
-          <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+          <Text style={[type.bodyStrong, tabularNums, { color: colors.accentText }]}>{priceLabel(course)}</Text>
           {offer ? <OfferBadge percent={offer} /> : null}
           {course.listPriceInr ? (
             <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
@@ -300,7 +300,7 @@ export function PriceLine({
   return (
     <View style={[styles.priceLine, align === 'right' && styles.priceLineRight]}>
       {percent ? <OfferBadge percent={percent} /> : null}
-      <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+      <Text style={[type.bodyStrong, tabularNums, { color: colors.accentText }]}>{priceLabel(course)}</Text>
       {course.listPriceInr ? (
         <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
           {formatInr(course.listPriceInr)}
@@ -337,7 +337,7 @@ export function PriceSummary({
         <SummaryRow label={`Coupon ${couponCode ?? ''}`.trim()} value={`− ${formatInr(couponValue)}`} tone="success" />
       ) : null}
       <View style={styles.summaryDivider} />
-      <SummaryRow label="Total payable" value={formatInr(total)} strong />
+      <SummaryRow label="Total payable" value={formatInr(total)} strong accent />
       <Text style={[type.label, { color: colors.textMuted }]}>
         Inclusive of taxes. Demo checkout — no payment is processed.
       </Text>
@@ -350,11 +350,14 @@ function SummaryRow({
   value,
   tone = 'default',
   strong = false,
+  accent = false,
 }: {
   label: string;
   value: string;
   tone?: 'default' | 'success';
   strong?: boolean;
+  /** The one line that is a price to pay wears the theme accent; the rest stay ink. */
+  accent?: boolean;
 }) {
   return (
     <View style={styles.summaryRow}>
@@ -363,7 +366,7 @@ function SummaryRow({
         style={[
           strong ? type.bodyStrong : type.body,
           tabularNums,
-          { color: tone === 'success' ? colors.success : colors.text },
+          { color: accent ? colors.accentText : tone === 'success' ? colors.success : colors.text },
         ]}>
         {value}
       </Text>

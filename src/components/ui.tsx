@@ -205,12 +205,15 @@ export function SectionHeader({
   title,
   subtitle,
   actionLabel,
+  actionIcon: ActionIcon,
   onAction,
   style,
 }: {
   title: string;
   subtitle?: string;
   actionLabel?: string;
+  /** Trailing glyph for actions that go somewhere — always in the theme accent with the label. */
+  actionIcon?: LucideIcon;
   onAction?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -234,6 +237,7 @@ export function SectionHeader({
           <AppText variant="labelStrong" color={colors.accentText}>
             {actionLabel}
           </AppText>
+          {ActionIcon ? <ActionIcon size={14} color={colors.accentText} strokeWidth={2.2} /> : null}
         </Pressable>
       ) : null}
     </View>
@@ -1184,7 +1188,7 @@ const styles = createStyles(() => StyleSheet.create({
 
   sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: layout.screen },
   sectionSubtitle: { marginTop: 2 },
-  sectionAction: { paddingBottom: 2 },
+  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingBottom: 2 },
 
   badge: {
     flexDirection: 'row',

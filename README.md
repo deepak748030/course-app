@@ -166,6 +166,14 @@ The UI follows the project's design rules document and is generated from one tok
   leans left and right every couple of seconds with five fine star motes drifting down past it, the
   value in the title size next to it and the review count muted underneath. Under reduced motion it is
   a still star with no motes. The old separate `4.9 (876)` line is gone — the rating is stated once.
+- **A "see more" action points where it goes.** `SectionHeader` takes an optional trailing glyph, and
+  Home's *See all* and *Explore* actions use the arrow in the theme accent beside their label (4px
+  between them), so the row reads as a way out of the screen rather than three words. The prop is
+  opt-in: *Clear* and *Clear filters* stay plain, because nothing is being navigated to.
+- **Every price wears the theme accent.** The payable price on a course card, a course row and the
+  price line, plus the checkout's *Total payable*, are all `accentText` — amber on white+yellow, deep
+  green on white+green — the same colour as the sticky bars. The struck-through list price stays
+  muted grey on cards and red on the two bars where it sits next to the amount you pay.
 - **Money wears two colours.** The amount you pay uses the theme accent (amber on white+yellow, deep
   green on white+green) and the price it replaced is struck through in red — `#B42318`, 6.3:1 on
   white, because the amber this design language uses for decoration cannot clear 4.5:1 at 12px. Both
@@ -304,6 +312,9 @@ onboarding completion and app preferences are kept.
   is gone again; a pause brings it back and it stays. The four transport buttons were dumped together:
   two groups of two, `speed · 540p` on the left and `Mute · Fullscreen` on the right, and the quality
   sheet reports "540p · 960 x 540 · in use" with the single-rendition note.
+- Home was probed in both themes: *See all* and *Explore* each carry exactly one glyph in the accent
+  (`#8A6200` amber / `#14532D` green) 4px from a label in the same colour, and all twelve payable
+  prices on the screen resolve to that accent while only the two struck list prices stay muted.
 - The course page's gutters were re-checked after the change: intro padding left/right 8 with a 4px
   gap, section titles and bullets at 8, the facts band at `margin -8 / padding 8` so it bleeds edge
   to edge with its content still on the gutter, the hero control at `right: 8px; bottom: 16px` with
