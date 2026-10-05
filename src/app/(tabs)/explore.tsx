@@ -1,40 +1,100 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { Check, Search, SlidersHorizontal, X } from 'lucide-react-native';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { CourseRow } from '@/components/course-cards';
-import { AppText, Button, Chip, DataList, EmptyState, FormField, Rail, Screen, SectionHeader } from '@/components/ui';
+import {
+  AppText,
+  Badge,
+  Button,
+  Chip,
+  DataList,
+  EmptyState,
+  Rail,
+  Screen,
+  SearchField,
+  SectionHeader,
+  TabHeader,
+} from '@/components/ui';
 import { colors, layout, radius, spacing, type } from '@/constants/theme';
 import {
   browseCourses,
   categories,
+  courses,
   durationOptions,
   emptyFilters,
+  instructors,
   priceBandOptions,
   sortOptions,
   type BrowseFilters,
   type SortKey,
 } from '@/data/catalog';
+import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
 
 const levelOptions = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function ExploreScreen() {
-  const router = useRouter();
   const params = useLocalSearchParams<{ category?: string }>();
   const { state } = useStore();
 
   const [filters, setFilters] = useState<BrowseFilters>(emptyFilters);
   const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [recent, setRecent] = useState<string[]>([]);
 
   useEffect(() => {
     if (params.category) setFilters((prev) => ({ ...prev, categoryIds: [String(params.category)] }));
   }, [params.category]);
 
   const results = useMemo(() => browseCourses(filters), [filters]);
+
+  // Focus shows what to search instead of an empty field (search rule: recents, then suggestions).
+  const searchPanelOpen = searchFocused && filters.query.trim().length === 0;
+
+  useEffect(() => {
+    if (!searchFocused) return;
+    let cancelled = false;
+    void readRecentSearches().then((entries) => {
+      if (!cancelled) setRecent(entries);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [searchFocused]);
+
+  // Only offer suggestions the catalog can actually answer, so a suggestion is never a dead end.
+  const suggestions = useMemo(() => {
+    const stopWords = new Set(['the', 'and', 'your', 'with', 'for', 'from', 'that', 'this', 'into']);
+    const words = courses
+      .flatMap((course) => course.title.split(/[\s,–-]+/))
+      .map((word) => word.replace(/[^A-Za-z]/g, ''))
+      .filter((word) => word.length > 3 && !stopWords.has(word.toLowerCase()));
+
+    const seeds = [
+      ...instructors.slice(0, 3).map((instructor) => ({ term: instructor.name.split(' ')[0], badge: 'Chef' })),
+      ...words.map((word) => ({ term: word, badge: 'Course' })),
+      ...categories.map((category) => ({ term: category.label, badge: 'Cuisine' })),
+    ];
+
+    const seen = new Set<string>();
+    return seeds
+      .filter((seed) => {
+        const key = seed.term.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return browseCourses({ ...emptyFilters, query: seed.term }).length > 0;
+      })
+      .slice(0, 6);
+  }, []);
+
+  const applySearch = useCallback((term: string) => {
+    setFilters((prev) => ({ ...prev, query: term }));
+    void rememberSearch(term).then(setRecent);
+  }, []);
   const personalised = state.interests.length > 0 && filters.categoryIds.length === 0 && filters.query.length === 0;
 
   const toggleIn = (key: 'categoryIds' | 'levels' | 'priceBands' | 'durations', value: string) =>
@@ -65,116 +125,161 @@ export default function ExploreScreen() {
   const clearAll = () => setFilters((prev) => ({ ...emptyFilters, query: prev.query, sort: prev.sort }));
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Text style={[type.display, styles.title, { color: colors.text }]}>Explore</Text>
-
-      <View style={styles.pad}>
-        <FormField
-          icon={Search}
-          value={filters.query}
-          onChangeText={(query) => setFilters((prev) => ({ ...prev, query }))}
-          placeholder="Search courses, chefs or skills"
-          autoCorrect={false}
-          returnKeyType="search"
-          accessibilityLabel="Search courses"
-          rightSlot={
-            filters.query.length > 0 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Clear search"
-                hitSlop={10}
-                onPress={() => setFilters((prev) => ({ ...prev, query: '' }))}>
-                <X size={18} color={colors.textSubtle} strokeWidth={1.9} />
-              </Pressable>
-            ) : null
-          }
-        />
-      </View>
-
-      <Rail>
-        <Chip label="All" selected={filters.categoryIds.length === 0} onPress={() => setFilters((prev) => ({ ...prev, categoryIds: [] }))} />
-        {categories.map((category) => (
-          <Chip
-            key={category.id}
-            label={category.label}
-            selected={filters.categoryIds.includes(category.id)}
-            onPress={() => toggleIn('categoryIds', category.id)}
-          />
-        ))}
-      </Rail>
-
-      <View style={styles.pad}>
-        <SectionHeader
-          title={`${results.length} ${results.length === 1 ? 'course' : 'courses'}`}
-          subtitle={personalised ? 'Ordered by your interests' : undefined}
-        />
-        <View style={styles.toolbar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Sort results"
-            onPress={() => setSortOpen(true)}
-            style={({ pressed }) => [styles.tool, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.label, { color: colors.text }]}>
-              {sortOptions.find((option) => option.id === filters.sort)?.label ?? 'Sort'}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={activeChips.length > 0 ? `Filters, ${activeChips.length} active` : 'Filters'}
-            onPress={() => setFilterOpen(true)}
-            style={({ pressed }) => [
-              styles.tool,
-              activeChips.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-              pressed && { opacity: 0.7 },
-            ]}>
-            <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.accentText : colors.text} strokeWidth={1.9} />
-            <Text style={[type.label, { color: activeChips.length > 0 ? colors.accentText : colors.text }]}>
-              {activeChips.length > 0 ? `Filters · ${activeChips.length}` : 'Filters'}
-            </Text>
-          </Pressable>
+    <Screen
+      contentStyle={styles.content}
+      header={
+        <View style={styles.headerBlock}>
+          <TabHeader overline="Discover" title="What will you cook today?" />
+          <View style={styles.searchWrap}>
+            <SearchField
+              value={filters.query}
+              onChangeText={(query) => setFilters((prev) => ({ ...prev, query }))}
+              onSubmit={applySearch}
+              onFocusChange={setSearchFocused}
+              onCancel={() => setSearchFocused(false)}
+            />
+          </View>
         </View>
-      </View>
+      }>
 
-      {activeChips.length > 0 ? (
-        <Rail>
-          {activeChips.map((chip) => (
-            <Pressable
-              key={chip.key}
-              accessibilityRole="button"
-              accessibilityLabel={`Remove filter ${chip.label}`}
-              onPress={chip.clear}
-              style={styles.activeChip}>
-              <Text style={[type.label, { color: colors.accentText }]}>{chip.label}</Text>
-              <X size={13} color={colors.accentText} strokeWidth={2} />
-            </Pressable>
-          ))}
-          <Pressable accessibilityRole="button" accessibilityLabel="Clear all filters" onPress={clearAll} hitSlop={8}>
-            <Text style={[type.label, styles.clearAll, { color: colors.textMuted }]}>Clear all</Text>
-          </Pressable>
-        </Rail>
-      ) : null}
+      {searchPanelOpen ? (
+        <View style={styles.panel}>
+          {recent.length > 0 ? (
+            <View style={styles.block}>
+              <SectionHeader
+                title="Recent searches"
+                actionLabel="Clear"
+                onAction={() => {
+                  setRecent([]);
+                  void clearRecentSearches();
+                }}
+              />
+              <Rail>
+                {recent.map((term) => (
+                  <Chip key={term} label={term} onPress={() => applySearch(term)} />
+                ))}
+              </Rail>
+            </View>
+          ) : null}
 
-      <View style={styles.resultsDivider} />
-
-      {results.length === 0 ? (
-        <EmptyState
-          icon={Search}
-          title="No courses match these filters"
-          body="Try a different cuisine, level or price range. Clearing the filters brings the full catalog back."
-          actionLabel="Clear filters"
-          onAction={() => setFilters({ ...emptyFilters })}
-        />
+          <View style={styles.block}>
+            <SectionHeader title="Try searching" subtitle="Picked from this catalog" />
+            <DataList>
+              {suggestions.map((suggestion) => (
+                <Pressable
+                  key={suggestion.term}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Search ${suggestion.term}`}
+                  onPress={() => applySearch(suggestion.term)}
+                  style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}>
+                  <Search size={16} color={colors.textSubtle} strokeWidth={1.9} />
+                  <AppText variant="body" style={styles.suggestionLabel}>
+                    {suggestion.term}
+                  </AppText>
+                  <Badge label={suggestion.badge} tone="neutral" />
+                </Pressable>
+              ))}
+            </DataList>
+          </View>
+        </View>
       ) : (
-        <DataList>
-          {results.map((course) => (
-            <CourseRow key={course.id} course={course} />
+        <>
+        <Rail>
+          <Chip label="All" selected={filters.categoryIds.length === 0} onPress={() => setFilters((prev) => ({ ...prev, categoryIds: [] }))} />
+          {categories.map((category) => (
+            <Chip
+              key={category.id}
+              label={category.label}
+              selected={filters.categoryIds.includes(category.id)}
+              onPress={() => toggleIn('categoryIds', category.id)}
+            />
           ))}
-        </DataList>
-      )}
+        </Rail>
 
-      <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
-        Catalog, ratings and reviews are sample data for this prototype.
-      </Text>
+        <View style={styles.pad}>
+          <SectionHeader
+            title={`${results.length} ${results.length === 1 ? 'course' : 'courses'}`}
+            subtitle={personalised ? 'Ordered by your interests' : undefined}
+          />
+          <View style={styles.toolbar}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Sort results"
+              onPress={() => setSortOpen(true)}
+              style={({ pressed }) => [styles.tool, pressed && { opacity: 0.7 }]}>
+              <Text style={[type.label, { color: colors.text }]}>
+                {sortOptions.find((option) => option.id === filters.sort)?.label ?? 'Sort'}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={activeChips.length > 0 ? `Filters, ${activeChips.length} active` : 'Filters'}
+              onPress={() => setFilterOpen(true)}
+              style={({ pressed }) => [
+                styles.tool,
+                activeChips.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+                pressed && { opacity: 0.7 },
+              ]}>
+              <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.accentText : colors.text} strokeWidth={1.9} />
+              <Text style={[type.label, { color: activeChips.length > 0 ? colors.accentText : colors.text }]}>
+                {activeChips.length > 0 ? `Filters · ${activeChips.length}` : 'Filters'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {activeChips.length > 0 ? (
+          <Rail>
+            {activeChips.map((chip) => (
+              <Pressable
+                key={chip.key}
+                accessibilityRole="button"
+                accessibilityLabel={`Remove filter ${chip.label}`}
+                onPress={chip.clear}
+                style={styles.activeChip}>
+                <Text style={[type.label, { color: colors.accentText }]}>{chip.label}</Text>
+                <X size={13} color={colors.accentText} strokeWidth={2} />
+              </Pressable>
+            ))}
+            <Pressable accessibilityRole="button" accessibilityLabel="Clear all filters" onPress={clearAll} hitSlop={8}>
+              <Text style={[type.label, styles.clearAll, { color: colors.textMuted }]}>Clear all</Text>
+            </Pressable>
+          </Rail>
+        ) : null}
+
+        <View style={styles.resultsDivider} />
+
+        {results.length === 0 ? (
+          <View style={styles.block}>
+            <EmptyState
+              icon={Search}
+              title="No courses match these filters"
+              body="Try a different cuisine, level or price range. Clearing the filters brings the full catalog back."
+              actionLabel="Clear filters"
+              onAction={() => setFilters({ ...emptyFilters })}
+            />
+            <View style={styles.block}>
+              <SectionHeader title="Try searching" subtitle="Picked from this catalog" />
+              <Rail>
+                {suggestions.map((suggestion) => (
+                  <Chip key={suggestion.term} label={suggestion.term} onPress={() => applySearch(suggestion.term)} />
+                ))}
+              </Rail>
+            </View>
+          </View>
+        ) : (
+          <DataList>
+            {results.map((course) => (
+              <CourseRow key={course.id} course={course} />
+            ))}
+          </DataList>
+        )}
+
+        <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
+          Catalog, ratings and reviews are sample data for this prototype.
+        </Text>
+        </>
+      )}
 
       <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title="Sort by">
         {sortOptions.map((option) => (
@@ -260,7 +365,25 @@ function FilterGroup({ title, children }: { title: string; children: React.React
 
 const styles = StyleSheet.create({
   content: { gap: layout.gap, paddingBottom: spacing.xxl },
-  title: { paddingHorizontal: layout.section, paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  headerBlock: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  searchWrap: { paddingHorizontal: layout.screen },
+  panel: { paddingTop: spacing.sm, gap: layout.sectionGap },
+  block: { gap: layout.gap },
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: layout.touchTarget,
+    paddingVertical: spacing.xs,
+  },
+  suggestionLabel: { flex: 1 },
+  pressed: { opacity: 0.7 },
   pad: { paddingHorizontal: layout.screen, gap: layout.gap },
   toolbar: { flexDirection: 'row', gap: layout.gap },
   tool: {

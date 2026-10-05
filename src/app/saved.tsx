@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, DataList, EmptyState, IconButton, MetaItem, Screen, Segmented } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { colors, layout, radius, spacing, type } from '@/constants/theme';
 import { courseById, courses, instructorById } from '@/data/catalog';
 import { useStore } from '@/store';
 import type { Course } from '@/types';

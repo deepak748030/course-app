@@ -1,10 +1,21 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, CircleCheck, Clock, Play, Search } from 'lucide-react-native';
+import { BookOpen, Bookmark, CircleCheck, Clock, Play, Search } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ContinueCard } from '@/components/course-cards';
-import { AppText, Badge, Button, DataList, EmptyState, ProgressBar, Screen, Segmented } from '@/components/ui';
+import {
+  AppText,
+  Badge,
+  Button,
+  DataList,
+  EmptyState,
+  IconButton,
+  ProgressBar,
+  Screen,
+  Segmented,
+  TabHeader,
+} from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
 import { formatDuration } from '@/lib/format';
@@ -38,8 +49,23 @@ export default function MyLearningScreen() {
   const list = segment === 'progress' ? inProgress : completed;
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Text style={[type.display, styles.title, { color: colors.text }]}>My learning</Text>
+    <Screen
+      contentStyle={styles.content}
+      header={
+        /* The tab says where you are; the header says how it is going. */
+        <TabHeader
+          bordered
+          overline="Your progress"
+          title="Keep cooking"
+          actions={
+            <IconButton
+              icon={Bookmark}
+              accessibilityLabel="Saved items"
+              onPress={() => router.push('/saved')}
+            />
+          }
+        />
+      }>
 
       <View style={styles.pad}>
         <View style={styles.statsCard}>
@@ -162,9 +188,8 @@ function Stat({
 }
 
 const styles = StyleSheet.create({
-  content: { gap: layout.gap, paddingBottom: spacing.xxl },
+  content: { gap: layout.gap, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  title: { paddingHorizontal: layout.section, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   pad: { paddingHorizontal: layout.screen },
   statsCard: {
     flexDirection: 'row',

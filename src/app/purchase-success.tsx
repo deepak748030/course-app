@@ -5,7 +5,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppText, Badge, Button, DataList, Divider, Screen } from '@/components/ui';
+import { AppText, Badge, Button, DataList, Screen } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, firstPlayableLesson } from '@/data/catalog';
 import { useStore } from '@/store';

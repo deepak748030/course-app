@@ -9,6 +9,8 @@
  * - 4px spacing base; 8px side padding baseline; 16px content sections; 8px gap between items.
  * - Concentric radii on a small/medium/large scale, pills only for single-line content.
  * - White surfaces, one yellow accent, no shadows: elevation comes from tone + hairlines.
+ * - Headers: 16px side padding, one overline + one semibold line, actions on the right.
+ * - Search: pill field on the warm surface tone with a hairline border, never icon-only.
  */
 
 import '@/global.css';
@@ -144,6 +146,9 @@ export const type = {
   bodyStrong: { fontFamily: font.semibold, fontSize: 15, lineHeight: 22, letterSpacing: 0 },
   label: { fontFamily: font.regular, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
   labelStrong: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16, letterSpacing: 0 },
+  /** Tab bar labels: one step below `label` (tab bar rule: 10px, one word, semibold when active). */
+  navLabel: { fontFamily: font.regular, fontSize: 10, lineHeight: 14, letterSpacing: 0.1 },
+  navLabelActive: { fontFamily: font.semibold, fontSize: 10, lineHeight: 14, letterSpacing: 0.1 },
   /** Uppercase micro label: only place that opens letter-spacing. */
   overline: { fontFamily: font.semibold, fontSize: 12, lineHeight: 16, letterSpacing: 0.6, textTransform: 'uppercase' as const },
 } as const;

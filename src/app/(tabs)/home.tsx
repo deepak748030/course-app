@@ -1,13 +1,14 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Bell, Clapperboard, Clock, Play, Search, Star, UserRound } from 'lucide-react-native';
+import { Bell, Clapperboard, Clock, Play, Star } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { CourseCard, CourseRow, ContinueCard, InstructorRow } from '@/components/course-cards';
 import {
-  AppText,
+  AvatarButton,
+  BrandTile,
   Chip,
   DataList,
   IconButton,
@@ -15,15 +16,17 @@ import {
   Rail,
   Scrim,
   Screen,
+  SearchEntry,
   SectionHeader,
+  TabHeader,
   usePressScale,
 } from '@/components/ui';
 import { BrandMark } from '@/components/marks';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courses, instructorById } from '@/data/catalog';
+import { categories, courses, instructorById, instructors } from '@/data/catalog';
 import { notifications } from '@/data/content';
 import { images } from '@/media';
-import { formatDuration, timeOfDayGreeting } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 
@@ -62,33 +65,40 @@ export default function HomeScreen() {
   const unread = state.notificationsRead ? 0 : notifications.length;
 
   return (
-    <Screen contentStyle={styles.content}>
-      {/* Greeting + actions: 16px header padding per the header rule. */}
-      <View style={styles.header}>
-        <View style={styles.flex}>
-          <Text style={[type.label, { color: colors.textMuted }]}>{timeOfDayGreeting()}</Text>
-          <Text style={[type.title, { color: colors.text }]} numberOfLines={1}>
-            {session?.profile.name ?? 'Home cook'}
-          </Text>
-        </View>
-        <IconButton
-          icon={Bell}
-          variant="soft"
-          badge={unread}
-          accessibilityLabel="Notifications"
-          onPress={() => router.push('/notifications')}
+    <Screen
+      contentStyle={styles.content}
+      header={
+        /* Identity header: the brand, not a greeting, plus the two things reached from home. */
+        <TabHeader
+          bordered
+          leading={
+            <BrandTile size={40}>
+              <BrandMark size={26} color={colors.onAccent} />
+            </BrandTile>
+          }
+          title="Rasoi Studio"
+          meta={`${courses.length} courses · ${instructors.length} chefs`}
+          actions={
+            <>
+              <IconButton
+                icon={Bell}
+                variant="soft"
+                badge={unread}
+                accessibilityLabel="Notifications"
+                onPress={() => router.push('/notifications')}
+              />
+              <AvatarButton
+                name={session?.profile.name ?? 'Guest'}
+                accessibilityLabel="Your profile"
+                onPress={() => router.push('/profile')}
+              />
+            </>
+          }
         />
-        <IconButton
-          icon={UserRound}
-          variant="soft"
-          accessibilityLabel="Your profile"
-          onPress={() => router.push('/profile')}
-        />
-      </View>
-
+      }>
       {/* Search entry: full width inside the 8px screen padding. */}
       <View style={styles.searchWrap}>
-        <SearchPressable onPress={() => router.push('/explore')} />
+        <SearchEntry onPress={() => router.push('/explore')} />
       </View>
 
       {/* Banner: full-bleed — zero left/right gap by design. */}
@@ -175,24 +185,6 @@ export default function HomeScreen() {
   );
 }
 
-function SearchPressable({ onPress }: { onPress: () => void }) {
-  const press = usePressScale(0.99);
-  return (
-    <Animated.View style={press.style}>
-      <Pressable
-        accessibilityRole="search"
-        accessibilityLabel="Search courses, chefs or skills"
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        style={({ pressed }) => [styles.search, pressed && { opacity: 0.7 }]}>
-        <Search size={18} color={colors.textSubtle} strokeWidth={1.75} />
-        <Text style={[type.body, { color: colors.textSubtle, flex: 1 }]}>Search courses, chefs or skills</Text>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
 /** Editorial hero: artwork fills the screen edge to edge, native copy sits on the scrim. */
 function HeroBanner({ course }: { course: Course }) {
   const router = useRouter();
@@ -240,25 +232,7 @@ const styles = StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: layout.section,
-    paddingTop: spacing.sm,
-  },
   searchWrap: { paddingHorizontal: layout.screen },
-  search: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: layout.fieldHeight,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    paddingHorizontal: spacing.md,
-  },
   hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },

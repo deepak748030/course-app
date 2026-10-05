@@ -1,94 +1,28 @@
 import { Tabs, Redirect } from 'expo-router';
-import type { LucideIcon } from 'lucide-react-native';
-import { BookOpen, Compass, House, UserRound } from 'lucide-react-native';
-import { StyleSheet, Text, View, type ColorValue } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, font, layout, spacing } from '@/constants/theme';
+import { TabBar } from '@/components/tab-bar';
 import { useStore } from '@/store';
 
 /**
- * Tab bar: 4 tabs, 56px, hairline top border, opaque surface (no blur needed since the
- * surface is opaque), filled-feeling active state via colour + semibold label.
- * No status dots here — the only badge in the app is the unread notification count.
+ * Four tabs. The bar itself is a custom component (src/components/tab-bar.tsx) so the active
+ * state can be a filled icon on a sliding pill instead of a tint swap.
  */
-function TabItem({ icon: Icon, color, focused, label }: { icon: LucideIcon; color: ColorValue; focused: boolean; label: string }) {
-  return (
-    <View style={styles.tabItem}>
-      <Icon size={22} color={color as string} strokeWidth={focused ? 2 : 1.6} />
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive, { color: color as string }]} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
-  );
-}
-
 export default function TabsLayout() {
   const { session, ready } = useStore();
-  const insets = useSafeAreaInsets();
 
   // Deep links must not land inside the app without a session.
   if (ready && !session) return <Redirect href="/auth/phone" />;
 
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accentText,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          // 56px of bar content, plus the home indicator area on gesture devices.
-          height: layout.tabBarHeight + insets.bottom,
-          paddingBottom: insets.bottom,
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          // Neutralises the Material elevation the navigator would otherwise paint on Android,
-          // so the bar separates by its hairline only.
-          elevation: 0,
-          paddingTop: spacing.xs,
-        },
-        tabBarLabel: () => null,
-        tabBarHideOnKeyboard: true,
-      }}>
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, focused }) => <TabItem icon={House} color={color} focused={focused} label="Home" />,
-          tabBarAccessibilityLabel: 'Home',
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, focused }) => <TabItem icon={Compass} color={color} focused={focused} label="Explore" />,
-          tabBarAccessibilityLabel: 'Explore',
-        }}
-      />
-      <Tabs.Screen
-        name="learning"
-        options={{
-          title: 'My learning',
-          tabBarIcon: ({ color, focused }) => <TabItem icon={BookOpen} color={color} focused={focused} label="Learning" />,
-          tabBarAccessibilityLabel: 'My learning',
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, focused }) => <TabItem icon={UserRound} color={color} focused={focused} label="Profile" />,
-          tabBarAccessibilityLabel: 'Profile',
-        }}
-      />
+      tabBar={(props) => (
+        <TabBar state={props.state} descriptors={props.descriptors} navigation={props.navigation} />
+      )}
+      screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true }}>
+      <Tabs.Screen name="home" options={{ title: 'Home', tabBarAccessibilityLabel: 'Home' }} />
+      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarAccessibilityLabel: 'Explore' }} />
+      <Tabs.Screen name="learning" options={{ title: 'Learning', tabBarAccessibilityLabel: 'My learning' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarAccessibilityLabel: 'Profile' }} />
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabItem: { alignItems: 'center', gap: 2, width: 72 },
-  tabLabel: { fontFamily: font.regular, fontSize: 12, lineHeight: 16 },
-  tabLabelActive: { fontFamily: font.semibold },
-});

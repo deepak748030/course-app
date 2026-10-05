@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Button, Chip, DataList, ListRow, Screen } from '@/components/ui';
+import { Button, Chip, Screen } from '@/components/ui';
 import { colors, layout, spacing, type } from '@/constants/theme';
 import { interests } from '@/data/catalog';
 import { useStore } from '@/store';

@@ -40,7 +40,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
-import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen, SectionHeader } from '@/components/ui';
+import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, instructorById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';

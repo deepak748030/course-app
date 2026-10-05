@@ -136,6 +136,26 @@ The UI follows the project's design rules document and is generated from one tok
 
 A UI reference board of 100 course-app screens used for this redesign is kept in `image-search/`.
 
+### Tabs, headers and search
+
+- **Tab bar** (`src/components/tab-bar.tsx`): four destinations, 56px + bottom safe area, hairline top
+  border, no shadow. The active tab is a **filled** icon in the accent colour on a soft yellow pill that
+  **slides between tabs on a spring**, with the outline icon cross-fading out and the label switching to
+  semibold — matching the tab bar rules (`filled icon + primary colour + semibold label`). Labels stay one
+  word ("My learning" is only the spoken label), the bar hides while the keyboard is open, and every tap
+  fires light haptics on device. Icons come from `@expo/vector-icons` (Ionicons) because the rules need a
+  filled *and* outline pair for the same glyph.
+- **Headers**: a tab is already labelled in the bar, so no tab screen repeats its own name as a page
+  title. `TabHeader` composes 16px padding, an optional leading mark and one overline + one semibold line:
+  Home carries the brand tile and the catalog size, Explore asks "What will you cook today?", Learning
+  shows progress with a Saved shortcut, Profile is the identity block (avatar, name, member since) with a
+  Settings action. Stacked screens keep the centred 56px `AppBar` with a back button — which now only
+  renders when the router can actually go back.
+- **Search**: one pill component on the warm surface tone with a hairline border (`SearchField` for typing,
+  `SearchEntry` for the Home shortcut). Focusing it reveals **recent searches** (last five, stored through
+  the crash-proof storage wrapper) and **"Try searching"** suggestions that are pre-filtered against the
+  catalog, so a suggestion can never return nothing; zero results offer the same chips as a recovery path.
+
 ## What is intentionally not included
 
 - **No offline downloads, captions, casting or picture-in-picture**, so the player shows no controls for them.
@@ -157,11 +177,16 @@ onboarding completion and app preferences are kept.
   animated-style body touches React state (see "Native worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
-- The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs` with
-  `SEED=1`) so the real client boot path runs and can be inspected: every route renders real content
-  (no empty screens), and click-throughs were exercised for the tab bar, Home → course details →
-  checkout, and My learning → lesson player → Overview/Recipe/Notes, with zero console or unhandled
-  errors. This is a DOM check, not a visual one.
+- The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs`, `tabs.mjs`
+  with `SEED=1`) so the real client boot path runs and can be inspected: every route renders real content
+  (no empty screens), and click-throughs were exercised for the tab bar (all four tabs, via
+  `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Recipe/Notes,
+  the sort/filter sheets opening and closing, and focusing the search field (recent searches +
+  suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
+- Status bar: the app is light-only (`userInterfaceStyle: "light"`), the Android window background is set
+  to the app background through `expo-system-ui`, and the bar uses dark icons on every light screen while
+  the player and course hero switch to light icons. Without the window background a transparent
+  edge-to-edge status bar reads as black.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 

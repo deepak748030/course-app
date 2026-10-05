@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
-import { AppText, Badge, Button, DataList, ListRow, Screen } from '@/components/ui';
+import { AppText, Avatar, Badge, Button, DataList, IconButton, ListRow, Screen, TabHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
 import { formatDuration, maskPhone } from '@/lib/format';
@@ -32,31 +32,24 @@ export default function ProfileScreen() {
     return { lessons, minutes, courses: enrolled.length };
   }, [enrolled, state.progress]);
 
-  const initial = (session?.profile.name ?? 'R').charAt(0).toUpperCase();
   const joined = session?.profile.joinedAt
     ? new Date(session.profile.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : null;
 
   return (
-    <Screen contentStyle={styles.content}>
-      <Text style={[type.display, styles.title, { color: colors.text }]}>Profile</Text>
-
+    <Screen
+      contentStyle={styles.content}
+      header={
+        /* Identity lives in the header: avatar, name, and when the account started. */
+        <TabHeader
+          bordered
+          leading={<Avatar name={session?.profile.name ?? 'Guest'} size={48} />}
+          title={session?.profile.name ?? 'Signed out'}
+          meta={joined ? `Member since ${joined}` : session ? maskPhone(session.profile.phone) : 'No active session'}
+          actions={<IconButton icon={Settings} accessibilityLabel="Settings" onPress={() => router.push('/settings')} />}
+        />
+      }>
       <View style={styles.pad}>
-        <View style={styles.identityCard}>
-          <View style={styles.avatar}>
-            <Text style={[type.title, { color: colors.accentText }]}>{initial}</Text>
-          </View>
-          <View style={styles.flex}>
-            <Text style={[type.title, { color: colors.text }]} numberOfLines={1}>
-              {session?.profile.name ?? 'Signed out'}
-            </Text>
-            <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
-              {session ? maskPhone(session.profile.phone) : 'No active session'}
-            </Text>
-            {joined ? <Text style={[type.label, { color: colors.textSubtle }]}>Member since {joined}</Text> : null}
-          </View>
-        </View>
-
         <View style={styles.statsCard}>
           <Stat icon={BookOpen} label="Courses" value={String(stats.courses)} />
           <View style={styles.statDivider} />
@@ -143,28 +136,9 @@ function Stat({ icon: Icon, label, value }: { icon: typeof BookOpen; label: stri
 }
 
 const styles = StyleSheet.create({
-  content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
+  content: { gap: layout.sectionGap, paddingTop: spacing.lg, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
-  title: { paddingHorizontal: layout.section, paddingTop: spacing.sm },
   pad: { paddingHorizontal: layout.screen, gap: layout.gap },
-  identityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   statsCard: {
     flexDirection: 'row',
     backgroundColor: colors.surface,

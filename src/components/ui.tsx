@@ -11,8 +11,8 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
-import { ArrowLeft, ChevronDown, ChevronRight, CircleAlert, Info, WifiOff } from 'lucide-react-native';
-import { Children, type ReactNode, useEffect, useState } from 'react';
+import { ArrowLeft, ChevronDown, ChevronRight, CircleAlert, Info, Search, WifiOff, X } from 'lucide-react-native';
+import { Children, type ReactNode, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -160,14 +160,13 @@ export function AppBar({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const canGoBack = onBack !== undefined || router.canGoBack();
   const back = onBack ?? (() => (router.canGoBack() ? router.back() : router.replace('/home')));
 
   return (
     <View style={[styles.appBar, { paddingTop: insets.top }, !borderless && styles.appBarBorder]}>
       <View style={styles.appBarSide}>
-        {onBack !== undefined || true ? (
-          <IconButton icon={ArrowLeft} accessibilityLabel={backLabel} onPress={back} />
-        ) : null}
+        {canGoBack ? <IconButton icon={ArrowLeft} accessibilityLabel={backLabel} onPress={back} /> : null}
       </View>
       <Text style={[type.subheading, styles.appBarTitle, { color: colors.text }]} numberOfLines={1}>
         {title}
@@ -867,6 +866,221 @@ export function Scrim({ from = 'transparent', to = colors.scrim, style }: { from
   );
 }
 
+/* ------------------------------------------------------------------ *
+ * Tab screens: identity + headers
+ * ------------------------------------------------------------------ */
+
+/** Initials avatar: one yellow tint, hairline ring, no photo needed for sample content. */
+export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  const initial = (name.trim().charAt(0) || 'R').toUpperCase();
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.avatar, { width: size, height: size }]}>
+      <Text style={{ fontFamily: font.semibold, fontSize: Math.round(size * 0.42), color: colors.accentText }}>{initial}</Text>
+    </View>
+  );
+}
+
+export function AvatarButton({
+  name,
+  onPress,
+  accessibilityLabel,
+  size = 40,
+}: {
+  name: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+  size?: number;
+}) {
+  const press = usePressScale(0.94);
+  return (
+    <Animated.View style={press.style}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel}
+        hitSlop={8}
+        onPress={() => {
+          feedback.tap();
+          onPress();
+        }}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={({ pressed }) => (pressed ? styles.pressed : null)}>
+        <Avatar name={name} size={size} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/**
+ * Header for a tab screen: safe area on top, 16px side padding, overline + one semibold line,
+ * actions on the right. Used instead of repeating the tab name as a page title — the tab bar
+ * already says where you are, so the header carries identity or progress instead.
+ */
+export function TabHeader({
+  leading,
+  overline,
+  title,
+  meta,
+  actions,
+  bordered = false,
+  style,
+}: {
+  leading?: ReactNode;
+  overline?: string;
+  title?: string;
+  meta?: string;
+  actions?: ReactNode;
+  bordered?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[styles.tabHeader, { paddingTop: insets.top + spacing.sm }, bordered && styles.tabHeaderBorder, style]}>
+      {leading}
+      <View style={styles.flex}>
+        {overline ? (
+          <Text style={[type.overline, { color: colors.textSubtle }]} numberOfLines={1}>
+            {overline}
+          </Text>
+        ) : null}
+        {title ? (
+          <Text style={[type.subheading, { color: colors.text }]} numberOfLines={1}>
+            {title}
+          </Text>
+        ) : null}
+        {meta ? (
+          <Text style={[type.label, tabularNums, { color: colors.textMuted }]} numberOfLines={1}>
+            {meta}
+          </Text>
+        ) : null}
+      </View>
+      {actions ? <View style={styles.tabHeaderActions}>{actions}</View> : null}
+    </View>
+  );
+}
+
+/** Yellow tile that carries the brand mark in tab headers. */
+export function BrandTile({ size = 40, children }: { size?: number; children: ReactNode }) {
+  return <View style={[styles.brandTile, { width: size, height: size }]}>{children}</View>;
+}
+
+/* ------------------------------------------------------------------ *
+ * Search
+ * ------------------------------------------------------------------ */
+
+export const SEARCH_PLACEHOLDER = 'Search courses, chefs or a dish';
+
+/** Pill search field. Focus raises the border and reveals a Cancel action, iOS style. */
+export function SearchField({
+  value,
+  onChangeText,
+  onSubmit,
+  onFocusChange,
+  onCancel,
+  placeholder = SEARCH_PLACEHOLDER,
+  autoFocus = false,
+  style,
+}: {
+  value: string;
+  onChangeText: (next: string) => void;
+  onSubmit?: (value: string) => void;
+  onFocusChange?: (focused: boolean) => void;
+  onCancel?: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const [focused, setFocused] = useState(false);
+  const input = useRef<TextInput>(null);
+
+  return (
+    <View style={[styles.searchRow, style]}>
+      <View style={[styles.search, focused && styles.searchFocused]}>
+        <Search size={18} color={focused ? colors.accentText : colors.textSubtle} strokeWidth={1.9} />
+        <TextInput
+          ref={input}
+          value={value}
+          onChangeText={onChangeText}
+          onSubmitEditing={() => onSubmit?.(value)}
+          onFocus={() => {
+            setFocused(true);
+            onFocusChange?.(true);
+          }}
+          onBlur={() => {
+            setFocused(false);
+            onFocusChange?.(false);
+          }}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSubtle}
+          returnKeyType="search"
+          autoCorrect={false}
+          autoFocus={autoFocus}
+          accessibilityLabel={placeholder}
+          style={[type.body, styles.searchInput, { color: colors.text }]}
+        />
+        {value.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Clear search"
+            hitSlop={10}
+            onPress={() => {
+              onChangeText('');
+              input.current?.focus();
+            }}
+            style={({ pressed }) => [styles.searchClear, pressed && styles.pressed]}>
+            <X size={15} color={colors.textMuted} strokeWidth={2.1} />
+          </Pressable>
+        ) : null}
+      </View>
+      {focused ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Cancel search"
+          hitSlop={8}
+          onPress={() => {
+            onChangeText('');
+            input.current?.blur();
+            onCancel?.();
+          }}
+          style={({ pressed }) => (pressed ? styles.pressed : null)}>
+          <Text style={[type.labelStrong, { color: colors.accentText }]}>Cancel</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** Same pill as SearchField, but it opens the search screen instead of typing in place. */
+export function SearchEntry({ onPress, placeholder = SEARCH_PLACEHOLDER, style }: { onPress: () => void; placeholder?: string; style?: StyleProp<ViewStyle> }) {
+  const press = usePressScale(0.99);
+  return (
+    <Animated.View style={[press.style, style]}>
+      <Pressable
+        accessibilityRole="search"
+        accessibilityLabel={placeholder}
+        onPress={() => {
+          feedback.tap();
+          onPress();
+        }}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={({ pressed }) => [styles.search, pressed && styles.pressed]}>
+        <Search size={18} color={colors.textSubtle} strokeWidth={1.9} />
+        <Text style={[type.body, styles.searchInput, { color: colors.textSubtle }]} numberOfLines={1}>
+          {placeholder}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Styles
+ * ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
@@ -895,6 +1109,50 @@ const styles = StyleSheet.create({
   appBarSide: { width: layout.touchTarget, alignItems: 'flex-start' },
   appBarRight: { alignItems: 'flex-end', flexDirection: 'row', gap: spacing.sm, width: 'auto', minWidth: layout.touchTarget },
   appBarTitle: { flex: 1, textAlign: 'center' },
+
+  tabHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: layout.headerHeight,
+    paddingHorizontal: layout.section,
+    paddingBottom: spacing.sm,
+    backgroundColor: colors.surface,
+  },
+  tabHeaderBorder: { borderBottomWidth: 1, borderBottomColor: colors.divider },
+  tabHeaderActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  avatar: {
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandTile: {
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: { opacity: 0.7 },
+
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  search: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: layout.fieldHeight,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: spacing.md,
+  },
+  searchFocused: { borderColor: colors.accentText, backgroundColor: colors.surface },
+  searchInput: { flex: 1, paddingVertical: spacing.sm },
+  searchClear: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: layout.screen },
   sectionSubtitle: { marginTop: 2 },

@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, PriceSummary, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
-import { AppText, Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
+import { Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, instructorById } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';

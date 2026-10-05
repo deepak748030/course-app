@@ -2,9 +2,10 @@ import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-san
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -41,8 +42,21 @@ function hideSplash() {
   void SplashScreen.hideAsync().catch(() => {});
 }
 
+/**
+ * Android edge-to-edge: the status bar is transparent and shows whatever the window paints, so
+ * the window background has to be the app background or the bar reads as black. Same reason the
+ * splash background is white in app.json.
+ */
+function useThemedWindow() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+  }, []);
+}
+
 function SplashGate({ children }: { children: ReactNode }) {
   const { ready } = useStore();
+  useThemedWindow();
 
   useEffect(() => {
     if (ready) hideSplash();
@@ -81,6 +95,7 @@ export default function RootLayout() {
                     <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
                     <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
                   </Stack>
+                  {/* Dark icons on the white window. The player and course hero override this with style="light". */}
                   <StatusBar style="dark" />
                 </View>
               </SplashGate>
