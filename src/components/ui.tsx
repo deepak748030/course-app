@@ -918,7 +918,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  badgeDotText: { fontFamily: font.semibold, fontSize: 10, lineHeight: 13, color: colors.surface },
+  badgeDotText: { fontFamily: font.semibold, fontSize: 12, lineHeight: 14, color: colors.surface },
 
   fieldWrap: { gap: spacing.sm },
   field: {

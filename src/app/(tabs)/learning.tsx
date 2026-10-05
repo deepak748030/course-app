@@ -151,7 +151,7 @@ function Stat({
   return (
     <View style={styles.stat}>
       <Icon size={16} color={colors.sage} strokeWidth={1.75} />
-      <AppText variant="subheading" style={[tabularNums, styles.statValue]}>
+      <AppText variant="subheading" style={tabularNums}>
         {value}
       </AppText>
       <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
@@ -176,7 +176,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   stat: { flex: 1, alignItems: 'center', gap: spacing.xs },
-  statValue: { fontSize: 19, lineHeight: 24 },
   statDivider: { width: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
   completedRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.screen, paddingVertical: spacing.md },
   completedMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, marginBottom: spacing.sm, flexWrap: 'wrap' },

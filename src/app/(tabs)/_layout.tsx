@@ -89,6 +89,6 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabItem: { alignItems: 'center', gap: 2, width: 72 },
-  tabLabel: { fontFamily: font.regular, fontSize: 10, lineHeight: 13 },
+  tabLabel: { fontFamily: font.regular, fontSize: 12, lineHeight: 16 },
   tabLabelActive: { fontFamily: font.semibold },
 });

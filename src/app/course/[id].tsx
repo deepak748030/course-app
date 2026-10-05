@@ -81,7 +81,7 @@ export default function CourseDetailsScreen() {
         header={
           <View style={styles.hero}>
             <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
-            <Scrim to="rgba(18, 20, 18, 0.62)" />
+            <Scrim to={colors.scrim} />
             <View style={[styles.heroBar, { paddingTop: insets.top + spacing.xs }]}>
               <IconButton
                 icon={ArrowLeft}
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.scrim,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.5)',
+    borderColor: colors.onPlayerMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },

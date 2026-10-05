@@ -209,15 +209,15 @@ function HeroBanner({ course }: { course: Course }) {
         onPressOut={press.onPressOut}>
         <View style={styles.hero}>
           <Image source={images.heroHome} style={styles.heroImage} contentFit="cover" transition={200} />
-          <Scrim to="rgba(18, 20, 18, 0.78)" />
+          <Scrim to={colors.scrim} />
           <View style={styles.heroCopy}>
-            <Text style={[type.overline, { color: 'rgba(255,255,255,0.75)' }]}>Featured this week</Text>
+            <Text style={[type.overline, { color: colors.onPlayerMuted }]}>Featured this week</Text>
             <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
               {course.title}
             </Text>
             <View style={styles.heroMeta}>
-              <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color="rgba(255,255,255,0.75)" />
-              <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color="rgba(255,255,255,0.75)" />
+              <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color={colors.onPlayerMuted} />
+              <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color={colors.onPlayerMuted} />
               <View style={styles.heroRating}>
                 <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
                 <Text style={[type.labelStrong, tabularNums, { color: colors.textInverse }]}>

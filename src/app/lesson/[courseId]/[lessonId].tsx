@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(18,20,18,0.55)',
+    backgroundColor: colors.scrim,
     paddingHorizontal: layout.section,
   },
   playerTop: {
@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: colors.scrim,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
+    borderColor: colors.onPlayerMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
