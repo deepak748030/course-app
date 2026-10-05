@@ -156,6 +156,9 @@ check('search, filters and sorting act on the catalog', async () => {
 // on device (the web build silently degrades, so a green web run is NOT evidence). Guard against
 // reintroducing that pattern anywhere in src/.
 const ANIMATION_CALL = /\bwith(Timing|Spring|Repeat|Decay|Sequence)\s*\(/g;
+// Hook bodies are also compiled to the UI runtime; touching React state there throws the same way.
+const WORKLET_HOOK = /\b(useAnimatedStyle|useDerivedValue|useAnimatedReaction)\s*\(/g;
+const REACT_STATE_CALL = /\bset[A-Z][A-Za-z0-9_]*\s*\(|\bdispatch[A-Z][A-Za-z0-9_]*\s*\(/;
 
 function scanWorkletCallbacks(): string[] {
   const offenders: string[] = [];
@@ -171,7 +174,7 @@ function scanWorkletCallbacks(): string[] {
 
   for (const file of walk(root)) {
     const source = readFileSync(file, 'utf8');
-    const lines = source.split('\n');
+    const lineAt = (index: number) => source.slice(0, index).split('\n').length;
     for (const match of source.matchAll(ANIMATION_CALL)) {
       const start = match.index + match[0].length - 1; // at '('
       let depth = 0;
@@ -186,19 +189,42 @@ function scanWorkletCallbacks(): string[] {
       const args = source.slice(start + 1, end);
       if (!/=>/.test(args)) continue; // no callback at all — always safe
       if (/runOnJS\s*\(|scheduleOnRN\s*\(/.test(args)) continue; // correctly hop to the JS thread
-      const line = lines.slice(0, match.index).join('\n').split('\n').length;
-      offenders.push(`${file.split('/src/')[1]}:${line} ${match[0]}`);
+      offenders.push(`${file.split('/src/')[1]}:${lineAt(match.index)} ${match[0]}`);
+    }
+  }
+
+  // Second pass: worklet hook bodies that call a React state setter or a dispatcher.
+  const hookFiles = walk(root);
+  for (const file of hookFiles) {
+    const source = readFileSync(file, 'utf8');
+    const lineAt = (index: number) => source.slice(0, index).split('\n').length;
+    for (const match of source.matchAll(WORKLET_HOOK)) {
+      const start = match.index + match[0].length - 1;
+      let depth = 0;
+      let end = start;
+      for (let i = start; i < source.length; i += 1) {
+        if (source[i] === '(') depth += 1;
+        else if (source[i] === ')') {
+          depth -= 1;
+          if (depth === 0) { end = i; break; }
+        }
+      }
+      const body = source.slice(start + 1, end);
+      const bad = body.match(REACT_STATE_CALL);
+      if (!bad) continue;
+      const at = match.index + match[0].length + body.indexOf(bad[0]);
+      offenders.push(`${file.split('/src/')[1]}:${lineAt(at)} ${match[1]}() -> ${bad[0]}()`);
     }
   }
   return offenders;
 }
 
-check('animation callbacks never touch React state (worklet safety)', () => {
+check('worklet callbacks and hook bodies never touch React state', () => {
   const offenders = scanWorkletCallbacks();
   assert.deepEqual(
     offenders,
     [],
-    `these animation calls pass a UI-runtime callback — call setState via runOnJS instead:\n  ${offenders.join('\n  ')}`,
+    `these run on the UI runtime but touch React state — hop to the JS thread (runOnJS) or use a timer instead:\n  ${offenders.join('\n  ')}`,
   );
 });
 

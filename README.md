@@ -153,8 +153,8 @@ onboarding completion and app preferences are kept.
 - `bun scripts/selfcheck.ts` (`npm run check`) — 10 checks: phone normalisation/validation/masking,
   quantity scaling, INR/clock/duration formatting, the greeting helper, catalog derivation (unique
   lesson ids, counts, section integrity, preview lessons), the search/filter/sort behaviour of the
-  Explore screen, and a source scan that fails the build if any Reanimated animation call is given a
-  callback that touches React state (see "Native worklet safety"). All pass.
+  Explore screen, and a source scan that fails the build if any Reanimated animation callback or
+  animated-style body touches React state (see "Native worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
 - The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs` with
@@ -179,8 +179,9 @@ The bottom sheet did exactly that to unmount itself after the exit animation (`w
 (finished) => setMounted(false))`), and because the sheet is mounted — closed — by Explore, the course
 screen, the lesson player, Profile and Settings, the red screen appeared on almost every tap. The
 unmount is now scheduled from the JS thread with a timer that matches the animation duration, and
-`bun scripts/selfcheck.ts` scans `src/` for any regression of this pattern (`runOnJS` / `scheduleOnRN`
-wrapped callbacks are accepted). Web silently degrades these callbacks to JS, so a green web run is
+`bun scripts/selfcheck.ts` scans `src/` for any regression of this pattern — animation callbacks and
+`useAnimatedStyle` / `useDerivedValue` / `useAnimatedReaction` bodies that call a React setter
+(`runOnJS` / `scheduleOnRN` wrapped callbacks are accepted) — and reports the exact file and line. Web silently degrades these callbacks to JS, so a green web run is
 not evidence — the source scan is the guard.
 
 ## Boot resilience
