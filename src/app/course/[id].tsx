@@ -7,6 +7,7 @@ import {
   Clapperboard,
   Clock,
   Globe,
+  ListVideo,
   Play,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -22,10 +23,20 @@ import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courseById, discountPercent } from '@/data/catalog';
+import { categories, courseById, courseLessonGroups, discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
-import type { Lesson } from '@/types';
+import type { Course, Lesson } from '@/types';
+
+/** `3 sections · 8 lessons`, or `2 sections + 2 standalone · 10 lessons` for a mixed course. */
+function curriculumSummary(course: Course): string {
+  const standalone = course.lessons.filter((lesson) => lesson.sectionId === null).length;
+  const parts: string[] = [];
+  if (course.sections.length > 0) parts.push(`${course.sections.length} sections`);
+  if (standalone > 0) parts.push(course.sections.length > 0 ? `${standalone} standalone` : 'no sections');
+  parts.push(`${course.lessonCount} lessons`);
+  return parts.join(' · ');
+}
 
 export default function CourseDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -116,8 +127,9 @@ export default function CourseDetailsScreen() {
                 white glyph and label straight on the scrim — not a badge pasted into the text. */}
             {offer ? (
               <View style={styles.heroOffer} accessible accessibilityLabel={`${offer} percent off this course`}>
+                <Text style={[type.bodyStrong, tabularNums, { color: colors.textInverse }]}>{offer}</Text>
                 <AnimatedPercent size={15} color={colors.textInverse} />
-                <Text style={[type.labelStrong, { color: colors.textInverse }]}>{offer}% off</Text>
+                <Text style={[type.overline, { color: colors.textInverse }]}>OFF</Text>
               </View>
             ) : null}
           </View>
@@ -184,16 +196,17 @@ export default function CourseDetailsScreen() {
           <SectionHeader
             style={styles.headInset}
             title="Curriculum"
-            subtitle={`${course.sections.length} sections · ${course.lessonCount} lessons`}
+            subtitle={curriculumSummary(course)}
           />
           <View style={styles.curriculum}>
-            {course.sections.map((section, index) => (
+            {courseLessonGroups(course).map((group, index) => (
               <CurriculumSectionBlock
-                key={section.id}
+                key={group.id}
                 index={index + 1}
-                title={section.title}
-                summary={section.summary}
-                lessons={course.lessons.filter((lesson) => lesson.sectionId === section.id)}
+                title={group.title}
+                summary={group.summary}
+                unnumbered={group.standalone}
+                lessons={group.lessons}
                 stateFor={stateFor}
                 onOpen={openLesson}
                 locked={!enrolled}
@@ -336,6 +349,7 @@ function CurriculumSectionBlock({
   index,
   title,
   summary,
+  unnumbered = false,
   lessons,
   stateFor,
   onOpen,
@@ -343,7 +357,9 @@ function CurriculumSectionBlock({
 }: {
   index: number;
   title: string;
-  summary: string;
+  summary?: string;
+  /** Standalone lessons: the tile keeps its place in the list but carries no number. */
+  unnumbered?: boolean;
   lessons: Lesson[];
   stateFor: (lesson: Lesson) => LessonRowState;
   onOpen: (lesson: Lesson) => void;
@@ -357,17 +373,25 @@ function CurriculumSectionBlock({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
-        accessibilityLabel={`Section ${index}, ${title}. ${lessons.length} lessons, ${formatDuration(minutes)}`}
+        accessibilityLabel={`${unnumbered ? title : `Section ${index}, ${title}`}. ${lessons.length} lessons, ${formatDuration(minutes)}`}
         onPress={() => setOpen((value) => !value)}
         style={({ pressed }) => [styles.curriculumHeader, pressed && { opacity: 0.75 }]}>
         <View style={styles.sectionIndex}>
-          <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>{String(index).padStart(2, '0')}</Text>
+          {unnumbered ? (
+            <ListVideo size={16} color={colors.accentText} strokeWidth={2} />
+          ) : (
+            <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>
+              {String(index).padStart(2, '0')}
+            </Text>
+          )}
         </View>
         <View style={styles.flex}>
           <Text style={[type.bodyStrong, { color: colors.text }]}>{title}</Text>
-          <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
-            {summary}
-          </Text>
+          {summary ? (
+            <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
+              {summary}
+            </Text>
+          ) : null}
           <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>
             {lessons.length} lessons · {formatDuration(minutes)}
             {locked ? ' · previews marked free' : ''}

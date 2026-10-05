@@ -174,6 +174,15 @@ The UI follows the project's design rules document and is generated from one tok
   price line, plus the checkout's *Total payable*, are all `accentText` — amber on white+yellow, deep
   green on white+green — the same colour as the sticky bars. The struck-through list price stays
   muted grey on cards and red on the two bars where it sits next to the amount you pay.
+- **A discount is never written with a “%” character.** The offer mark reads `33` · the animated
+  percent mark · `OFF`: the number in the theme accent and one step bolder, the animation exactly where
+  the “%” used to sit, then `OFF` in caps. `OfferMark` in
+  `src/components/offer-tag.tsx` renders it for the yellow pill badge (course artwork, home banner, the
+  buy bar) and the course page's hero mark renders the same three parts in the on-image white.
+  The colour is the theme accent — deep amber on white+yellow, deep green on white+green — and the pill
+  ground stays brand yellow so the ink-and-amber animation keeps its contrast in both themes.
+  A “%” character survives only where a percentage is prose rather than a mark: progress like
+  `40% complete`, the checkout's `Course discount (25% off)` line and the coupon chips.
 - **The home banner is a carousel that pages itself.** The top banner is now a full-bleed horizontal
   `ScrollView` holding the featured courses — the ranked popular pick first, then the next two, each
   carrying its own artwork, offer badge and copy. It advances every 4.5 seconds and wraps from the last
@@ -212,6 +221,29 @@ The UI follows the project's design rules document and is generated from one tok
   targets with 48px controls.
 - **Motion is restrained**: press feedback under 100ms, entrances 160–320ms, and every animation checks
   reduced-motion first.
+- **Profile is the one door to money, policies and help.** The profile screen's last group is
+  `Settings & policies` and carries, in order: Settings, *Transactions*, *Refund policy*,
+  *Privacy policy*, *Terms and conditions* and *Help and support*. Transactions (`/transactions`) lists
+  every course unlocked on this device newest-first — cover, title, date, the demo coupon that was
+  applied, a `Saved ₹…` badge and the amount — over a summary of what was paid in total, with the
+  honest line that no gateway is connected. It is built from the real enrolments in the store, so a
+  demo purchase or a reset changes it immediately, and the empty state offers the catalog.
+  The legal screen (`/legal`) now serves three documents — Terms, Privacy and Refunds — behind a
+  segmented switcher instead of a two-way “read the other one” button, and its refund copy sets out the
+  policy a shipped build would run on (seven-day window, nothing refunded past a quarter of the
+  lessons, coupons refunded at the price paid) under a badge that says it is still a sample document.
+- **Settings is only what Settings is for.** Settings now holds notifications and the device data
+  controls (reset demo data, log out) and nothing else: the Account block, the Payments block with the
+  payment-security row and the Policies block are gone, because the account details live on Profile and
+  every policy has one home there. No screen lost a destination — each row moved, it was not deleted.
+- **A course can be built from sections, from standalone lessons, or both.** `Lesson.sectionId` is now
+  `Id | null`, the seed accepts `directLessons`, and `courseLessonGroups(course)` turns a course into
+  the blocks the screens render — the authored sections in order, then one *unnumbered* group for
+  lessons created without a section. Selling Your Dairy exercises both: its three sections plus two
+  standalone lessons (`Choosing what not to sell`, `A one-page price list for your counter`) and a
+  curriculum header that reads `3 sections · 2 standalone · 10 lessons`. The course page, the lesson
+  player's “All lessons in this course” sheet and `scripts/selfcheck.ts` (which now asserts the mixed
+  case exists and that the groups cover every lesson exactly once) all read the same helper.
 - **Two themes, switchable from Profile.** `src/constants/theme.ts` holds two palettes — white + yellow
   (the default, and the original look, unchanged) and white + deep green — and `THEMES` is the picker's
   list. Both are white-surface: only the accent, the tinted block and the text tones differ, so layout,
@@ -302,6 +334,23 @@ onboarding completion and app preferences are kept.
   `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Sheet/Notes,
   the sort/filter sheets opening and closing, and focusing the search field (recent searches +
   suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
+- The offer mark, the profile/settings split and the standalone-lesson path were read back from the
+  exported web bundle in JSDOM (`/tmp/domtest/offer-probe.mjs`, `probe.mjs`, `lesson-sheet-probe.mjs`):
+  Home renders 29 marks all reading `33OFF` / `25OFF` / `30OFF` / `32OFF` / `35OFF` with `hasPercentChar=false`,
+  the number and `OFF` resolving to `rgb(138, 98, 0)` on white+yellow and `rgb(20, 83, 45)` on
+  white+green, each with its glyph and the `33 percent off` a11y label intact; the course hero mark is
+  the same three parts in white on the scrim, and the checkout pill reads `25OFF`. Profile's last group
+  lists Settings, Transactions, Refund policy, Privacy policy, Terms and conditions, Help and support;
+  Settings renders only the notifications block and the device-data block — no Account, Payments or
+  Policies text left in it; `/legal?doc=refund` serves the refund document behind a Terms · Privacy ·
+  Refunds switcher; `/transactions` with the seed alone reads `Paid in this prototype ₹0 · 1 course
+  unlocked on this device · 1 transaction · Milk Foundations · Sample account · Included`, and with a
+  seeded demo purchase reads `₹2,699 paid · 2 courses unlocked · ₹1,300 saved against list prices` and a
+  row carrying `14 Feb 2026 · YDU10 applied`, `Demo purchase`, `Saved ₹1,300`, `₹2,699` and the struck
+  `₹3,999`. The mixed curriculum shows as `3 sections · 2 standalone · 10 lessons` on
+  Selling Your Dairy with an unnumbered `Standalone lessons` block (`2 lessons · 26m`), while a
+  section-only course still reads `1. Milk on arrival / 2. Cold chain / 3. Testing and hygiene` in the
+  player's lesson sheet. This is a DOM check, not a visual one.
 - The home carousel and the save burst were read back from the exported web bundle in JSDOM
   (`/tmp/domtest/mote-probe.mjs`, `snap-check.mjs`, `saves-probe.mjs` at 390x844): the banner reports
   *Featured courses, 3 banners*, three 390px slides with the milk-foundations, paneer-craft and

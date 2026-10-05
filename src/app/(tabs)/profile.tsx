@@ -8,9 +8,13 @@ import {
   CircleCheck,
   Clock,
   LogOut,
+  FileText,
+  LifeBuoy,
   Mail,
   MapPin,
   NotebookPen,
+  Receipt,
+  RotateCcw,
   Settings,
   ShieldCheck,
   Smartphone,
@@ -228,11 +232,40 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.group}>
-        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Settings & support</Text>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Settings & policies</Text>
         <View style={styles.card}>
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            <ListRow icon={Settings} label="Settings" subtitle="Notifications, account, app data" onPress={() => router.push('/settings')} />
-            <ListRow icon={ShieldCheck} label="Help and support" subtitle="Answers and how to reach us" onPress={() => router.push('/help')} />
+            <ListRow icon={Settings} label="Settings" subtitle="Notifications, app data" onPress={() => router.push('/settings')} />
+            <ListRow
+              icon={Receipt}
+              label="Transactions"
+              subtitle="Demo purchases made on this device"
+              onPress={() => router.push('/transactions')}
+            />
+            <ListRow
+              icon={RotateCcw}
+              label="Refund policy"
+              subtitle="When a course can be refunded"
+              onPress={() => router.push({ pathname: '/legal', params: { doc: 'refund' } })}
+            />
+            <ListRow
+              icon={ShieldCheck}
+              label="Privacy policy"
+              subtitle="What is stored, and where"
+              onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}
+            />
+            <ListRow
+              icon={FileText}
+              label="Terms and conditions"
+              subtitle="The terms this prototype runs on"
+              onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
+            />
+            <ListRow
+              icon={LifeBuoy}
+              label="Help and support"
+              subtitle="Answers and how to reach us"
+              onPress={() => router.push('/help')}
+            />
           </DataList>
         </View>
       </View>

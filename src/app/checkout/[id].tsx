@@ -108,6 +108,7 @@ export default function CheckoutScreen() {
         purchasedAt: new Date().toISOString(),
         priceInr: payable,
         source: 'demo-checkout',
+        couponCode: coupon?.code,
       });
       feedback.success();
       router.replace({ pathname: '/purchase-success', params: { courseId: course.id } });

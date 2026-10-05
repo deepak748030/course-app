@@ -23,7 +23,7 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { OfferLottie } from '@/components/offer-lottie';
-import { createStyles, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, radius, spacing, tabularNums, type } from '@/constants/theme';
 
 // Metro inlines the composition, so there is no file to fetch at run time.
 const OFFER_ANIMATION = require('@/assets/lottie/offer.json');
@@ -93,6 +93,39 @@ export function OfferGlyph({ size = 22, tone = 'onYellow' }: { size?: number; to
   );
 }
 
+/**
+ * The mark's contents — the percentages are never written with a "%" character anywhere in the app.
+ *
+ *   `33`   bold, in the theme accent
+ *   the animated percent mark, exactly where the "%" would sit
+ *   `OFF`  uppercase
+ *
+ * The colour follows the theme by default (deep amber on white+yellow, deep green on white+green);
+ * the course hero passes the on-image colour instead, because it sits on artwork.
+ */
+export function OfferMark({
+  percent,
+  glyph = 22,
+  tone = 'onYellow',
+  color = colors.accentText,
+}: {
+  percent: number;
+  glyph?: number;
+  tone?: Tone;
+  color?: string;
+}) {
+  return (
+    <View
+      style={styles.mark}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
+      <Text style={[type.bodyStrong, tabularNums, { color }]}>{percent}</Text>
+      <OfferGlyph size={glyph} tone={tone} />
+      <Text style={[type.overline, { color }]}>OFF</Text>
+    </View>
+  );
+}
+
 /** Yellow pill with the animation and the percentage: used on course artwork and buy bars. */
 export function OfferBadge({
   percent,
@@ -112,13 +145,13 @@ export function OfferBadge({
       accessibilityRole="text"
       accessibilityLabel={`${percent} percent off`}
       style={[styles.badge, size === 'md' && styles.badgeMd, tone === 'onSurface' && styles.badgeSurface, style]}>
-      <OfferGlyph size={glyph} tone={tone} />
-      <Text style={[type.labelStrong, { color: TONES[tone] }]}>{percent}% off</Text>
+      <OfferMark percent={percent} glyph={glyph} tone={tone} />
     </View>
   );
 }
 
 const styles = createStyles(() => StyleSheet.create({
+  mark: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   glyphBox: { alignItems: 'center', justifyContent: 'center' },
   badge: {
     flexDirection: 'row',

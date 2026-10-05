@@ -26,7 +26,8 @@ export interface Recipe {
 export interface Lesson {
   id: Id;
   courseId: Id;
-  sectionId: Id;
+  /** The section this lesson belongs to, or `null` when it was authored as a standalone lesson. */
+  sectionId: Id | null;
   title: string;
   description: string;
   minutes: number;
@@ -92,6 +93,8 @@ export interface Enrollment {
   priceInr: number;
   /** 'sample-seed' = demo account progress, 'demo-checkout' = bought in this prototype. */
   source: 'sample-seed' | 'demo-checkout';
+  /** Demo coupon that was applied at checkout, if any. Shown on the transactions list. */
+  couponCode?: string;
 }
 
 export interface LessonProgress {

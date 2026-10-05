@@ -104,6 +104,7 @@ check('timeOfDayGreeting covers the day', () => {
 
 check('catalog derivation produces unique ids and coherent counts', async () => {
   const catalog = await import('../src/data/catalog');
+  const { courseLessonGroups } = catalog;
   const allLessons = catalog.courses.flatMap((course) => course.lessons);
   const uniqueIds = new Set(allLessons.map((lesson) => lesson.id));
 
@@ -119,8 +120,22 @@ check('catalog derivation produces unique ids and coherent counts', async () => 
   );
   assert.equal(uniqueIds.size, allLessons.length, 'lesson ids must be unique across the catalog');
   assert.ok(
-    allLessons.every((lesson) => catalog.courses.some((course) => course.sections.some((section) => section.id === lesson.sectionId))),
-    'every lesson belongs to a section of its course',
+    allLessons.every(
+      (lesson) =>
+        lesson.sectionId === null ||
+        catalog.courses.some((course) => course.sections.some((section) => section.id === lesson.sectionId)),
+    ),
+    'every lesson is either inside a section of its course or a standalone lesson',
+  );
+  assert.ok(
+    catalog.courses.some(
+      (course) => course.sections.length > 0 && course.lessons.some((lesson) => lesson.sectionId === null),
+    ),
+    'a course mixes sections with standalone lessons, so both authoring options are in use',
+  );
+  assert.ok(
+    catalog.courses.every((course) => courseLessonGroups(course).flatMap((group) => group.lessons).length === course.lessonCount),
+    'the grouped curriculum covers every lesson exactly once',
   );
   assert.ok(
     catalog.courses.every((course) => course.lessonCount === course.lessons.length && course.hours > 0),

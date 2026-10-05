@@ -1,18 +1,17 @@
 import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
-import { LogOut, RefreshCcw, ShieldCheck } from 'lucide-react-native';
+import { LogOut, RefreshCcw } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
-import { AppBar, Badge, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
+import { AppBar, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { useStore } from '@/store';
-import { formatIndianMobile } from '@/lib/format';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { session, state, setPreference, resetDemoData, signOut } = useStore();
+  const { state, setPreference, resetDemoData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -47,35 +46,6 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Account" />
-          <DataList>
-            <ListRow
-              label="Mobile number"
-              value={session ? formatIndianMobile(session.profile.phone) : 'Not signed in'}
-              chevron={false}
-            />
-            <ListRow
-              label="Change number"
-              subtitle="Signs you out so you can verify a different number"
-              onPress={() => setLogoutOpen(true)}
-            />
-          </DataList>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Payments" />
-          <DataList>
-            <ListRow
-              icon={ShieldCheck}
-              label="Payment security"
-              subtitle="This build has no payment gateway; demo purchases only unlock a course locally."
-              chevron={false}
-              rightSlot={<Badge label="Demo" tone="gold" />}
-            />
-          </DataList>
-        </View>
-
-        <View style={styles.section}>
           <SectionHeader title="Data on this device" />
           <DataList>
             <ListRow
@@ -91,15 +61,6 @@ export default function SettingsScreen() {
               subtitle="Also removes the learning data stored for this session"
               onPress={() => setLogoutOpen(true)}
             />
-          </DataList>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Policies" subtitle="Sample documents" />
-          <DataList>
-            <ListRow label="Terms of use" onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })} />
-            <ListRow label="Privacy" onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })} />
-            <ListRow label="Help and support" onPress={() => router.push('/help')} />
           </DataList>
         </View>
 

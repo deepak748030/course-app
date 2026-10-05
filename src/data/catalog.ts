@@ -44,6 +44,12 @@ type CourseSeed = {
   equipment: string[];
   audience: string;
   sections: SectionSeed[];
+  /**
+   * Lessons that belong to no section. Both authoring options are supported: a course can be built
+   * entirely from sections, entirely from standalone lessons, or — like Selling Your Dairy — mix the
+   * two, which the curriculum renders as a final, unnumbered group.
+   */
+  directLessons?: LessonSeed[];
   reviews: ReviewSeed[];
   isPopular?: boolean;
   isBeginnerPick?: boolean;
@@ -924,6 +930,19 @@ const courseSeeds: CourseSeed[] = [
         ],
       },
     ],
+    // Created without a section: they stand on their own at the end of the curriculum.
+    directLessons: [
+      {
+        title: 'Choosing what not to sell',
+        minutes: 12,
+        description: 'When capacity is the limit: which lines to drop, and how to tell a buyer without losing the account.',
+      },
+      {
+        title: 'A one-page price list for your counter',
+        minutes: 14,
+        description: 'Turn the costing sheet into a price list you can hand to a shop, with pack sizes and rates that stay current.',
+      },
+    ],
     reviews: [
       {
         author: 'Mahesh R.',
@@ -952,25 +971,30 @@ function makeCourse(seed: CourseSeed): Course {
   const lessons: Lesson[] = [];
   let lessonNumber = 0;
 
+  const addLesson = (lessonSeed: LessonSeed, sectionId: Id | null, video: VideoKey) => {
+    lessonNumber += 1;
+    const lessonId = `${seed.id}-l${lessonNumber}`;
+    lessons.push({
+      id: lessonId,
+      courseId: seed.id,
+      sectionId,
+      title: lessonSeed.title,
+      description: lessonSeed.description,
+      minutes: lessonSeed.minutes,
+      isPreview: lessonSeed.preview ?? false,
+      video,
+      recipe: lessonSeed.recipe ? { ...lessonSeed.recipe, id: `${lessonId}-recipe` } : undefined,
+    });
+  };
+
   const sections = seed.sections.map((section, sectionIndex) => {
     const sectionId = `${seed.id}-s${sectionIndex + 1}`;
-    section.lessons.forEach((lessonSeed) => {
-      lessonNumber += 1;
-      const lessonId = `${seed.id}-l${lessonNumber}`;
-      lessons.push({
-        id: lessonId,
-        courseId: seed.id,
-        sectionId,
-        title: lessonSeed.title,
-        description: lessonSeed.description,
-        minutes: lessonSeed.minutes,
-        isPreview: lessonSeed.preview ?? false,
-        video: section.video ?? seed.video,
-        recipe: lessonSeed.recipe ? { ...lessonSeed.recipe, id: `${lessonId}-recipe` } : undefined,
-      });
-    });
+    section.lessons.forEach((lessonSeed) => addLesson(lessonSeed, sectionId, section.video ?? seed.video));
     return { id: sectionId, title: section.title, summary: section.summary };
   });
+
+  // Standalone lessons are numbered after the sections, so a section's lesson ids never shift.
+  (seed.directLessons ?? []).forEach((lessonSeed) => addLesson(lessonSeed, null, seed.video));
 
   const totalMinutes = lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
 
@@ -1007,6 +1031,49 @@ export const courses: Course[] = courseSeeds.map(makeCourse);
  * Percent off when the sample data models a real discount, else null. Derived so a price change
  * can never disagree with the badge that advertises it.
  */
+/**
+ * One block of a course's curriculum: either an authored section or — when a lesson was created
+ * without one — a single unnumbered group of standalone lessons.
+ */
+export interface LessonGroup {
+  id: Id;
+  title: string;
+  summary?: string;
+  /** True for the group that holds lessons outside every section. */
+  standalone: boolean;
+  lessons: Lesson[];
+}
+
+/**
+ * The curriculum as the screens render it: the sections in authored order, then one group for the
+ * lessons that belong to no section. A course may use sections only, standalone lessons only, or both.
+ */
+export function courseLessonGroups(course: Course): LessonGroup[] {
+  const groups: LessonGroup[] = course.sections.map((section) => ({
+    id: section.id,
+    title: section.title,
+    summary: section.summary,
+    standalone: false,
+    lessons: course.lessons.filter((lesson) => lesson.sectionId === section.id),
+  }));
+
+  const standalone = course.lessons.filter((lesson) => lesson.sectionId === null);
+  if (standalone.length > 0) {
+    groups.push({
+      id: `${course.id}-standalone`,
+      title: course.sections.length > 0 ? 'Standalone lessons' : 'Lessons',
+      summary:
+        course.sections.length > 0
+          ? 'Lessons created without a section — open them in any order.'
+          : undefined,
+      standalone: true,
+      lessons: standalone,
+    });
+  }
+
+  return groups;
+}
+
 export function discountPercent(course: Course): number | null {
   if (!course.listPriceInr || course.listPriceInr <= course.priceInr) return null;
   return Math.round(((course.listPriceInr - course.priceInr) / course.listPriceInr) * 100);

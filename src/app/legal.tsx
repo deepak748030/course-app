@@ -1,17 +1,23 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { AppBar, Badge, Button, Divider, Screen } from '@/components/ui';
+import { AppBar, Badge, Divider, Screen, Segmented } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { legalDocs } from '@/data/content';
 
 type DocKey = keyof typeof legalDocs;
 
+const DOC_TABS: { id: DocKey; label: string }[] = [
+  { id: 'terms', label: 'Terms' },
+  { id: 'privacy', label: 'Privacy' },
+  { id: 'refund', label: 'Refunds' },
+];
+
 export default function LegalScreen() {
   const { doc } = useLocalSearchParams<{ doc?: string }>();
   const router = useRouter();
 
-  const key: DocKey = doc === 'privacy' ? 'privacy' : 'terms';
+  const key: DocKey = doc === 'privacy' || doc === 'refund' ? doc : 'terms';
   const document = legalDocs[key];
 
   return (
@@ -19,6 +25,10 @@ export default function LegalScreen() {
       <View style={styles.header}>
         <Text style={[type.title, { color: colors.text }]}>{document.title}</Text>
         <Badge label={document.updated} tone="gold" />
+      </View>
+
+      <View style={styles.pad}>
+        <Segmented options={DOC_TABS} value={key} onChange={(next) => router.setParams({ doc: next })} />
       </View>
 
       <View style={styles.pad}>
@@ -36,13 +46,6 @@ export default function LegalScreen() {
         ))}
       </View>
 
-      <View style={styles.pad}>
-        <Button
-          label={key === 'terms' ? 'Read the privacy policy' : 'Read the terms of use'}
-          variant="secondary"
-          onPress={() => router.replace({ pathname: '/legal', params: { doc: key === 'terms' ? 'privacy' : 'terms' } })}
-        />
-      </View>
     </Screen>
   );
 }

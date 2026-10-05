@@ -102,6 +102,17 @@ export const legalDocs = {
       'You are responsible for how you apply the methods shown. Batch sheets are educational sample material, not food-safety, veterinary, licensing or regulatory advice.',
     ],
   },
+  refund: {
+    title: 'Refund policy',
+    updated: 'Sample document',
+    paragraphs: [
+      'This is placeholder copy for a prototype and is not a refund policy. No money moves in this build: checkout is a demo flow that only unlocks a course on this device, so there is nothing to refund yet.',
+      'The policy a shipped YDU Academy would run on: a seven-day window from the date of purchase, a full refund on a course where no lesson has been started, and no refund once a quarter or more of the lessons have been completed.',
+      'Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price.',
+      'Batch sheets, notes and downloaded material are part of the course and follow the same rule as the lessons.',
+      'Approved refunds go back to the original payment method within five to seven working days, and the course locks again when the refund is processed.',
+    ],
+  },
   privacy: {
     title: 'Privacy',
     updated: 'Sample document',

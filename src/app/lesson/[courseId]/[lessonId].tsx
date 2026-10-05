@@ -64,7 +64,7 @@ import {
   Screen,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, nextLesson } from '@/data/catalog';
+import { courseById, courseLessonGroups, nextLesson } from '@/data/catalog';
 import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
 import { formatClock, scaleQuantity } from '@/lib/format';
@@ -793,15 +793,13 @@ export default function LessonPlayerScreen() {
         title="Lessons"
         subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
         scrollable>
-        {course.sections.map((section, index) => (
-          <View key={section.id} style={styles.sheetSection}>
+        {courseLessonGroups(course).map((group, index) => (
+          <View key={group.id} style={styles.sheetSection}>
             <Text style={[type.labelStrong, { color: colors.text }]}>
-              {index + 1}. {section.title}
+              {group.standalone ? group.title : `${index + 1}. ${group.title}`}
             </Text>
             <DataList>
-              {course.lessons
-                .filter((entry) => entry.sectionId === section.id)
-                .map((entry, lessonIndex) => (
+              {group.lessons.map((entry, lessonIndex) => (
                   <LessonRow
                     key={entry.id}
                     lesson={entry}
