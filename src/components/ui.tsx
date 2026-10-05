@@ -89,27 +89,51 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
 }) {
+  // The header is measured once it lays out; until then the content sits under it, hidden by it.
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const ownPaddingTop = StyleSheet.flatten(contentStyle)?.paddingTop;
+  const contentPaddingTop = typeof ownPaddingTop === 'number' ? ownPaddingTop : 0;
+
   return (
     <View style={[styles.root, style]}>
-      {header ? <View style={styles.headerLayer}>{header}</View> : null}
       {scroll ? (
         /*
-         * The scroller is clipped on purpose. On Android the children of a ScrollView can be drawn
-         * past its own top edge, so without this the first row of content rides up over the header
-         * as it scrolls out — a chip row showing through the search field, which reads as a strike.
-         * The header also gets its own layer so it always paints above the scroller.
+         * The scroller runs the full height of the screen and its content keeps a top padding the size
+         * of the header; the header is *painted after it*, pinned over the top.
+         *
+         * Why: on Android a ScrollView draws its children past its own edges unless the platform
+         * clips them, and a fixed header standing beside the scroller does not stop them — the first
+         * rows ride up over it (the chip row showed through the search field, which reads as a
+         * strike, and it was only visible while scrolling slowly enough to see it). Painting order is
+         * the one thing every platform agrees on, so the header owns the top of the screen and hides
+         * whatever passes under it. The scroller is clipped as well, which keeps the same rows from
+         * drawing over the footer at the other end.
          */
         <View style={[styles.flex, styles.clipping]}>
           <ScrollView
             style={[styles.flex, styles.clipping]}
-            contentContainerStyle={[styles.scrollContent, contentStyle]}
+            contentContainerStyle={[
+              styles.scrollContent,
+              contentStyle,
+              header ? { paddingTop: headerHeight + contentPaddingTop } : null,
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
             {children}
           </ScrollView>
+          {header ? (
+            <View
+              style={styles.headerOverlay}
+              onLayout={(event) => setHeaderHeight(Math.round(event.nativeEvent.layout.height))}>
+              {header}
+            </View>
+          ) : null}
         </View>
       ) : (
-        <View style={[styles.flex, contentStyle]}>{children}</View>
+        <>
+          {header}
+          <View style={[styles.flex, contentStyle]}>{children}</View>
+        </>
       )}
       {footer}
     </View>
@@ -1142,7 +1166,15 @@ export function SearchField({
 
 const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  headerLayer: { zIndex: 1 },
+  /** Pinned over the scroller and painted after it, so nothing can show through the header. */
+  headerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1,
+    backgroundColor: colors.surface,
+  },
   clipping: { overflow: 'hidden' },
   flex: { flex: 1 },
   fullWidth: { alignSelf: 'stretch' },

@@ -314,23 +314,30 @@ check('policy screens carry their own title, and language is a screen of its own
   }
 });
 
-check('screen scrollers are clipped and headers keep their own layer', () => {
-  const ui = readFileSync(fileURLToPath(new URL('../src/components/ui.tsx', import.meta.url)), 'utf8');
+check('screen scrollers are clipped and headers paint over them', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+  const ui = read('src/components/ui.tsx');
 
-  // Android draws a ScrollView's children outside its own box: a row scrolling past the top of the
-  // scroller rides up over the header, which reads as the content striking through the search field.
-  // Two things keep it out — the scroller is clipped (itself and by the view that wraps it), and the
-  // header sits in a layer above the scroller. Both must survive any future edit of <Screen>.
+  // Android draws a ScrollView's children past its own edges: a row scrolling out of view rides up
+  // over the header next to it, which reads as the content striking through the search field. The
+  // header is therefore painted *after* the scroller and pinned over the top of the screen, and the
+  // content is padded down by the header's measured height so it still starts below it at rest.
   assert.ok(/clipping: \{ overflow: 'hidden' \}/.test(ui), 'the scroller keeps its clipping style');
-  assert.ok(/headerLayer: \{ zIndex: 1 \}/.test(ui), 'the header keeps its own layer');
-  assert.ok(ui.includes('<View style={[styles.flex, styles.clipping]}>'), 'the scroller is wrapped in the clipping view');
   assert.ok(
-    ui.includes('{header ? <View style={styles.headerLayer}>{header}</View> : null}'),
-    'the header renders inside its layer',
+    /headerOverlay: \{[\s\S]{0,220}?position: 'absolute'/.test(ui),
+    'the header is pinned over the scroller',
+  );
+  assert.ok(ui.includes('styles.headerOverlay'), 'the header renders in that overlay');
+  assert.ok(
+    ui.includes('setHeaderHeight(Math.round(event.nativeEvent.layout.height))'),
+    'the overlay measures itself so the content can be padded',
+  );
+  assert.ok(
+    ui.includes('header ? { paddingTop: headerHeight + contentPaddingTop } : null'),
+    'the content keeps a top padding the size of the header (plus whatever the screen asked for)',
   );
 
   // The screens that own a scroller put the same overflow on it themselves.
-  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
   for (const screen of ['src/app/auth/phone.tsx', 'src/app/auth/otp.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
     assert.ok(read(screen).includes('style={scrollClip}'), `${screen} keeps its scroller clipped`);
   }
