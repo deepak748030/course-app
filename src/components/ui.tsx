@@ -208,6 +208,8 @@ export function SectionHeader({
   actionLabel,
   actionIcon: ActionIcon,
   onAction,
+  right,
+  align = 'end',
   style,
 }: {
   title: string;
@@ -216,10 +218,14 @@ export function SectionHeader({
   /** Trailing glyph for actions that go somewhere — always in the theme accent with the label. */
   actionIcon?: LucideIcon;
   onAction?: () => void;
+  /** A control of your own at the trailing edge — e.g. an icon-only filter button. */
+  right?: ReactNode;
+  /** `end` (default) sits the trailing edge on the baseline; `center` centres it on the block. */
+  align?: 'end' | 'center';
   style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={[styles.sectionHeader, style]}>
+    <View style={[styles.sectionHeader, align === 'center' && styles.sectionHeaderCenter, style]}>
       <View style={styles.flex}>
         <AppText variant="subheading">{title}</AppText>
         {subtitle ? (
@@ -228,6 +234,7 @@ export function SectionHeader({
           </AppText>
         ) : null}
       </View>
+      {right}
       {actionLabel && onAction ? (
         <Pressable
           accessibilityRole="button"
@@ -1192,6 +1199,7 @@ const styles = createStyles(() => StyleSheet.create({
   searchClear: { width: 22, height: 22, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
 
   sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: spacing.sm, paddingHorizontal: layout.screen },
+  sectionHeaderCenter: { alignItems: 'center' },
   sectionSubtitle: { marginTop: 2 },
   sectionAction: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingBottom: 2 },
 

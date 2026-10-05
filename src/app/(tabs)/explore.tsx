@@ -1,5 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
-import { Check, Search, SlidersHorizontal, X } from 'lucide-react-native';
+import { Search, SlidersHorizontal, X } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -28,9 +28,7 @@ import {
   emptyFilters,
   levelOptions,
   priceBandOptions,
-  sortOptions,
   type BrowseFilters,
-  type SortKey,
 } from '@/data/catalog';
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
@@ -43,7 +41,6 @@ export default function ExploreScreen() {
   const { state } = useStore();
 
   const [filters, setFilters] = useState<BrowseFilters>(emptyFilters);
-  const [sortOpen, setSortOpen] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
@@ -97,6 +94,14 @@ export default function ExploreScreen() {
     void rememberSearch(term).then(setRecent);
   }, []);
   const personalised = state.interests.length > 0 && filters.categoryIds.length === 0 && filters.query.length === 0;
+
+  // Singular and plural are separate keys on purpose: Hindi has one form, English has two, and the
+  // dictionary is keyed by the English source string. Both are written as literal t() calls so the
+  // self-check can see them.
+  const resultsLabel =
+    results.length === 1
+      ? { count: t('{n} course', { n: results.length }), show: t('Show {n} course', { n: results.length }) }
+      : { count: t('{n} courses', { n: results.length }), show: t('Show {n} courses', { n: results.length }) };
 
   const toggleIn = (key: 'categoryIds' | 'levels' | 'priceBands' | 'durations', value: string) =>
     setFilters((prev) => ({
@@ -198,37 +203,33 @@ export default function ExploreScreen() {
         </Rail>
 
         <View style={styles.pad}>
+          {/* The count and its sub-heading on the left, one icon-only filter button on the right,
+              centred on the two lines. Sorting lives in the data layer; the default order is by
+              interest, which is what the sub-heading names. */}
           <SectionHeader
-            title={`${results.length} ${results.length === 1 ? 'course' : 'courses'}`}
-            subtitle={personalised ? 'Ordered by your interests' : undefined}
+            align="center"
+            title={resultsLabel.count}
+            subtitle={personalised ? t('Ordered by your interests') : undefined}
+            right={
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  activeChips.length > 0 ? t('Filters, {n} active', { n: activeChips.length }) : t('Filters')
+                }
+                onPress={() => setFilterOpen(true)}
+                style={({ pressed }) => [
+                  styles.filterButton,
+                  activeChips.length > 0 && styles.filterButtonActive,
+                  pressed && { opacity: 0.7 },
+                ]}>
+                <SlidersHorizontal
+                  size={18}
+                  color={activeChips.length > 0 ? colors.accentText : colors.text}
+                  strokeWidth={1.9}
+                />
+              </Pressable>
+            }
           />
-          <View style={styles.toolbar}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("Sort results")}
-              onPress={() => setSortOpen(true)}
-              style={({ pressed }) => [styles.tool, pressed && { opacity: 0.7 }]}>
-              <Text style={[type.label, { color: colors.text }]}>
-                {t(sortOptions.find((option) => option.id === filters.sort)?.label ?? 'Sort')}
-              </Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                activeChips.length > 0 ? t('Filters, {n} active', { n: activeChips.length }) : t('Filters')
-              }
-              onPress={() => setFilterOpen(true)}
-              style={({ pressed }) => [
-                styles.tool,
-                activeChips.length > 0 && { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-                pressed && { opacity: 0.7 },
-              ]}>
-              <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.accentText : colors.text} strokeWidth={1.9} />
-              <Text style={[type.label, { color: activeChips.length > 0 ? colors.accentText : colors.text }]}>
-                {activeChips.length > 0 ? t('Filters · {n}', { n: activeChips.length }) : t('Filters')}
-              </Text>
-            </Pressable>
-          </View>
         </View>
 
         {activeChips.length > 0 ? (
@@ -282,24 +283,6 @@ export default function ExploreScreen() {
         </>
       )}
 
-      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title={t("Sort by")}>
-        {sortOptions.map((option) => (
-          <Pressable
-            key={option.id}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: filters.sort === option.id }}
-            accessibilityLabel={t(option.label)}
-            onPress={() => {
-              setFilters((prev) => ({ ...prev, sort: option.id as SortKey }));
-              setSortOpen(false);
-            }}
-            style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.body, { color: colors.text }]}>{t(option.label)}</Text>
-            {filters.sort === option.id ? <Check size={18} color={colors.accentText} strokeWidth={2} /> : null}
-          </Pressable>
-        ))}
-      </BottomSheet>
-
       <BottomSheet
         visible={filterOpen}
         onClose={() => setFilterOpen(false)}
@@ -309,7 +292,7 @@ export default function ExploreScreen() {
         footer={
           <View style={styles.sheetFooter}>
             <Button
-              label={`Show ${results.length} ${results.length === 1 ? 'course' : 'courses'}`}
+              label={resultsLabel.show}
               onPress={() => setFilterOpen(false)}
             />
             <Button label={t("Clear all filters")} onPress={clearAll} variant="ghost" />
@@ -386,18 +369,18 @@ const styles = createStyles(() => StyleSheet.create({
   suggestionLabel: { flex: 1 },
   pressed: { opacity: 0.7 },
   pad: { paddingHorizontal: layout.screen, gap: layout.gap },
-  toolbar: { flexDirection: 'row', gap: layout.gap },
-  tool: {
-    flexDirection: 'row',
+  /* Icon-only filter button: 44pt tap target, hairline edge, accent when filters are on. */
+  filterButton: {
+    width: layout.touchTarget,
+    height: layout.touchTarget,
     alignItems: 'center',
-    gap: spacing.xs,
-    minHeight: 36,
-    paddingHorizontal: spacing.md,
+    justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
+  filterButtonActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   activeChip: {
     flexDirection: 'row',
     alignItems: 'center',

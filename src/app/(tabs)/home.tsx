@@ -128,6 +128,7 @@ export default function HomeScreen() {
           <SectionHeader
             title={t("Continue learning")}
             actionLabel={t("My learning")}
+            actionIcon={ArrowRight}
             onAction={() => router.push('/learning')}
           />
           <ContinueCard
@@ -145,18 +146,29 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
+      {/* Browse by: the two-line label holds the left edge and the chips run beside it, centred on
+          the label, so the rail starts where the text ends instead of under it. */}
       <View style={styles.block}>
-        <SectionHeader title={t("Browse by")} subtitle={t("Track or skill")} />
-        <Rail>
-          {categories.map((category) => (
-            <Chip
-              key={category.id}
-              label={t(category.label)}
-              selected={interestIds.includes(category.id)}
-              onPress={() => router.push({ pathname: '/explore', params: { category: category.id } })}
-            />
-          ))}
-        </Rail>
+        <View style={styles.browseRow}>
+          <View style={styles.browseHeading}>
+            <Text style={[type.subheading, { color: colors.text }]}>{t("Browse by")}</Text>
+            <Text style={[type.label, styles.browseSubtitle, { color: colors.textMuted }]}>
+              {t("Track or skill")}
+            </Text>
+          </View>
+          <View style={styles.flex}>
+            <Rail contentStyle={styles.browseRail}>
+              {categories.map((category) => (
+                <Chip
+                  key={category.id}
+                  label={t(category.label)}
+                  selected={interestIds.includes(category.id)}
+                  onPress={() => router.push({ pathname: '/explore', params: { category: category.id } })}
+                />
+              ))}
+            </Rail>
+          </View>
+        </View>
       </View>
 
       <View style={styles.block}>
@@ -341,6 +353,12 @@ const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
+  /* Browse by sits on one line: label at the 8px edge, chips beside it, both centred on each other. */
+  browseRow: { flexDirection: 'row', alignItems: 'center', gap: layout.gap, paddingLeft: layout.screen },
+  browseHeading: { flexShrink: 1 },
+  browseSubtitle: { marginTop: 2 },
+  /* The rail starts flush against the gap and still keeps its 8px inset at the far end. */
+  browseRail: { paddingLeft: 0 },
   /* Tight sides and a tight icon gap, with just enough room under the header for the banner. */
   headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm, gap: spacing.xs },
   /* Search and the bell sit almost flush; the avatar keeps its own slot after them. */
