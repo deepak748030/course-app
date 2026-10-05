@@ -8,15 +8,17 @@ import { AppState, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AppStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
+import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { colors, font } from '@/constants/theme';
 import { StoreProvider, useStore } from '@/store';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Runs before React mounts: on Android the decor view is what shows behind a transparent
-// edge-to-edge status bar, and its default reads as a black band on top of a white app.
+// Runs before React mounts, because both of these are visible in the very first frame: on a
+// non-edge-to-edge Android window the status bar itself has to be painted, and on an edge-to-edge
+// one the decor view behind the transparent bar is what shows.
+applyAndroidStatusBar('light');
 if (Platform.OS !== 'web') {
   void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
 }
@@ -52,7 +54,10 @@ function hideSplash() {
 function useThemedWindow() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
-    const apply = () => void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+    const apply = () => {
+      void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+      applyAndroidStatusBar('light');
+    };
     apply();
     const subscription = AppState.addEventListener('change', (status) => {
       if (status === 'active') apply();

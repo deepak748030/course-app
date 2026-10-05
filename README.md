@@ -181,15 +181,19 @@ onboarding completion and app preferences are kept.
   `role="tab"`), Home → course details → checkout, My learning → lesson player → Overview/Recipe/Notes,
   the sort/filter sheets opening and closing, and focusing the search field (recent searches +
   suggestions panel). Zero console or unhandled errors. This is a DOM check, not a visual one.
-- Status bar (Android edge-to-edge makes it transparent, so it shows whatever is painted behind it):
-  1. `backgroundColor: "#FFFFFF"` at the top level of app.json is the root view / window background,
-     and `androidStatusBar` sets `dark-content` icons on the same white;
-  2. `expo-system-ui` sets the decor view background before React mounts and again on every foreground;
-  3. `src/components/app-status-bar.tsx` paints a white strip across the safe area itself, so a host that
-     ignores the window colour still cannot show a black band;
-  4. the lesson player and the course hero declare `<AppStatusBar style="light" />`, which switches the
-     strip off over their dark surfaces and uses light icons. All other screens get dark icons on the
-     app background.
+- Status bar. Android has two modes and both are covered, because the black bar came from the second
+  one while the first fix (a strip painted in-app) only covered the first:
+  1. edge-to-edge (Android 15+): the bar is transparent, so it shows what is painted behind it —
+     `expo-system-ui` sets the decor view to the app background and `src/components/app-status-bar.tsx`
+     paints a white strip across the safe-area inset as a second layer;
+  2. not edge-to-edge (Android 14 and older, and Expo Go without platform enforcement): the bar is an
+     opaque system bar whose default colour is black. `app.json`'s `androidStatusBar` lives in the host
+     manifest, so Expo Go ignores it, and React Native *ignores* `StatusBar.setBackgroundColor`
+     entirely on an edge-to-edge activity. The app therefore calls `StatusBar.setBackgroundColor` (and
+     `setTranslucent(false)`) at startup, on every status-bar tone change and on every foreground, with
+     the app background for light screens and the player surface for dark ones.
+  3. The lesson player and the course hero declare `<AppStatusBar style="light" />`, which turns the
+     native bar dark so their light icons stay legible. All other screens get dark icons on white.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 
