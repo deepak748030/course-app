@@ -72,7 +72,7 @@ export default function CourseDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      <AppStatusBar style="light" />
+      <AppStatusBar />
       <Screen
         contentStyle={{ paddingBottom: insets.bottom + 120 }}
         header={

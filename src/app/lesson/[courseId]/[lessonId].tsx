@@ -227,137 +227,143 @@ export default function LessonPlayerScreen() {
 
   return (
     <View style={styles.root}>
-      <AppStatusBar style="light" />
+      <AppStatusBar />
 
-      {/* Player: full-bleed, no side gap, controls float over the surface. */}
-      <View style={styles.playerWrap}>
-        <VideoView
-          ref={videoRef}
-          player={player}
-          style={styles.video}
-          nativeControls={false}
-          contentFit="contain"
-          fullscreenOptions={{ enable: true }}
-          surfaceType="textureView"
-        />
+      {/* Player. The system bar strip is left to the app background and the video sits below it,
+          so the transport controls float over the video alone: play/pause and the skip buttons
+          stay centred, while the scrubber, speed, fullscreen and the two timers sit on the bar
+          underneath — the order asked for, timers last. */}
+      <View style={[styles.playerWrap, { paddingTop: insets.top }]}>
+        <View style={styles.playerSurface}>
+          <VideoView
+            ref={videoRef}
+            player={player}
+            style={styles.video}
+            nativeControls={false}
+            contentFit="contain"
+            fullscreenOptions={{ enable: true }}
+            surfaceType="textureView"
+          />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={controlsVisible ? 'Hide player controls' : 'Show player controls'}
-          onPress={() => setControlsVisible((value) => !value)}
-          style={StyleSheet.absoluteFill}
-        />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={controlsVisible ? 'Hide player controls' : 'Show player controls'}
+            onPress={() => setControlsVisible((value) => !value)}
+            style={StyleSheet.absoluteFill}
+          />
 
-        {status === 'loading' ? (
-          <View style={[styles.centerOverlay, styles.noTouch]}>
-            <ActivityIndicator color={colors.onPlayer} />
-            <Text style={[type.label, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
-          </View>
-        ) : null}
+          {status === 'loading' ? (
+            <View style={[styles.centerOverlay, styles.noTouch]}>
+              <ActivityIndicator color={colors.onPlayer} />
+              <Text style={[type.label, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
+            </View>
+          ) : null}
 
-        {error ? (
-          <View style={styles.centerOverlay}>
-            <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
-            <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
-              This lesson video could not be played.
-            </Text>
-            <Button
-              label="Try again"
-              variant="secondary"
-              fullWidth={false}
-              onPress={() => {
-                player.replace(videos[lesson.video]);
-                player.play();
-              }}
-            />
-          </View>
-        ) : null}
-
-        {controlsVisible && !error ? (
-          <Animated.View entering={FadeIn.duration(160)} style={[StyleSheet.absoluteFill, styles.boxNone]}>
-            <View style={[styles.playerTop, { paddingTop: insets.top + spacing.xs }]}>
-              <IconButton
-                icon={ArrowLeft}
-                variant="onImage"
-                accessibilityLabel="Leave the lesson"
-                onPress={() => (router.canGoBack() ? router.back() : router.replace('/learning'))}
+          {error ? (
+            <View style={styles.centerOverlay}>
+              <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
+              <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
+                This lesson video could not be played.
+              </Text>
+              <Button
+                label="Try again"
+                variant="secondary"
+                fullWidth={false}
+                onPress={() => {
+                  player.replace(videos[lesson.video]);
+                  player.play();
+                }}
               />
-              <View style={styles.playerTitleWrap}>
-                <Text style={[type.label, { color: colors.onPlayerMuted }]} numberOfLines={1}>
-                  {course.title}
-                </Text>
-                <Text style={[type.bodyStrong, { color: colors.onPlayer }]} numberOfLines={1}>
-                  {lesson.title}
-                </Text>
+            </View>
+          ) : null}
+
+          {controlsVisible && !error ? (
+            <Animated.View entering={FadeIn.duration(160)} style={[StyleSheet.absoluteFill, styles.boxNone]}>
+              <View style={styles.playerTop}>
+                <IconButton
+                  icon={ArrowLeft}
+                  variant="onImage"
+                  accessibilityLabel="Leave the lesson"
+                  onPress={() => (router.canGoBack() ? router.back() : router.replace('/learning'))}
+                />
+                <View style={styles.playerTitleWrap}>
+                  <Text style={[type.label, { color: colors.onPlayerMuted }]} numberOfLines={1}>
+                    {course.title}
+                  </Text>
+                  <Text style={[type.bodyStrong, { color: colors.onPlayer }]} numberOfLines={1}>
+                    {lesson.title}
+                  </Text>
+                </View>
+                <IconButton
+                  icon={Clapperboard}
+                  variant="onImage"
+                  accessibilityLabel="Open lesson list"
+                  onPress={() => setLessonListOpen(true)}
+                />
               </View>
-              <IconButton
-                icon={Clapperboard}
-                variant="onImage"
-                accessibilityLabel="Open lesson list"
-                onPress={() => setLessonListOpen(true)}
-              />
-            </View>
 
-            <View style={[styles.playerCenter, styles.boxNone]}>
-              <IconButton
-                icon={SkipBack}
-                variant="onImage"
-                size={52}
-                iconSize={24}
-                accessibilityLabel="Go back 15 seconds"
-                onPress={() => seekTo(position - 15)}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
-                onPress={togglePlay}
-                style={styles.playButton}>
-                {isPlaying ? (
-                  <Pause size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
-                ) : (
-                  <Play size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
-                )}
-              </Pressable>
-              <IconButton
-                icon={SkipForward}
-                variant="onImage"
-                size={52}
-                iconSize={24}
-                accessibilityLabel="Go forward 15 seconds"
-                onPress={() => seekTo(position + 15)}
-              />
-            </View>
+              <View style={[styles.playerCenter, styles.boxNone]}>
+                <IconButton
+                  icon={SkipBack}
+                  variant="onImage"
+                  size={52}
+                  iconSize={24}
+                  accessibilityLabel="Go back 15 seconds"
+                  onPress={() => seekTo(position - 15)}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
+                  onPress={togglePlay}
+                  style={styles.playButton}>
+                  {isPlaying ? (
+                    <Pause size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                  ) : (
+                    <Play size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                  )}
+                </Pressable>
+                <IconButton
+                  icon={SkipForward}
+                  variant="onImage"
+                  size={52}
+                  iconSize={24}
+                  accessibilityLabel="Go forward 15 seconds"
+                  onPress={() => seekTo(position + 15)}
+                />
+              </View>
+            </Animated.View>
+          ) : null}
+        </View>
 
-            <View style={styles.playerBottom}>
-              <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(position)}</Text>
-              <SeekBar
-                progress={progressPercent}
-                onSeek={(ratio) => seekTo(ratio * duration)}
-                accessibilityLabel="Seek within the lesson"
-              />
-              <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(duration)}</Text>
-            </View>
-
-            <View style={styles.playerActions}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
-                onPress={() => setSpeedOpen(true)}
-                style={styles.playerAction}>
-                <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Play in fullscreen"
-                onPress={() => void videoRef.current?.enterFullscreen()}
-                style={styles.playerAction}>
-                <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
-              </Pressable>
-            </View>
-          </Animated.View>
-        ) : null}
+        <View style={styles.playerBar}>
+          <SeekBar
+            progress={progressPercent}
+            onSeek={(ratio) => seekTo(ratio * duration)}
+            accessibilityLabel="Seek within the lesson"
+          />
+          <View style={styles.playerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
+              onPress={() => setSpeedOpen(true)}
+              style={styles.playerAction}>
+              <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
+              <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Play in fullscreen"
+              onPress={() => void videoRef.current?.enterFullscreen()}
+              style={styles.playerAction}>
+              <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+              <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
+            </Pressable>
+          </View>
+          <View style={styles.timeRow}>
+            <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(position)}</Text>
+            <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(duration)}</Text>
+          </View>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -692,8 +698,17 @@ const styles = StyleSheet.create({
   boxNone: { pointerEvents: 'box-none' },
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  playerWrap: { backgroundColor: colors.player },
-  video: { width: '100%', aspectRatio: 16 / 9, backgroundColor: colors.player },
+  playerWrap: { backgroundColor: colors.background },
+  playerSurface: { aspectRatio: 16 / 9, backgroundColor: colors.player },
+  video: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.player },
+  playerBar: {
+    backgroundColor: colors.player,
+    paddingHorizontal: layout.section,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   centerOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
@@ -707,6 +722,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: layout.screen,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.sm,
   },
   playerTitleWrap: { flex: 1, alignItems: 'center', gap: 2 },
@@ -727,22 +743,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  playerBottom: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: layout.section,
-    paddingBottom: spacing.sm,
-  },
-  seekTrack: { flex: 1, height: 22, justifyContent: 'center' },
+  seekTrack: { height: 22, justifyContent: 'center' },
   seekFill: { height: 4, borderRadius: 2, backgroundColor: colors.gold },
-  playerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: layout.section,
-    paddingBottom: spacing.md,
-  },
+  playerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   playerAction: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1172,10 +1172,10 @@ const styles = StyleSheet.create({
   iconButton: { alignItems: 'center', justifyContent: 'center', borderRadius: radius.pill },
   badgeDot: {
     position: 'absolute',
-    top: 4,
-    right: 2,
-    minWidth: 18,
-    height: 18,
+    top: 5,
+    right: 3,
+    minWidth: 16,
+    height: 16,
     borderRadius: radius.pill,
     backgroundColor: colors.error,
     alignItems: 'center',
@@ -1184,7 +1184,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.surface,
   },
-  badgeDotText: { fontFamily: font.semibold, fontSize: 12, lineHeight: 14, color: colors.surface },
+  badgeDotText: { fontFamily: font.semibold, fontSize: 10, lineHeight: 12, color: colors.surface },
 
   fieldWrap: { gap: spacing.sm },
   field: {

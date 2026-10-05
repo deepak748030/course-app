@@ -83,7 +83,7 @@ function Group({
                   <Text style={[type.bodyStrong, { color: colors.text, flex: 1 }]}>{item.title}</Text>
                   <Text style={[type.label, { color: colors.textSubtle }]}>{minutesAgoLabel(item.minutesAgo)}</Text>
                 </View>
-                <Text style={[type.body, { color: colors.textMuted }]}>{item.body}</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{item.body}</Text>
                 {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.accentText }]}>Open course</Text> : null}
               </View>
             </Pressable>
@@ -97,7 +97,7 @@ function Group({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   group: { gap: layout.gap },
-  row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md },
+  row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.sm, minHeight: layout.touchTarget },
   rowHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   icon: {
     width: 40,
