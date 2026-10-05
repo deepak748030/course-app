@@ -126,12 +126,13 @@ The UI follows the project's design rules document and is generated from one tok
   and sticky footers separate with a border, never an elevation.
 - **8px baseline.** Screen side padding is 8, gap between items is 8, cards and forms pad 16, sections
   breathe 24. Banners and the player are full-bleed with a 0 side gap.
-- **The player is all picture.** The lesson screen paints nothing dark under the video: the scrubber,
-  the speed and fullscreen row and the two timers float on the picture itself over two short gradients,
-  with play/pause and the skip buttons in the free band between them, and the whole transport is sized
-  from the measured surface height (16:9, so ~200pt on a phone) — the rows can never crowd each other,
-  and the dark area is exactly the video. The controls fade out on their own while playing, so the
-  picture is unobstructed until the learner taps it.
+- **The player is all picture.** The lesson screen paints nothing dark under the video: the transport
+  floats on the picture itself over two short gradients — the speed and fullscreen row, then the
+  timeline with the start and end times owning the ends of the row — with play/pause and the skip
+  buttons in the free band between them. Every size is derived from the measured surface height (16:9,
+  so ~200pt on a phone), so the rows can never crowd each other and the dark area is exactly the video.
+  The controls are a three-second peek: they show on mount, on a tap on the picture and after any
+  transport action, and then hide again — playing or paused — so the frame stays unobstructed.
 - **Hairlines over boxes.** Data lists draw a divider between rows (none after the last) instead of
   spacing every row apart, and dividers inset to the row content when a row has a leading icon.
 - **Concentric radii** (4 / 8 / 12 / 16, pill only for single-line content) and 44pt minimum touch
@@ -242,6 +243,11 @@ onboarding completion and app preferences are kept.
   3. No screen asks for the dark tone any more. The player and the course hero used to, which is what
      painted the bar with the player surface — the black bar in the report. They now keep the app
      background: the strip above the video is white with dark icons, and the video starts below it.
+- Player geometry and the control peek, in the same DOM harness at a 390pt viewport: the transport is
+  pinned to the picture's edges (top row 58pt, transport 65pt, play button 64pt in the 96pt band
+  between them), the timeline row holds `0:00 · track · 0:00` with the track taking the remaining
+  width, no element outside the video surface is painted in the player colour, and the overlay is gone
+  after three seconds and back after a tap on the picture, in both themes.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 

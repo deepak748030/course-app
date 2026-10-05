@@ -23,7 +23,7 @@ import {
   SkipBack,
   SkipForward,
 } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -39,7 +39,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
@@ -57,6 +57,8 @@ type TabKey = 'overview' | 'recipe' | 'notes';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SAVE_INTERVAL_SEC = 10;
+/** How long the player controls stay on screen after they are called up. */
+const CONTROLS_HIDE_MS = 3000;
 
 export default function LessonPlayerScreen() {
   const params = useLocalSearchParams<{ courseId: string; lessonId: string; tab?: string }>();
@@ -117,8 +119,9 @@ export default function LessonPlayerScreen() {
   const blockGap = Math.max(2, Math.round((spacing.xs / 2) * playerScale)); // 3..4
   const trackHeight = Math.round(20 * playerScale);                 // 16..20
   const actionHeight = Math.round(40 * playerScale);                // 32..40, hit-slopped to 44
+  const timelineHeight = Math.max(trackHeight, spacing.lg);
   const topBlockHeight = layout.touchTarget + overlayPad * 2;
-  const bottomBlockHeight = trackHeight + blockGap * 2 + actionHeight + spacing.lg + overlayPad;
+  const bottomBlockHeight = actionHeight + blockGap + timelineHeight + overlayPad;
   const freeBandHeight = Math.max(44, videoHeight - topBlockHeight - bottomBlockHeight);
   const playSize = Math.round(Math.min(64, freeBandHeight - 4));
   const skipSize = Math.max(44, Math.min(52, Math.round(playSize * 0.8)));
@@ -164,21 +167,28 @@ export default function LessonPlayerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.id, lesson?.id, unlocked]);
 
-  // Auto-hide the controls while playing, the way a player is expected to behave.
-  useEffect(() => {
+  /**
+   * The controls are a peek, not permanent furniture: they are called up on mount, on a tap on the
+   * picture and after any transport action, and they hide again three seconds later — playing or
+   * paused — so the learner sees the whole frame. Only a deliberate action restarts that window;
+   * the once-a-second time updates deliberately do not, or the timer would keep resetting itself
+   * and the controls would never leave.
+   */
+  const showControls = useCallback(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (!isPlaying) {
-      setControlsVisible(true);
-      return;
-    }
-    hideTimer.current = setTimeout(() => setControlsVisible(false), 3200);
+    setControlsVisible(true);
+    hideTimer.current = setTimeout(() => setControlsVisible(false), CONTROLS_HIDE_MS);
+  }, []);
+
+  useEffect(() => {
+    showControls();
     return () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, [isPlaying, position]);
+  }, [showControls]);
 
   useEventListener(player, 'playToEnd', () => {
-    setControlsVisible(true);
+    showControls();
     if (course && lesson) setLessonPosition(course.id, lesson.id, 0);
   });
 
@@ -224,17 +234,19 @@ export default function LessonPlayerScreen() {
     const clamped = Math.max(0, Math.min(seconds, duration || seconds));
     player.currentTime = clamped;
     setPosition(clamped);
+    showControls();
   };
 
   const togglePlay = () => {
     feedback.tap();
     if (isPlaying) player.pause();
     else player.play();
-    setControlsVisible(true);
+    showControls();
   };
 
   const goToLesson = (lessonId: string) => {
     setLessonListOpen(false);
+    showControls();
     router.replace({ pathname: '/lesson/[courseId]/[lessonId]', params: { courseId: course.id, lessonId } });
   };
 
@@ -277,8 +289,9 @@ export default function LessonPlayerScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={controlsVisible ? 'Hide player controls' : 'Show player controls'}
-            onPress={() => setControlsVisible((value) => !value)}
+            accessibilityLabel="Show player controls"
+            accessibilityHint="The controls hide again after a few seconds"
+            onPress={showControls}
             style={StyleSheet.absoluteFill}
           />
 
@@ -308,7 +321,10 @@ export default function LessonPlayerScreen() {
           ) : null}
 
           {controlsVisible && !error ? (
-            <Animated.View entering={FadeIn.duration(160)} style={[StyleSheet.absoluteFill, styles.boxNone]}>
+            <Animated.View
+              entering={FadeIn.duration(160)}
+              exiting={FadeOut.duration(140)}
+              style={[StyleSheet.absoluteFill, styles.boxNone]}>
               {/* Two short gradients so white glyphs stay readable on a bright frame. */}
               <LinearGradient
                 colors={[colors.scrim, 'transparent']}
@@ -396,12 +412,6 @@ export default function LessonPlayerScreen() {
               </View>
 
               <View style={[styles.playerBottom, { paddingBottom: overlayPad, gap: blockGap }]}>
-                <SeekBar
-                  progress={progressPercent}
-                  onSeek={(ratio) => seekTo(ratio * duration)}
-                  accessibilityLabel="Seek within the lesson"
-                  style={{ height: trackHeight }}
-                />
                 <View style={[styles.playerActions, { minHeight: actionHeight }]}>
                   <Pressable
                     accessibilityRole="button"
@@ -422,9 +432,21 @@ export default function LessonPlayerScreen() {
                     <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
                   </Pressable>
                 </View>
-                <View style={styles.timeRow}>
-                  <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{formatClock(position)}</Text>
-                  <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{formatClock(duration)}</Text>
+                {/* Timeline between the two times: the track is shorter than the picture, so the
+                    start and end numbers own the ends of the row. */}
+                <View style={[styles.timeRow, { gap: overlayPad }]}>
+                  <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
+                    {formatClock(position)}
+                  </Text>
+                  <SeekBar
+                    progress={progressPercent}
+                    onSeek={(ratio) => seekTo(ratio * duration)}
+                    accessibilityLabel="Seek within the lesson"
+                    style={{ height: trackHeight }}
+                  />
+                  <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
+                    {formatClock(duration)}
+                  </Text>
                 </View>
               </View>
             </Animated.View>
@@ -648,7 +670,10 @@ export default function LessonPlayerScreen() {
 
       <BottomSheet
         visible={lessonListOpen}
-        onClose={() => setLessonListOpen(false)}
+        onClose={() => {
+          setLessonListOpen(false);
+          showControls();
+        }}
         title="Lessons"
         subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
         scrollable>
@@ -674,7 +699,13 @@ export default function LessonPlayerScreen() {
         ))}
       </BottomSheet>
 
-      <BottomSheet visible={speedOpen} onClose={() => setSpeedOpen(false)} title="Playback speed">
+      <BottomSheet
+        visible={speedOpen}
+        onClose={() => {
+          setSpeedOpen(false);
+          showControls();
+        }}
+        title="Playback speed">
         {SPEEDS.map((speed) => (
           <Pressable
             key={speed}
@@ -684,6 +715,7 @@ export default function LessonPlayerScreen() {
             onPress={() => {
               player.playbackRate = speed;
               setSpeedOpen(false);
+              showControls();
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
             <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
@@ -784,7 +816,9 @@ const styles = createStyles(() => StyleSheet.create({
     bottom: 0,
     paddingHorizontal: layout.section,
   },
-  timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
+  /** Fixed width keeps the track from jiggling as the timer gains a digit. */
+  timeText: { minWidth: 34, textAlign: 'center' },
   centerOverlay: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     alignItems: 'center',
@@ -821,7 +855,7 @@ const styles = createStyles(() => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  seekTrack: { height: 22, justifyContent: 'center' },
+  seekTrack: { flex: 1, height: 22, justifyContent: 'center' },
   /** The unfilled part of the track, so the position reads against the picture too. */
   seekRail: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center' },
   seekRailLine: { height: 4, borderRadius: 2, backgroundColor: colors.onPlayerMuted, opacity: 0.45 },
