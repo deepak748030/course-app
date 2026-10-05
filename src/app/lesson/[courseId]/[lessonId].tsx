@@ -1,5 +1,6 @@
 import { useEvent, useEventListener } from 'expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   ArrowLeft,
@@ -32,8 +33,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type LayoutChangeEvent,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import Animated, { FadeIn, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -97,6 +101,28 @@ export default function LessonPlayerScreen() {
   const videoRef = useRef<VideoView>(null);
   const lastSavedRef = useRef(storedPosition.positionSec);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Every player control floats over the picture, so the picture's height is the budget everything
+   * has to fit into. The surface is 16:9 and full-bleed, so on a phone it is only ~200pt tall: the
+   * sizes below are derived from the measured height (with the 16:9 estimate for the first frame)
+   * and the play button takes exactly the free band between the top row and the transport, which is
+   * why nothing ever lands on the scrubber, the speed row or the two timers.
+   */
+  const { width: windowWidth } = useWindowDimensions();
+  const [measuredVideoHeight, setMeasuredVideoHeight] = useState(0);
+  const videoHeight = measuredVideoHeight || Math.round((windowWidth * 9) / 16);
+  const playerScale = Math.max(0.8, Math.min(1, videoHeight / 236));
+  const overlayPad = Math.round(spacing.sm * playerScale);          // 6..8
+  const blockGap = Math.max(2, Math.round((spacing.xs / 2) * playerScale)); // 3..4
+  const trackHeight = Math.round(20 * playerScale);                 // 16..20
+  const actionHeight = Math.round(40 * playerScale);                // 32..40, hit-slopped to 44
+  const topBlockHeight = layout.touchTarget + overlayPad * 2;
+  const bottomBlockHeight = trackHeight + blockGap * 2 + actionHeight + spacing.lg + overlayPad;
+  const freeBandHeight = Math.max(44, videoHeight - topBlockHeight - bottomBlockHeight);
+  const playSize = Math.round(Math.min(64, freeBandHeight - 4));
+  const skipSize = Math.max(44, Math.min(52, Math.round(playSize * 0.8)));
+  const largeGlyph = playSize >= 56;
 
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
@@ -229,12 +255,16 @@ export default function LessonPlayerScreen() {
     <View style={styles.root}>
       <AppStatusBar />
 
-      {/* Player. The system bar strip is left to the app background and the video sits below it,
-          so the transport controls float over the video alone: play/pause and the skip buttons
-          stay centred, while the scrubber, speed, fullscreen and the two timers sit on the bar
-          underneath — the order asked for, timers last. */}
+      {/* Player. The system bar strip is left to the app background and the video sits below it.
+          Everything else floats over the picture, so the dark area is exactly the 16:9 video and
+          nothing hangs under it: play/pause and the skip buttons in the free band in the middle,
+          then — in the order asked for — the scrubber, the speed and fullscreen row, and the two
+          timers on the very bottom line. The rows are sized from the surface height (see
+          `videoHeight` above) so they stay clear of each other on every screen. */}
       <View style={[styles.playerWrap, { paddingTop: insets.top }]}>
-        <View style={styles.playerSurface}>
+        <View
+          style={styles.playerSurface}
+          onLayout={(event: LayoutChangeEvent) => setMeasuredVideoHeight(event.nativeEvent.layout.height)}>
           <VideoView
             ref={videoRef}
             player={player}
@@ -279,7 +309,25 @@ export default function LessonPlayerScreen() {
 
           {controlsVisible && !error ? (
             <Animated.View entering={FadeIn.duration(160)} style={[StyleSheet.absoluteFill, styles.boxNone]}>
-              <View style={styles.playerTop}>
+              {/* Two short gradients so white glyphs stay readable on a bright frame. */}
+              <LinearGradient
+                colors={[colors.scrim, 'transparent']}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={[styles.topScrim, styles.noTouch, { height: topBlockHeight + spacing.lg }]}
+              />
+              <LinearGradient
+                colors={['transparent', colors.scrim]}
+                start={{ x: 0.5, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={[styles.bottomScrim, styles.noTouch, { height: bottomBlockHeight + spacing.lg }]}
+              />
+
+              <View
+                style={[
+                  styles.playerTop,
+                  { paddingTop: overlayPad, paddingBottom: overlayPad, minHeight: topBlockHeight },
+                ]}>
                 <IconButton
                   icon={ArrowLeft}
                   variant="onImage"
@@ -302,12 +350,17 @@ export default function LessonPlayerScreen() {
                 />
               </View>
 
-              <View style={[styles.playerCenter, styles.boxNone]}>
+              <View
+                style={[
+                  styles.playerCenter,
+                  styles.boxNone,
+                  { top: topBlockHeight, bottom: bottomBlockHeight, gap: Math.round(spacing.xl * playerScale) },
+                ]}>
                 <IconButton
                   icon={SkipBack}
                   variant="onImage"
-                  size={52}
-                  iconSize={24}
+                  size={skipSize}
+                  iconSize={largeGlyph ? 24 : 20}
                   accessibilityLabel="Go back 15 seconds"
                   onPress={() => seekTo(position - 15)}
                 />
@@ -315,54 +368,67 @@ export default function LessonPlayerScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
                   onPress={togglePlay}
-                  style={styles.playButton}>
+                  style={[styles.playButton, { width: playSize, height: playSize }]}>
                   {isPlaying ? (
-                    <Pause size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                    <Pause
+                      size={largeGlyph ? 30 : 24}
+                      color={colors.onPlayer}
+                      strokeWidth={1.8}
+                      fill={colors.onPlayer}
+                    />
                   ) : (
-                    <Play size={30} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                    <Play
+                      size={largeGlyph ? 30 : 24}
+                      color={colors.onPlayer}
+                      strokeWidth={1.8}
+                      fill={colors.onPlayer}
+                    />
                   )}
                 </Pressable>
                 <IconButton
                   icon={SkipForward}
                   variant="onImage"
-                  size={52}
-                  iconSize={24}
+                  size={skipSize}
+                  iconSize={largeGlyph ? 24 : 20}
                   accessibilityLabel="Go forward 15 seconds"
                   onPress={() => seekTo(position + 15)}
                 />
               </View>
+
+              <View style={[styles.playerBottom, { paddingBottom: overlayPad, gap: blockGap }]}>
+                <SeekBar
+                  progress={progressPercent}
+                  onSeek={(ratio) => seekTo(ratio * duration)}
+                  accessibilityLabel="Seek within the lesson"
+                  style={{ height: trackHeight }}
+                />
+                <View style={[styles.playerActions, { minHeight: actionHeight }]}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
+                    hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                    onPress={() => setSpeedOpen(true)}
+                    style={styles.playerAction}>
+                    <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                    <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Play in fullscreen"
+                    hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                    onPress={() => void videoRef.current?.enterFullscreen()}
+                    style={styles.playerAction}>
+                    <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                    <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.timeRow}>
+                  <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{formatClock(position)}</Text>
+                  <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{formatClock(duration)}</Text>
+                </View>
+              </View>
             </Animated.View>
           ) : null}
-        </View>
-
-        <View style={styles.playerBar}>
-          <SeekBar
-            progress={progressPercent}
-            onSeek={(ratio) => seekTo(ratio * duration)}
-            accessibilityLabel="Seek within the lesson"
-          />
-          <View style={styles.playerActions}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
-              onPress={() => setSpeedOpen(true)}
-              style={styles.playerAction}>
-              <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-              <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Play in fullscreen"
-              onPress={() => void videoRef.current?.enterFullscreen()}
-              style={styles.playerAction}>
-              <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-              <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
-            </Pressable>
-          </View>
-          <View style={styles.timeRow}>
-            <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(position)}</Text>
-            <Text style={[type.label, tabularNums, { color: colors.onPlayerMuted }]}>{formatClock(duration)}</Text>
-          </View>
         </View>
       </View>
 
@@ -634,10 +700,13 @@ function SeekBar({
   progress,
   onSeek,
   accessibilityLabel,
+  style,
 }: {
   progress: number;
   onSeek: (ratio: number) => void;
   accessibilityLabel: string;
+  /** The track's height is set by the player, which sizes the transport from the video height. */
+  style?: StyleProp<ViewStyle>;
 }) {
   const [width, setWidth] = useState(0);
   const reduced = useReducedMotion();
@@ -659,7 +728,10 @@ function SeekBar({
         if (width <= 0) return;
         onSeek(Math.max(0, Math.min(1, event.nativeEvent.locationX / width)));
       }}
-      style={styles.seekTrack}>
+      style={[styles.seekTrack, style]}>
+      <View style={styles.seekRail}>
+        <View style={styles.seekRailLine} />
+      </View>
       <Animated.View style={[styles.seekFill, fillStyle]} />
     </Pressable>
   );
@@ -699,14 +771,18 @@ const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   playerWrap: { backgroundColor: colors.background },
-  playerSurface: { aspectRatio: 16 / 9, backgroundColor: colors.player },
+  /** The picture, and the whole dark area: nothing is painted below it. */
+  playerSurface: { aspectRatio: 16 / 9, backgroundColor: colors.player, overflow: 'hidden' },
   video: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.player },
-  playerBar: {
-    backgroundColor: colors.player,
+  topScrim: { position: 'absolute', top: 0, left: 0, right: 0 },
+  bottomScrim: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  /* Transport: the bars are pinned to the picture's own edges, so the rows never push each other. */
+  playerBottom: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     paddingHorizontal: layout.section,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
   },
   timeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   centerOverlay: {
@@ -718,24 +794,26 @@ const styles = createStyles(() => StyleSheet.create({
     paddingHorizontal: layout.section,
   },
   playerTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: layout.screen,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
   },
   playerTitleWrap: { flex: 1, alignItems: 'center', gap: 2 },
+  /** Fills the band between the top row and the transport, so play/pause lands dead centre. */
   playerCenter: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.xl,
-    flex: 1,
   },
   playButton: {
-    width: 68,
-    height: 68,
     borderRadius: radius.pill,
     backgroundColor: colors.scrim,
     borderWidth: 1,
@@ -744,13 +822,15 @@ const styles = createStyles(() => StyleSheet.create({
     justifyContent: 'center',
   },
   seekTrack: { height: 22, justifyContent: 'center' },
+  /** The unfilled part of the track, so the position reads against the picture too. */
+  seekRail: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center' },
+  seekRailLine: { height: 4, borderRadius: 2, backgroundColor: colors.onPlayerMuted, opacity: 0.45 },
   seekFill: { height: 4, borderRadius: 2, backgroundColor: colors.gold },
   playerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   playerAction: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    minHeight: layout.touchTarget,
     paddingHorizontal: spacing.sm,
   },
 

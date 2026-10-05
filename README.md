@@ -126,6 +126,12 @@ The UI follows the project's design rules document and is generated from one tok
   and sticky footers separate with a border, never an elevation.
 - **8px baseline.** Screen side padding is 8, gap between items is 8, cards and forms pad 16, sections
   breathe 24. Banners and the player are full-bleed with a 0 side gap.
+- **The player is all picture.** The lesson screen paints nothing dark under the video: the scrubber,
+  the speed and fullscreen row and the two timers float on the picture itself over two short gradients,
+  with play/pause and the skip buttons in the free band between them, and the whole transport is sized
+  from the measured surface height (16:9, so ~200pt on a phone) — the rows can never crowd each other,
+  and the dark area is exactly the video. The controls fade out on their own while playing, so the
+  picture is unobstructed until the learner taps it.
 - **Hairlines over boxes.** Data lists draw a divider between rows (none after the last) instead of
   spacing every row apart, and dividers inset to the row content when a row has a leading icon.
 - **Concentric radii** (4 / 8 / 12 / 16, pill only for single-line content) and 44pt minimum touch
@@ -198,7 +204,8 @@ A UI reference board of 100 course-app screens used for this redesign is kept in
 - **No offline downloads, captions, casting or picture-in-picture**, so the player shows no controls for them.
 - **No push notifications.** The bell shows clearly-labelled sample notifications; the delivery service is not wired up.
 - **No support inbox.** Help offers shareable feedback instead of a contact form that pretends to send.
-- **No dark theme.** The brand identity is light-first with one immersive dark player surface.
+- **No dark theme.** Both themes are light-first (white surfaces); the only dark area in the app is
+  the video itself.
 - **No legal documents.** Terms and Privacy are marked placeholder copy that must be replaced before shipping.
 
 Demo data lives on the device: logging out clears the learning data stored for the session, while
@@ -232,8 +239,9 @@ onboarding completion and app preferences are kept.
      entirely on an edge-to-edge activity. The app therefore calls `StatusBar.setBackgroundColor` (and
      `setTranslucent(false)`) at startup, on every status-bar tone change and on every foreground, with
      the app background for light screens and the player surface for dark ones.
-  3. The lesson player and the course hero declare `<AppStatusBar style="light" />`, which turns the
-     native bar dark so their light icons stay legible. All other screens get dark icons on white.
+  3. No screen asks for the dark tone any more. The player and the course hero used to, which is what
+     painted the bar with the player surface — the black bar in the report. They now keep the app
+     background: the strip above the video is white with dark icons, and the video starts below it.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 
