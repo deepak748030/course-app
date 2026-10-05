@@ -62,6 +62,7 @@ import {
   MetaItem,
   ProgressBar,
   Screen,
+  scrollClip,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, courseLessonGroups, nextLesson } from '@/data/catalog';
@@ -553,10 +554,11 @@ export default function LessonPlayerScreen() {
       </View>
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={[styles.flex, styles.clipPanel]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={8}>
         <ScrollView
+          style={scrollClip}
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
@@ -952,6 +954,8 @@ const styles = createStyles(() => StyleSheet.create({
   boxNone: { pointerEvents: 'box-none' },
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
+  /* Android would otherwise let the panel's content scroll up over the video (see <Screen>). */
+  clipPanel: { overflow: 'hidden' },
   playerWrap: { backgroundColor: colors.background },
   /** The picture, and the whole dark area: nothing is painted below it. */
   playerSurface: { aspectRatio: 16 / 9, backgroundColor: colors.player, overflow: 'hidden' },

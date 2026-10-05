@@ -5,7 +5,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandMark } from '@/components/marks';
-import { AppBar, Button, ErrorState, FormField, Screen } from '@/components/ui';
+import { AppBar, Button, ErrorState, FormField, Screen, scrollClip } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
 import { normalizePhone, validateIndianMobile } from '@/lib/format';
@@ -53,8 +53,11 @@ export default function PhoneScreen() {
       <Screen
         scroll={false}
         header={<AppBar title={t("Sign in")} onBack={goBack} borderless />}
-        contentStyle={{ paddingBottom: insets.bottom + spacing.md, paddingHorizontal: 0 }}>
+        /* Clips the scroller below (see the note in otp.tsx): Android lets a ScrollView draw past
+            its own edges, which would walk the form up over the app bar. */
+        contentStyle={{ overflow: 'hidden', paddingBottom: insets.bottom + spacing.md, paddingHorizontal: 0 }}>
         <ScrollView
+          style={scrollClip}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>

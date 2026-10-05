@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { AppBar, Button, ErrorState, Screen } from '@/components/ui';
+import { AppBar, Button, ErrorState, Screen, scrollClip } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useT } from '@/i18n';
 import { formatIndianMobile } from '@/lib/format';
@@ -115,8 +115,11 @@ export default function OtpScreen() {
       <Screen
         scroll={false}
         header={<AppBar title={t("Verify number")} onBack={changeNumber} backLabel="Back to mobile number" borderless />}
-        contentStyle={{ paddingHorizontal: 0, paddingBottom: insets.bottom + spacing.md }}>
+        /* The scroller's parent clips it: on Android a ScrollView can draw its content past its
+            own edges, and the code row would ride up over the app bar while scrolling. */
+        contentStyle={{ overflow: 'hidden', paddingHorizontal: 0, paddingBottom: insets.bottom + spacing.md }}>
         <ScrollView
+          style={scrollClip}
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>

@@ -361,8 +361,13 @@ const styles = createStyles(() => StyleSheet.create({
   browseRail: { paddingLeft: 0 },
   /* Tight sides and a tight icon gap, with just enough room under the header for the banner. */
   headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm, gap: spacing.xs },
-  /* Search and the bell sit almost flush; the avatar keeps its own slot after them. */
-  bellWrap: { marginLeft: -spacing.xs },
+  /*
+   * Search and the bell read as one pair. Each glyph sits in its own 44pt touch box, so the empty
+   * 12px of padding on either side is what the eye reads as the gap: the wrapper pulls the bell
+   * box 16px under the search box, which leaves 12px between the two glyphs instead of 24px.
+   * The boxes only overlap on their padding — the 44pt targets and the glyphs stay clear.
+   */
+  bellWrap: { marginLeft: -spacing.lg },
   carousel: { height: 220, backgroundColor: colors.player },
   hero: { height: 220, overflow: 'hidden' },
   /* Native paging snaps by itself; the web scroll-snap container needs each slide to name its point. */

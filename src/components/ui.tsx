@@ -91,15 +91,23 @@ export function Screen({
 }) {
   return (
     <View style={[styles.root, style]}>
-      {header}
+      {header ? <View style={styles.headerLayer}>{header}</View> : null}
       {scroll ? (
-        <ScrollView
-          style={styles.flex}
-          contentContainerStyle={[styles.scrollContent, contentStyle]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          {children}
-        </ScrollView>
+        /*
+         * The scroller is clipped on purpose. On Android the children of a ScrollView can be drawn
+         * past its own top edge, so without this the first row of content rides up over the header
+         * as it scrolls out — a chip row showing through the search field, which reads as a strike.
+         * The header also gets its own layer so it always paints above the scroller.
+         */
+        <View style={[styles.flex, styles.clipping]}>
+          <ScrollView
+            style={[styles.flex, styles.clipping]}
+            contentContainerStyle={[styles.scrollContent, contentStyle]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            {children}
+          </ScrollView>
+        </View>
       ) : (
         <View style={[styles.flex, contentStyle]}>{children}</View>
       )}
@@ -107,6 +115,15 @@ export function Screen({
     </View>
   );
 }
+
+/**
+ * `overflow: 'hidden'` for a scroller that <Screen> does not own.
+ *
+ * Android does not clip a ScrollView's children unless the overflow style says so (ReactScrollView
+ * only clips when overflow is not `visible`), which lets content ride up over the app bar and over
+ * whatever sits below. The auth steps and the lesson player put this on their own scroller.
+ */
+export const scrollClip: ViewStyle = { flex: 1, overflow: 'hidden' };
 
 /** Full-bleed horizontal scroller: no side padding, 8px gaps between items. */
 export function Rail({ children, contentStyle }: { children: ReactNode; contentStyle?: StyleProp<ViewStyle> }) {
@@ -1125,6 +1142,8 @@ export function SearchField({
 
 const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
+  headerLayer: { zIndex: 1 },
+  clipping: { overflow: 'hidden' },
   flex: { flex: 1 },
   fullWidth: { alignSelf: 'stretch' },
   centerText: { textAlign: 'center' },

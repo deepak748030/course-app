@@ -314,6 +314,32 @@ check('policy screens carry their own title, and language is a screen of its own
   }
 });
 
+check('screen scrollers are clipped and headers keep their own layer', () => {
+  const ui = readFileSync(fileURLToPath(new URL('../src/components/ui.tsx', import.meta.url)), 'utf8');
+
+  // Android draws a ScrollView's children outside its own box: a row scrolling past the top of the
+  // scroller rides up over the header, which reads as the content striking through the search field.
+  // Two things keep it out — the scroller is clipped (itself and by the view that wraps it), and the
+  // header sits in a layer above the scroller. Both must survive any future edit of <Screen>.
+  assert.ok(/clipping: \{ overflow: 'hidden' \}/.test(ui), 'the scroller keeps its clipping style');
+  assert.ok(/headerLayer: \{ zIndex: 1 \}/.test(ui), 'the header keeps its own layer');
+  assert.ok(ui.includes('<View style={[styles.flex, styles.clipping]}>'), 'the scroller is wrapped in the clipping view');
+  assert.ok(
+    ui.includes('{header ? <View style={styles.headerLayer}>{header}</View> : null}'),
+    'the header renders inside its layer',
+  );
+
+  // The screens that own a scroller put the same overflow on it themselves.
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+  for (const screen of ['src/app/auth/phone.tsx', 'src/app/auth/otp.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
+    assert.ok(read(screen).includes('style={scrollClip}'), `${screen} keeps its scroller clipped`);
+  }
+  assert.ok(
+    /export const scrollClip: ViewStyle = \{ flex: 1, overflow: 'hidden' \}/.test(ui),
+    'scrollClip still hides the overflow',
+  );
+});
+
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
   const [catalog, payments, content, i18n, hindi] = await Promise.all([
     import('../src/data/catalog'),
