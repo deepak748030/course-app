@@ -7,10 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedCart } from '@/components/animated-icons';
 import { PriceSummary, StickyBar } from '@/components/course-cards';
+import { OfferBadge } from '@/components/offer-tag';
 import { AppBar, AppText, Badge, Button, DataList, ErrorState, FormField, MetaItem, Screen, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { Clapperboard, Clock } from 'lucide-react-native';
-import { courseById } from '@/data/catalog';
+import { courseById, discountPercent } from '@/data/catalog';
 import { demoCoupons, purchaseTerms } from '@/data/content';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
 import { useStore } from '@/store';
@@ -62,6 +63,8 @@ export default function CheckoutScreen() {
     setCoupon({ code: match.code, percentOff: match.percentOff });
     setCouponInput('');
   };
+
+  const offer = course ? discountPercent(course) : null;
 
   const pay = async () => {
     setProcessing(true);
@@ -256,9 +259,12 @@ export default function CheckoutScreen() {
 
       <StickyBar bottomInset={insets.bottom}>
         <View style={styles.flex}>
-          <AppText variant="subheading" style={tabularNums}>
-            {formatInr(payable)}
-          </AppText>
+          <View style={styles.payableRow}>
+            <AppText variant="subheading" style={tabularNums}>
+              {formatInr(payable)}
+            </AppText>
+            {offer && !coupon ? <OfferBadge percent={offer} /> : null}
+          </View>
           <Text style={[type.label, { color: colors.textMuted }]}>
             {coupon ? `${coupon.code} applied · total` : 'Total payable'}
           </Text>
@@ -284,6 +290,7 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.md, alignItems: 'center' },
   thumb: { width: 88, height: 68, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt },
   metaRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs, flexWrap: 'wrap' },
+  payableRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   section: { gap: layout.gap },
   sectionHead: { gap: spacing.xs },
   badgeWrap: { paddingHorizontal: layout.section, marginTop: spacing.xs },

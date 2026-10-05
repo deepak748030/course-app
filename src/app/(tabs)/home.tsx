@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { AnimatedBellRing } from '@/components/animated-icons';
+import { OfferBadge } from '@/components/offer-tag';
 import { CourseCard, CourseRow, ContinueCard } from '@/components/course-cards';
 import {
   AvatarButton,
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui';
 import { BrandMark } from '@/components/marks';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courses } from '@/data/catalog';
+import { categories, courses, discountPercent } from '@/data/catalog';
 import { notifications } from '@/data/content';
 import { images } from '@/media';
 import { formatDuration } from '@/lib/format';
@@ -182,6 +183,7 @@ export default function HomeScreen() {
 function HeroBanner({ course }: { course: Course }) {
   const router = useRouter();
   const press = usePressScale(0.99);
+  const heroOffer = discountPercent(course);
 
   return (
     <Animated.View style={press.style}>
@@ -195,6 +197,11 @@ function HeroBanner({ course }: { course: Course }) {
         <View style={styles.hero}>
           <Image source={images.heroHome} style={styles.heroImage} contentFit="cover" transition={200} />
           <Scrim to={colors.scrim} />
+          {heroOffer ? (
+            <View style={styles.heroOffer}>
+              <OfferBadge percent={heroOffer} />
+            </View>
+          ) : null}
           <View style={styles.heroCopy}>
             <Text style={[type.overline, { color: colors.onPlayerMuted }]}>Featured this week</Text>
             <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
@@ -231,6 +238,7 @@ const styles = StyleSheet.create({
   bellWrap: { marginLeft: -spacing.xs },
   hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
+  heroOffer: { position: 'absolute', top: spacing.md, left: spacing.md },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },
   heroMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
   heroRating: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },

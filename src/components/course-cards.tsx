@@ -24,7 +24,7 @@ import {
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
-import { AnimatedSparkle } from '@/components/animated-icons';
+import { OfferBadge } from '@/components/offer-tag';
 import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/data/catalog';
@@ -38,20 +38,6 @@ function priceLabel(course: Course) {
 
 function openCourse(router: ReturnType<typeof useRouter>, id: string) {
   router.push({ pathname: '/course/[id]', params: { id } });
-}
-
-/**
- * Offer badge for card artwork: brand yellow, top-left of the image, with an animated sparkle so
- * it reads as live information rather than a printed sticker. The percentage is derived from the
- * listing price, never written by hand.
- */
-export function OfferBadge({ percent }: { percent: number }) {
-  return (
-    <View style={styles.offerBadge} accessibilityRole="text" accessibilityLabel={`${percent} percent off`}>
-      <AnimatedSparkle size={13} color={colors.onAccent} strokeWidth={2.1} />
-      <Text style={[type.labelStrong, { color: colors.onAccent }]}>{percent}% off</Text>
-    </View>
-  );
 }
 
 /** Rail card: fixed width, 4:3 artwork, title, level, rating + price row. */
@@ -75,7 +61,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
         onPressOut={press.onPressOut}>
         <View style={styles.cardImageWrap}>
           <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
-          {offer ? <OfferBadge percent={offer} /> : null}
+          {offer ? <OfferBadge percent={offer} style={styles.cardOffer} /> : null}
           <View style={styles.cardImageBadge}>
             <Badge label={course.level} tone="neutral" />
           </View>
@@ -128,6 +114,7 @@ export function CourseRow({ course }: { course: Course }) {
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
+  const offer = discountPercent(course);
 
   return (
     <Pressable
@@ -153,6 +140,7 @@ export function CourseRow({ course }: { course: Course }) {
         </View>
         <View style={styles.rowPriceLine}>
           <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+          {offer ? <OfferBadge percent={offer} /> : null}
           {course.listPriceInr ? (
             <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
               {formatInr(course.listPriceInr)}
@@ -296,6 +284,32 @@ export function LessonRow({
  * Price & reviews
  * ------------------------------------------------------------------ */
 
+/**
+ * Price line for the buy bar and the checkout summary: current price, struck listing price and the
+ * animated offer mark, so a discount is visible exactly where the money decision happens.
+ */
+export function PriceLine({
+  course,
+  percent,
+  align = 'left',
+}: {
+  course: Course;
+  percent: number | null;
+  align?: 'left' | 'right';
+}) {
+  return (
+    <View style={[styles.priceLine, align === 'right' && styles.priceLineRight]}>
+      {percent ? <OfferBadge percent={percent} /> : null}
+      <Text style={[type.bodyStrong, tabularNums, { color: colors.text }]}>{priceLabel(course)}</Text>
+      {course.listPriceInr ? (
+        <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
+          {formatInr(course.listPriceInr)}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
 export function PriceSummary({
   course,
   couponPercent = 0,
@@ -424,18 +438,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageWrap: { backgroundColor: colors.surfaceAlt },
-  offerBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: colors.primary,
-    borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
+  cardOffer: { position: 'absolute', top: spacing.sm, left: spacing.sm },
   cardImage: { width: '100%', aspectRatio: 4 / 3 },
   cardImageBadge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
   cardBody: { padding: spacing.sm, gap: spacing.xs },
@@ -448,6 +451,8 @@ const styles = StyleSheet.create({
   rowMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: 2, flexWrap: 'wrap' },
   rowPriceLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  priceLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  priceLineRight: { justifyContent: 'flex-end' },
 
   continueRow: {
     flexDirection: 'row',

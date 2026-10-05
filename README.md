@@ -132,6 +132,17 @@ The UI follows the project's design rules document and is generated from one tok
   targets with 48px controls.
 - **Motion is restrained**: press feedback under 100ms, entrances 160–320ms, and every animation checks
   reduced-motion first.
+- **The offer mark is a real Lottie animation.** `assets/lottie/offer.json` is played by a Lottie
+  runtime — `lottie-react-native` on Android/iOS (native cores, no WASM), `lottie-web`'s SVG renderer
+  on web (`src/components/offer-lottie.web.tsx`). The composition is bundled with the app, so the
+  badge animates offline; the WASM player was rejected because it fetches its runtime from a public
+  CDN at start-up. The file is authored in-repo by `scripts/generate-lottie-offer.mjs` — the design
+  follows the LottieFiles "offer percentage" piece (JOEL J GEORGE), which cannot be downloaded
+  without an account and whose CDN the build environment cannot reach, so the mark is drawn to match
+  it instead of shipping someone else's file with unclear provenance. To use a different animation
+  later, drop it at `assets/lottie/offer.json`: no code changes. The badge degrades safely — reduced
+  motion, a renderer that fails to start or an environment without a 2D canvas all fall back to a
+  static percent glyph, and a boundary keeps a broken animation from taking the screen down.
 - **Animated icons** (`src/components/animated-icons.tsx`): the glyphs that carry meaning are animated —
   the notification bell swings and rests, the offer sparkle pops, the check marks and course facts pulse,
   the cart hops. Each one is a lucide glyph inside a Reanimated wrapper driven by one looping shared
@@ -139,9 +150,10 @@ The UI follows the project's design rules document and is generated from one tok
   into a static icon under reduced motion. `Button` also accepts `sheen` for a slow light sweep across a
   primary fill (used by Buy now and Pay), held under reduced motion.
 - **Offers are derived, never typed twice**: a course seed may carry `listPriceInr`, and
-  `discountPercent()` computes the percentage from the two prices. The card artwork shows it in a
-  top-left badge with the animated sparkle, and the course sticky bar repeats it next to the struck-out
-  price, so a price change can never disagree with the badge that advertises it.
+  `discountPercent()` computes the percentage from the two prices. The mark appears wherever the
+  decision is: top-left of course artwork, top-left of the featured hero, above the course title, in
+  list rows, in the sticky buy bar and on the checkout total — so a price change can never disagree
+  with the badge that advertises it.
 
 A UI reference board of 100 course-app screens used for this redesign is kept in `image-search/`.
 

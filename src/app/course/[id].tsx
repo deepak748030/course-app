@@ -9,7 +9,6 @@ import {
   Clock,
   Globe,
   Play,
-  Sparkles,
   ShoppingBasket,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
@@ -20,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
+import { OfferBadge } from '@/components/offer-tag';
 import { LessonRow, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
@@ -119,6 +119,11 @@ export default function CourseDetailsScreen() {
         {/* Title block. Reads as a title: an uppercase overline, the largest type on the screen,
             then one paragraph. The facts sit on their own tone block instead of running into it. */}
         <View style={styles.intro}>
+          {offer ? (
+            <View style={styles.offerRow}>
+              <OfferBadge percent={offer} />
+            </View>
+          ) : null}
           <Text style={[type.overline, { color: colors.textSubtle }]}>
             {categoryLabel} · {course.level}
           </Text>
@@ -255,7 +260,6 @@ export default function CourseDetailsScreen() {
                     {formatInr(course.listPriceInr)}
                   </Text>
                 ) : null}
-                {offer ? <Badge label={`${offer}% off`} tone="primary" icon={Sparkles} /> : null}
               </View>
               <Text style={[type.label, { color: colors.textMuted }]}>One-time · demo checkout</Text>
             </View>
@@ -440,7 +444,8 @@ const styles = StyleSheet.create({
   bulletIcon: { height: 22, justifyContent: 'center' },
   factItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
   factIcon: { height: 16, justifyContent: 'center' },
-  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  offerRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   strike: { textDecorationLine: 'line-through' },
 
   curriculum: { borderTopWidth: 1, borderColor: colors.border },

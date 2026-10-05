@@ -798,6 +798,7 @@ const courseSeeds: CourseSeed[] = [
     level: 'Intermediate',
     language: 'English + Hindi',
     priceInr: 2299,
+    listPriceInr: 3199,
     rating: 4.8,
     reviewCount: 703,
     outcomes: [
