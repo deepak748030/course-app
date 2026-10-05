@@ -293,6 +293,27 @@ check('worklet callbacks and hook bodies never touch React state', () => {
   );
 });
 
+check('policy screens carry their own title, and language is a screen of its own', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // The three policies are separate destinations linked from Profile, so no policy page may grow a tab
+  // strip across the top again (that is what the screen used to have).
+  const legal = read('src/app/legal.tsx');
+  assert.ok(!/Segmented/.test(legal), 'the policy screen renders one document, without a tab strip');
+  assert.ok(/AppBar title=\{t\(document\.title\)\}/.test(legal), 'the app bar carries the document title');
+  assert.ok(/legalDocs\[key\]/.test(legal), 'the document still comes from the route parameter');
+
+  // Language is a row that opens a screen, not two tabs squeezed into the Profile card.
+  const profile = read('src/app/(tabs)/profile.tsx');
+  assert.ok(/router\.push\('\/language'\)/.test(profile), 'Profile links to the language screen');
+  assert.ok(!/LanguagePicker/.test(profile), 'the inline language tabs are gone from Profile');
+
+  const language = read('src/app/language.tsx');
+  for (const needle of ['accessibilityRole="radio"', 'accessibilityState={{ checked: active }}', 'aria-checked={active}', 'setLanguage(language.id)']) {
+    assert.ok(language.includes(needle), `language screen keeps ${needle}`);
+  }
+});
+
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
   const [catalog, payments, content, i18n, hindi] = await Promise.all([
     import('../src/data/catalog'),
@@ -343,6 +364,7 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     buildDateOfBirth('05', '10', '2020', today).error!,
     buildDateOfBirth('05', '10', '1890', today).error!,
   ];
+  dataKeys.push(...i18n.LANGUAGES.map((language) => language.description));
   for (const key of dataKeys) used.add(key);
 
   const missing = [...used].filter((key) => !(key in hi)).sort();

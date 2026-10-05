@@ -112,8 +112,7 @@ export default function PhoneScreen() {
           <View style={styles.demoNotice}>
             <ShieldCheck size={16} color={colors.sage} strokeWidth={1.9} />
             <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
-              Demo build: no SMS is sent and no real account is created. The demo verification code is documented in the
-              project README.
+              {t('Demo build: no SMS is sent and no real account is created. The demo verification code is documented in the project README.')}
             </Text>
           </View>
 

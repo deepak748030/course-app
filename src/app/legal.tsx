@@ -1,18 +1,25 @@
+/**
+ * One policy document per screen — no tab strip in here.
+ *
+ * Terms, Privacy and Refunds are three separate destinations that Profile links to, so this screen can
+ * read like the rest of the app instead of a document viewer: an app bar carrying the document's name,
+ * a title block, an honest callout about what the copy is, and the text itself in headed cards so it
+ * can be scanned rather than scrolled through.
+ *
+ * The document copy stays in English on purpose — it is placeholder material a lawyer has to replace,
+ * and the note at the foot of the screen says so in whichever language the interface is in.
+ */
+
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { LifeBuoy, TriangleAlert } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
+import { legalDocs } from '@/data/content';
 import { useT } from '@/i18n';
 
-import { AppBar, Badge, Divider, Screen, Segmented } from '@/components/ui';
-import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
-import { legalDocs } from '@/data/content';
-
 type DocKey = keyof typeof legalDocs;
-
-const DOC_TABS: { id: DocKey; label: string }[] = [
-  { id: 'terms', label: 'Terms' },
-  { id: 'privacy', label: 'Privacy' },
-  { id: 'refund', label: 'Refunds' },
-];
 
 export default function LegalScreen() {
   const t = useT();
@@ -24,37 +31,81 @@ export default function LegalScreen() {
   const document = legalDocs[key];
 
   return (
-    <Screen header={<AppBar title={document.title} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
-      <View style={styles.header}>
-        <Text style={[type.title, { color: colors.text }]}>{document.title}</Text>
-        <Badge label={document.updated} tone="gold" />
+    <Screen
+      header={<AppBar title={t(document.title)} />}
+      contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
+      {/* Title block: which document this is, what it covers, and how final it is. */}
+      <View style={styles.intro}>
+        <Text style={[type.overline, { color: colors.textSubtle }]}>{t('Sample document')}</Text>
+        <Text style={[type.title, { color: colors.text }]}>{t(document.title)}</Text>
+        <Text style={[type.body, { color: colors.textMuted }]}>{t(document.summary)}</Text>
       </View>
 
+      {/* The warning that matters is the one a reader can see before the text, not small print at the
+          bottom. */}
       <View style={styles.pad}>
-        <Segmented options={DOC_TABS} value={key} onChange={(next) => router.setParams({ doc: next })} />
+        <View style={styles.callout}>
+          <TriangleAlert size={18} color={colors.text} strokeWidth={1.9} />
+          <Text style={[type.body, styles.calloutText, { color: colors.text }]}>
+            {t(
+              'Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.',
+            )}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.pad}>
-        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.")}</Text>
-      </View>
-
-      <View style={styles.paragraphs}>
-        {document.paragraphs.map((paragraph, index) => (
-          <View key={index}>
-            {index > 0 ? <Divider style={styles.divider} /> : null}
-            <Text style={[type.body, styles.paragraph, { color: colors.text }]}>{paragraph}</Text>
+      {document.sections.map((section) => (
+        <View key={section.heading} style={styles.pad}>
+          <View style={styles.card}>
+            <Text style={[type.subheading, { color: colors.text }]}>{section.heading}</Text>
+            {section.body.map((paragraph) => (
+              <Text key={paragraph} style={[type.body, { color: colors.textMuted }]}>
+                {paragraph}
+              </Text>
+            ))}
           </View>
-        ))}
+        </View>
+      ))}
+
+      <View style={styles.pad}>
+        <Text style={[type.label, { color: colors.textSubtle }]}>
+          {t(
+            'Course titles, lesson copy and the policy documents are sample content and stay in English.',
+          )}
+        </Text>
       </View>
 
+      <View style={styles.pad}>
+        <DataList>
+          <ListRow
+            icon={LifeBuoy}
+            label={t('Help and support')}
+            subtitle={t('Answers and how to reach us')}
+            onPress={() => router.push('/help')}
+          />
+        </DataList>
+      </View>
     </Screen>
   );
 }
 
 const styles = createStyles(() => StyleSheet.create({
   pad: { paddingHorizontal: layout.screen },
-  header: { gap: spacing.sm, alignItems: 'flex-start', paddingHorizontal: layout.section, paddingTop: spacing.sm },
-  paragraphs: { paddingHorizontal: layout.screen },
-  paragraph: { paddingVertical: spacing.md },
-  divider: { marginLeft: 0 },
+  intro: { gap: spacing.xs, paddingHorizontal: layout.section, paddingTop: spacing.sm },
+  callout: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    alignItems: 'flex-start',
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.sm,
+    padding: spacing.md,
+  },
+  calloutText: { flex: 1 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.sm,
+    paddingHorizontal: layout.section,
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
+  },
 }));

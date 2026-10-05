@@ -95,31 +95,79 @@ export const demoCoupons: { code: string; percentOff: number; label: string }[] 
 export const legalDocs = {
   terms: {
     title: 'Terms of use',
-    updated: 'Sample document',
-    paragraphs: [
-      'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before YDU Academy is distributed.',
-      'In this build, courses, prices and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
-      'You are responsible for how you apply the methods shown. Batch sheets are educational sample material, not food-safety, veterinary, licensing or regulatory advice.',
+    summary: 'The terms this prototype runs on',
+    sections: [
+      {
+        heading: 'What this document is',
+        body: [
+          'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before YDU Academy is distributed.',
+        ],
+      },
+      {
+        heading: 'Courses, prices and reviews',
+        body: [
+          'In this build, courses, prices and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
+        ],
+      },
+      {
+        heading: 'Applying what you learn',
+        body: [
+          'You are responsible for how you apply the methods shown. Batch sheets are educational sample material, not food-safety, veterinary, licensing or regulatory advice.',
+        ],
+      },
     ],
   },
   refund: {
     title: 'Refund policy',
-    updated: 'Sample document',
-    paragraphs: [
-      'This is placeholder copy for a prototype and is not a refund policy. No money moves in this build: checkout is a demo flow that only unlocks a course on this device, so there is nothing to refund yet.',
-      'The policy a shipped YDU Academy would run on: a seven-day window from the date of purchase, a full refund on a course where no lesson has been started, and no refund once a quarter or more of the lessons have been completed.',
-      'Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price.',
-      'Batch sheets, notes and downloaded material are part of the course and follow the same rule as the lessons.',
-      'Approved refunds go back to the original payment method within five to seven working days, and the course locks again when the refund is processed.',
+    summary: 'When a course can be refunded',
+    sections: [
+      {
+        heading: 'In this build',
+        body: [
+          'This is placeholder copy for a prototype and is not a refund policy. No money moves in this build: checkout is a demo flow that only unlocks a course on this device, so there is nothing to refund yet.',
+        ],
+      },
+      {
+        heading: 'The window a shipped app would run on',
+        body: [
+          'A seven-day window from the date of purchase, a full refund on a course where no lesson has been started, and no refund once a quarter or more of the lessons have been completed.',
+        ],
+      },
+      {
+        heading: 'What the refund is calculated on',
+        body: [
+          'Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price.',
+          'Batch sheets, notes and downloaded material are part of the course and follow the same rule as the lessons.',
+        ],
+      },
+      {
+        heading: 'How the money reaches you',
+        body: [
+          'Approved refunds go back to the original payment method within five to seven working days, and the course locks again when the refund is processed.',
+        ],
+      },
     ],
   },
   privacy: {
-    title: 'Privacy',
-    updated: 'Sample document',
-    paragraphs: [
-      'This is placeholder copy for a prototype and is not a privacy policy.',
-      'The prototype stores your mobile number, session token, saved courses, lesson progress and notes on this device only. The token is kept in the platform secure store; everything else uses local app storage.',
-      'No analytics, advertising or third-party tracking is included in this build, and no data leaves the device.',
+    title: 'Privacy policy',
+    summary: 'What is stored, and where',
+    sections: [
+      {
+        heading: 'What this prototype stores',
+        body: [
+          'Your mobile number, session token, saved courses, lesson progress and notes — all on this device only. The token is kept in the platform secure store; everything else uses local app storage.',
+        ],
+      },
+      {
+        heading: 'What it does not do',
+        body: [
+          'No analytics, advertising or third-party tracking is included in this build, and no data leaves the device.',
+        ],
+      },
+      {
+        heading: 'What this document is',
+        body: ['This is placeholder copy for a prototype and is not a privacy policy.'],
+      },
     ],
   },
 } as const;

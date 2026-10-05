@@ -34,8 +34,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
           </View>
           <Text style={[type.title, styles.center, { color: colors.text }]}>{t("Something broke on this screen")}</Text>
           <Text style={[type.body, styles.center, { color: colors.textMuted }]}>
-            The rest of the app is still usable. Try again, and if it keeps happening open a different tab and come
-            back.
+            {t('The rest of the app is still usable. Try again, and if it keeps happening open a different tab and come back.')}
           </Text>
 
           <View style={styles.detail}>

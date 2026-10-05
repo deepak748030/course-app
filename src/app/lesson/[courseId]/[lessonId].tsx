@@ -870,9 +870,7 @@ export default function LessonPlayerScreen() {
         })}
         {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
         <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
-          The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons
-          that stream from a server list every rendition they carry, and the player picks the best one for the
-          connection automatically.
+          {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
         </Text>
       </BottomSheet>
     </View>

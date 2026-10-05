@@ -29,13 +29,13 @@ export const LANGUAGES: { id: Language; label: string; description: string; samp
   {
     id: 'en',
     label: 'English',
-    description: 'The interface, the catalog and the batch sheets are all in English.',
+    description: 'Buttons, headings and messages in English. Course and policy content stays in English too.',
     sample: 'Saved · Continue learning · My learning',
   },
   {
     id: 'hi',
     label: 'हिंदी',
-    description: 'पूरा इंटरफ़ेस हिंदी में बदल जाता है। कोर्स और लेसन की सामग्री नमूना है और अंग्रेज़ी में रहती है।',
+    description: 'The whole interface in Hindi. Course titles and the policy documents stay in English.',
     sample: 'सेव किया · सीखना जारी रखें · मेरी पढ़ाई',
   },
 ];

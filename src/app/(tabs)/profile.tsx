@@ -9,6 +9,7 @@ import {
   Clock,
   LogOut,
   FileText,
+  Languages,
   LifeBuoy,
   Mail,
   MapPin,
@@ -28,7 +29,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
 import { ProfileEditorSheet } from '@/components/profile-editor';
-import { LanguagePicker } from '@/components/language-picker';
 import { ThemePicker } from '@/components/theme-picker';
 import {
   AppText,
@@ -43,7 +43,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
-import { useT } from '@/i18n';
+import { LANGUAGES, useT } from '@/i18n';
 import { ageFromDateOfBirth, formatDateOfBirth, formatDuration, maskPhone } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
 import { useStore } from '@/store';
@@ -53,7 +53,8 @@ export default function ProfileScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { session, state, signOut, updateProfile, setProfileAvatar, setTheme, setLanguage } = useStore();
+  const { session, state, signOut, updateProfile, setProfileAvatar, setTheme } = useStore();
+  const languageLabel = (LANGUAGES.find((language) => language.id === state.language) ?? LANGUAGES[0]).label;
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -230,18 +231,16 @@ export default function ProfileScreen() {
             </Text>
             <ThemePicker value={state.theme} onChange={setTheme} />
           </View>
-        </View>
-      </View>
-
-      <View style={styles.group}>
-        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>{t("Language")}</Text>
-        <View style={styles.card}>
-          <View style={styles.themeBlock}>
-            <Text style={[type.body, { color: colors.text }]}>{t("App language")}</Text>
-            <Text style={[type.label, { color: colors.textMuted }]}>
-              {t("Switches the whole interface right away, and is remembered on this device.")}
-            </Text>
-            <LanguagePicker value={state.language} onChange={setLanguage} />
+          <View style={styles.cardRule} />
+          {/* The language is a destination of its own: the row carries the current choice and opens
+              the picker screen, the way every other list on this page behaves. */}
+          <View style={styles.languageRow}>
+            <ListRow
+              icon={Languages}
+              label={t("Language")}
+              subtitle={languageLabel}
+              onPress={() => router.push('/language')}
+            />
           </View>
         </View>
       </View>
@@ -386,6 +385,8 @@ const styles = createStyles(() => StyleSheet.create({
   groupTitle: { paddingHorizontal: layout.section },
   card: { backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
   themeBlock: { gap: spacing.sm, paddingHorizontal: layout.section, paddingVertical: spacing.md },
+  cardRule: { height: 1, backgroundColor: colors.border, marginHorizontal: layout.section },
+  languageRow: { paddingHorizontal: layout.section, paddingVertical: spacing.xs },
   about: { gap: spacing.xs, paddingTop: spacing.md },
   aboutRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 }));

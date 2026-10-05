@@ -269,8 +269,7 @@ export default function CheckoutScreen() {
           <View style={styles.security}>
             <ShieldCheck size={16} color={colors.sage} strokeWidth={1.9} />
             <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
-              No card, UPI or bank details are requested or stored. A demo purchase only unlocks the course
-              locally, on this device.
+              {t('No card, UPI or bank details are requested or stored. A demo purchase only unlocks the course locally, on this device.')}
             </Text>
           </View>
         </View>
@@ -310,15 +309,13 @@ export default function CheckoutScreen() {
               <Text style={[type.bodyStrong, { color: colors.text }]}>{t("Already purchased")}</Text>
             </View>
             <Text style={[type.body, { color: colors.textMuted }]}>
-              This course is already unlocked on your account. Buying again would only create a duplicate demo
-              enrolment, so there is nothing to pay.
+              {t('This course is already unlocked on your account. Buying again would only create a duplicate demo enrolment, so there is nothing to pay.')}
             </Text>
           </View>
         ) : null}
 
         <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
-          Demo checkout: prices, coupons and outcomes are sample data. No payment is processed and no money
-          moves.
+          {t('Demo checkout: prices, coupons and outcomes are sample data. No payment is processed and no money moves.')}
         </Text>
       </Screen>
 

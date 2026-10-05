@@ -216,8 +216,7 @@ export default function OtpScreen() {
           </Pressable>
 
           <Text style={[type.label, { color: colors.textSubtle }]}>
-            Demo build: this code is generated locally, never sent by SMS, and never written to a log. The demo code is in
-            the project README.
+            {t('Demo build: this code is generated locally, never sent by SMS, and never written to a log. The demo code is in the project README.')}
           </Text>
         </ScrollView>
       </Screen>

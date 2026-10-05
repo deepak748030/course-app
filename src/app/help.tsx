@@ -69,8 +69,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <Mail size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>
-              This prototype has no support inbox, so there is no contact form that pretends to send a message. Use the
-              share button to pass feedback to your team, along with the screen you were on.
+              {t('This prototype has no support inbox, so there is no contact form that pretends to send a message. Use the share button to pass feedback to your team, along with the screen you were on.')}
             </Text>
           </View>
           <Button label={t("Share feedback")} icon={Share2} variant="secondary" onPress={shareQuestion} />
@@ -83,9 +82,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>
-              Courses, prices and reviews are sample content. Authentication and payments are demo
-              implementations. Anything that is not implemented in the app is said so plainly rather than shown as a
-              working control.
+              {t('Courses, prices and reviews are sample content. Authentication and payments are demo implementations. Anything that is not implemented in the app is said so plainly rather than shown as a working control.')}
             </Text>
           </View>
           <Text style={[type.label, { color: colors.textSubtle }]}>{t("Offline downloads, captions, casting and certificates are not part of this build.")}</Text>
