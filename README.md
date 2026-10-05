@@ -77,7 +77,7 @@ src/
     lesson/[courseId]/[lessonId].tsx   player: Overview · Recipe · Notes
     saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
   components/              UI kit (ui.tsx), course cards, bottom sheet, brand marks
-  constants/theme.ts       colors, spacing, radii, typography, motion, shadows
+  constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
   data/                    catalog.ts (courses/instructors), content.ts (FAQ, coupons, legal)
   lib/format.ts            pure formatters/validators (runnable outside the app)
   lib/util.ts              haptics feedback
@@ -114,6 +114,27 @@ no invented streaming URLs are used anywhere.
 
 The brand mark (bowl + steam + play triangle) is vector geometry in `src/components/marks.tsx` and is
 mirrored by the icon generator, so the app icon and the in-app mark stay in sync.
+
+## Design system
+
+The UI follows the project's design rules document and is generated from one token file
+(`src/constants/theme.ts`):
+
+- **One font family.** DM Sans, bundled locally in two weights — 400 regular and 600 semibold.
+- **Five type sizes** on a 1.25 ratio (29 / 23 / 19 / 15 / 12) with line-height tightening as size grows
+  and no third-party serif. Prices and counters use tabular figures.
+- **No shadows anywhere.** Elevation is expressed with surface tone plus 1px alpha hairlines; the tab bar
+  and sticky footers separate with a border, never an elevation.
+- **8px baseline.** Screen side padding is 8, gap between items is 8, cards and forms pad 16, sections
+  breathe 24. Banners and the player are full-bleed with a 0 side gap.
+- **Hairlines over boxes.** Data lists draw a divider between rows (none after the last) instead of
+  spacing every row apart, and dividers inset to the row content when a row has a leading icon.
+- **Concentric radii** (4 / 8 / 12 / 16, pill only for single-line content) and 44pt minimum touch
+  targets with 48px controls.
+- **Motion is restrained**: press feedback under 100ms, entrances 160–320ms, and every animation checks
+  reduced-motion first.
+
+A UI reference board of 100 course-app screens used for this redesign is kept in `image-search/`.
 
 ## What is intentionally not included
 

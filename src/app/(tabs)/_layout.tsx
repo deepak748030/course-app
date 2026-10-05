@@ -2,6 +2,7 @@ import { Tabs, Redirect } from 'expo-router';
 import type { LucideIcon } from 'lucide-react-native';
 import { BookOpen, Compass, House, UserRound } from 'lucide-react-native';
 import { StyleSheet, Text, View, type ColorValue } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, font, layout, spacing } from '@/constants/theme';
 import { useStore } from '@/store';
@@ -24,6 +25,7 @@ function TabItem({ icon: Icon, color, focused, label }: { icon: LucideIcon; colo
 
 export default function TabsLayout() {
   const { session, ready } = useStore();
+  const insets = useSafeAreaInsets();
 
   // Deep links must not land inside the app without a session.
   if (ready && !session) return <Redirect href="/auth/phone" />;
@@ -35,10 +37,14 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
         tabBarStyle: {
-          height: layout.tabBarHeight + spacing.sm,
+          // 56px of bar content, plus the home indicator area on gesture devices.
+          height: layout.tabBarHeight + insets.bottom,
+          paddingBottom: insets.bottom,
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
+          // Neutralises the Material elevation the navigator would otherwise paint on Android,
+          // so the bar separates by its hairline only.
           elevation: 0,
           paddingTop: spacing.xs,
         },
