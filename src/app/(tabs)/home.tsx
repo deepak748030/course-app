@@ -35,11 +35,14 @@ import { BrandMark } from '@/components/marks';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courses, discountPercent } from '@/data/catalog';
 import { notifications } from '@/data/content';
+import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 
 export default function HomeScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { session, state, courseProgressRatio, resumeLesson } = useStore();
   const interestIds = state.interests;
@@ -88,12 +91,15 @@ export default function HomeScreen() {
             </BrandTile>
           }
           title="YDU Academy"
-          meta={`${courses.length} courses · ${categories.length} tracks`}
+          meta={t('{courses} courses · {tracks} tracks', {
+            courses: courses.length,
+            tracks: categories.length,
+          })}
           actions={
             <>
               <IconButton
                 icon={Search}
-                accessibilityLabel="Search courses"
+                accessibilityLabel={t("Search courses")}
                 onPress={() => router.push('/explore')}
               />
               {/* The bell itself is the notification cue, so it is animated, not just badged. */}
@@ -101,13 +107,13 @@ export default function HomeScreen() {
                 <IconButton
                   iconNode={<AnimatedBellRing size={20} color={colors.text} animated={unread > 0} />}
                   badge={unread}
-                  accessibilityLabel="Notifications"
+                  accessibilityLabel={t("Notifications")}
                   onPress={() => router.push('/notifications')}
                 />
               </View>
               <AvatarButton
                 name={session?.profile.name ?? 'Guest'}
-                accessibilityLabel="Your profile"
+                accessibilityLabel={t("Your profile")}
                 onPress={() => router.push('/profile')}
               />
             </>
@@ -120,8 +126,8 @@ export default function HomeScreen() {
       {activeCourse && resume ? (
         <View style={styles.block}>
           <SectionHeader
-            title="Continue learning"
-            actionLabel="My learning"
+            title={t("Continue learning")}
+            actionLabel={t("My learning")}
             onAction={() => router.push('/learning')}
           />
           <ContinueCard
@@ -140,12 +146,12 @@ export default function HomeScreen() {
       ) : null}
 
       <View style={styles.block}>
-        <SectionHeader title="Browse by" subtitle="Track or skill" />
+        <SectionHeader title={t("Browse by")} subtitle={t("Track or skill")} />
         <Rail>
           {categories.map((category) => (
             <Chip
               key={category.id}
-              label={category.label}
+              label={t(category.label)}
               selected={interestIds.includes(category.id)}
               onPress={() => router.push({ pathname: '/explore', params: { category: category.id } })}
             />
@@ -155,8 +161,8 @@ export default function HomeScreen() {
 
       <View style={styles.block}>
         <SectionHeader
-          title="Popular courses"
-          actionLabel="See all"
+          title={t("Popular courses")}
+          actionLabel={t("See all")}
           actionIcon={ArrowRight}
           onAction={() => router.push('/explore')}
         />
@@ -168,7 +174,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.block}>
-        <SectionHeader title="Quick tracks" subtitle="Short courses you can finish this week" />
+        <SectionHeader title={t("Quick tracks")} subtitle={t("Short courses you can finish this week")} />
         <Rail>
           {quickSkills.map((course) => (
             <CourseCard key={course.id} course={course} />
@@ -178,8 +184,8 @@ export default function HomeScreen() {
 
       <View style={styles.block}>
         <SectionHeader
-          title="Good first courses"
-          actionLabel="Explore"
+          title={t("Good first courses")}
+          actionLabel={t("Explore")}
           actionIcon={ArrowRight}
           onAction={() => router.push('/explore')}
         />
@@ -192,9 +198,7 @@ export default function HomeScreen() {
 
       <View style={styles.brandFooter}>
         <BrandMark size={20} />
-        <Text style={[type.label, { color: colors.textSubtle }]}>
-          Sample catalog for a prototype build — courses, prices and reviews are fictional.
-        </Text>
+        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Sample catalog for a prototype build \u2014 courses, prices and reviews are fictional.")}</Text>
       </View>
     </Screen>
   );
@@ -285,6 +289,8 @@ function HeroCarousel({ courses: slides }: { courses: Course[] }) {
 
 /** One slide: artwork fills the frame edge to edge, native copy sits on the scrim. */
 function HeroSlide({ course }: { course: Course }) {
+  const t = useT();
+
   const router = useRouter();
   const press = usePressScale(0.99);
   const heroOffer = discountPercent(course);
@@ -307,7 +313,7 @@ function HeroSlide({ course }: { course: Course }) {
           </View>
         ) : null}
         <View style={styles.heroCopy}>
-          <Text style={[type.overline, { color: colors.onPlayerMuted }]}>Featured this week</Text>
+          <Text style={[type.overline, { color: colors.onPlayerMuted }]}>{t("Featured this week")}</Text>
           <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
             {course.title}
           </Text>
@@ -322,7 +328,7 @@ function HeroSlide({ course }: { course: Course }) {
             </View>
           </View>
           <View style={styles.heroCta}>
-            <Text style={[type.labelStrong, { color: colors.text }]}>View course</Text>
+            <Text style={[type.labelStrong, { color: colors.text }]}>{t("View course")}</Text>
             <Play size={13} color={colors.text} strokeWidth={2} fill={colors.text} />
           </View>
         </View>

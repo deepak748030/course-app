@@ -226,11 +226,34 @@ function scanWorkletCallbacks(): string[] {
     }
   }
 
-  // Second pass: worklet hook bodies that call a React state setter or a dispatcher.
+  // Second and third passes: worklet hook bodies that call a React state setter, a dispatcher, or a
+  // function that this file defines without marking it as a worklet. Everything in a hook body runs on
+  // the UI runtime, where a plain function from the module is a *Remote Function*: calling it throws
+  //
+  //   [Worklets] Tried to synchronously call a Remote Function. Called "clamp" on the UI Runtime.
+  //
+  // which took the whole screen down on device while web silently degraded. Reanimated's own helpers
+  // (imported) and Math are fine, so only same-file declarations are flagged.
   const hookFiles = walk(root);
   for (const file of hookFiles) {
     const source = readFileSync(file, 'utf8');
     const lineAt = (index: number) => source.slice(0, index).split('\n').length;
+    const localHelpers = new Set<string>();
+    for (const decl of source.matchAll(
+      /(?:^|\n)(?:export\s+)?(?:function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function\b|\())/g,
+    )) {
+      const name = decl[1] ?? decl[2];
+      // A worklet directive ('worklet') before the declaration makes the call legal.
+      const before = source.slice(Math.max(0, decl.index - 120), decl.index);
+      if (/'worklet';|"worklet";/.test(before)) continue;
+      localHelpers.add(name);
+    }
+    // Helpers that are themselves worklets are safe wherever they are called.
+    for (const decl of source.matchAll(/'worklet';\s*(?:export\s+)?(?:function\s+([A-Za-z_$][\w$]*)|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=)/g)) {
+      localHelpers.delete(decl[1] ?? decl[2] ?? '');
+    }
+    if (localHelpers.size === 0) continue;
+
     for (const match of source.matchAll(WORKLET_HOOK)) {
       const start = match.index + match[0].length - 1;
       let depth = 0;
@@ -243,10 +266,19 @@ function scanWorkletCallbacks(): string[] {
         }
       }
       const body = source.slice(start + 1, end);
-      const bad = body.match(REACT_STATE_CALL);
-      if (!bad) continue;
-      const at = match.index + match[0].length - 1 + bad.index;
-      offenders.push(`${file.split('/src/')[1]}:${lineAt(at)} ${match[1]}() -> ${bad[0]}()`);
+      const stateCall = body.match(REACT_STATE_CALL);
+      if (stateCall) {
+        const at = match.index + match[0].length - 1 + stateCall.index!;
+        offenders.push(`${file.split('/src/')[1]}:${lineAt(at)} ${match[1]}() -> ${stateCall[0]}()`);
+      }
+      for (const call of body.matchAll(/(?:^|[^\w.$])([A-Za-z_$][\w$]*)\s*\(/g)) {
+        const name = call[1];
+        if (!localHelpers.has(name)) continue;
+        const at = match.index + match[0].length - 1 + call.index!;
+        offenders.push(
+          `${file.split('/src/')[1]}:${lineAt(at)} ${match[1]}() -> ${name}() is a plain function in this file, not a worklet`,
+        );
+      }
     }
   }
   return offenders;
@@ -259,6 +291,84 @@ check('worklet callbacks and hook bodies never touch React state', () => {
     [],
     `these run on the UI runtime but touch React state — hop to the JS thread (runOnJS) or use a timer instead:\n  ${offenders.join('\n  ')}`,
   );
+});
+
+check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
+  const [catalog, payments, content, i18n, hindi] = await Promise.all([
+    import('../src/data/catalog'),
+    import('../src/services/payments'),
+    import('../src/data/content'),
+    import('../src/i18n'),
+    import('../src/i18n/hi'),
+  ]);
+  const { hi } = hindi;
+
+  const root = fileURLToPath(new URL('../src', import.meta.url));
+  const walk = (dir: string): string[] =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const child = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) return walk(child);
+      return entry.name.endsWith('.tsx') ? [child] : [];
+    });
+
+  const used = new Set<string>();
+  for (const file of [...walk(`${root}/app`), ...walk(`${root}/components`)]) {
+    // Comments come out first: the doc comments here mention t('Saved') as prose, not as a call site.
+    const source = readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+    // A literal like 'Loading lesson\u2026' is a *key* with an ellipsis in it at runtime, so the escapes
+    // are evaluated here too — otherwise these seven keys would look untranslated forever.
+    const unescape = (value: string) =>
+      value.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+    for (const match of source.matchAll(/(?<![\w$.])t\(\s*(['"])(.*?)\1/g)) used.add(unescape(match[2]));
+  }
+
+  // Labels that live in data and are translated where they are rendered — t(option.label) — rather than
+  // as literals in a screen. The catalog's own content (titles, lessons, batch sheets) stays English.
+  const today = new Date(2026, 9, 5);
+  const dataKeys = [
+    ...catalog.categories.map((category) => category.label),
+    ...catalog.levelOptions,
+    ...catalog.sortOptions.map((option) => option.label),
+    ...catalog.priceBandOptions.map((option) => option.label),
+    ...catalog.durationOptions.map((option) => option.label),
+    ...payments.demoScenarios.flatMap((scenario) => [scenario.label, scenario.help]),
+    ...content.purchaseTerms,
+    // The one message the demo gateway returns (src/services/payments.ts).
+    'The demo gateway declined this payment. No money moved.',
+    // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).
+    buildDateOfBirth('31', '02', '1996', today).error!,
+    buildDateOfBirth('05', '10', '2030', today).error!,
+    buildDateOfBirth('05', '10', '2020', today).error!,
+    buildDateOfBirth('05', '10', '1890', today).error!,
+  ];
+  for (const key of dataKeys) used.add(key);
+
+  const missing = [...used].filter((key) => !(key in hi)).sort();
+  assert.deepEqual(missing, [], `these strings have no Hindi entry:\n  ${missing.join('\n  ')}`);
+
+  const orphans = Object.keys(hi)
+    .filter((key) => !used.has(key))
+    .sort();
+  assert.deepEqual(orphans, [], `these Hindi entries are not used by any screen:\n  ${orphans.join('\n  ')}`);
+
+  const placeholders = (text: string) =>
+    [...text.matchAll(/\{(\w+)\}/g)]
+      .map((match) => match[1])
+      .sort()
+      .join(',');
+  const brokenPlaceholders = Object.keys(hi)
+    .filter((key) => placeholders(key) !== placeholders(hi[key]))
+    .map((key) => `${key} -> ${hi[key]}`);
+  assert.deepEqual(brokenPlaceholders, [], `these entries changed the placeholders:\n  ${brokenPlaceholders.join('\n  ')}`);
+
+  // The switch itself: English is the source string, Hindi answers out of the dictionary, and a
+  // placeholder reaches the sentence instead of being left as braces.
+  assert.equal(i18n.translate('en', 'Saved'), 'Saved');
+  assert.equal(i18n.translate('hi', 'Saved'), hi['Saved']);
+  assert.notEqual(hi['Saved'], 'Saved');
+  assert.equal(i18n.translate('hi', '{n} lessons', { n: 3 }), hi['{n} lessons'].replace('{n}', '3'));
 });
 
 check('profile fields validate email and date of birth', () => {

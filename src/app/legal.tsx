@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { useT } from '@/i18n';
 
 import { AppBar, Badge, Divider, Screen, Segmented } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
@@ -14,6 +15,8 @@ const DOC_TABS: { id: DocKey; label: string }[] = [
 ];
 
 export default function LegalScreen() {
+  const t = useT();
+
   const { doc } = useLocalSearchParams<{ doc?: string }>();
   const router = useRouter();
 
@@ -32,9 +35,7 @@ export default function LegalScreen() {
       </View>
 
       <View style={styles.pad}>
-        <Text style={[type.label, { color: colors.textSubtle }]}>
-          Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.
-        </Text>
+        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.")}</Text>
       </View>
 
       <View style={styles.paragraphs}>

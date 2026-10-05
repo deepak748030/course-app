@@ -3,6 +3,7 @@
  * Rules honoured: docked sheet has rounded top corners and square bottom corners;
  * backdrop dims the page; spring entrance; reduced-motion falls back to a fade.
  */
+import { useT } from '@/i18n';
 
 import { X } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
@@ -30,6 +31,8 @@ export function BottomSheet({
   scrollable?: boolean;
   footer?: ReactNode;
 }) {
+  const t = useT();
+
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
   const [mounted, setMounted] = useState(visible);
@@ -65,7 +68,7 @@ export function BottomSheet({
     <Modal transparent visible statusBarTranslucent animationType="none" onRequestClose={onClose}>
       <View style={styles.root} accessibilityViewIsModal accessibilityLabel={title}>
         <Animated.View style={[styles.backdrop, backdropStyle]} />
-        <Pressable accessibilityRole="button" accessibilityLabel="Close" style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} style={StyleSheet.absoluteFill} onPress={onClose} />
         <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }, sheetStyle]}>
           <View style={styles.grabber} />
           {title ? (
@@ -76,7 +79,7 @@ export function BottomSheet({
                   <Text style={[type.label, { color: colors.textMuted }]}>{subtitle}</Text>
                 ) : null}
               </View>
-              <IconButton icon={X} onPress={onClose} accessibilityLabel="Close" variant="soft" size={36} iconSize={18} />
+              <IconButton icon={X} onPress={onClose} accessibilityLabel={t("Close")} variant="soft" size={36} iconSize={18} />
             </View>
           ) : null}
 

@@ -6,6 +6,7 @@
  * Date of birth is three plain fields on purpose: no picker dependency, and DD / MM / YYYY is
  * how the date is written on paper in India.
  */
+import { useT } from '@/i18n';
 
 import { Camera, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
@@ -75,6 +76,8 @@ export function ProfileEditorSheet({
   onRemovePhoto: () => void;
   onSave: (patch: Partial<UserProfile>) => void;
 }) {
+  const t = useT();
+
   const [draft, setDraft] = useState<Draft>(() => draftFrom(profile));
   const [touched, setTouched] = useState(false);
 
@@ -106,12 +109,12 @@ export function ProfileEditorSheet({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      title="Edit profile"
-      subtitle="Everything here stays on this device. Nothing is sent to a server in this prototype."
+      title={t("Edit profile")}
+      subtitle={t("Everything here stays on this device. Nothing is sent to a server in this prototype.")}
       scrollable
       footer={
         <Button
-          label="Save changes"
+          label={t("Save changes")}
           disabled={!dirty || invalid || saving}
           loading={saving}
           onPress={() => {
@@ -139,7 +142,7 @@ export function ProfileEditorSheet({
             onPress={onPickPhoto}
           />
           {avatarUri ? (
-            <Button label="Remove" variant="ghost" icon={Trash2} fullWidth={false} onPress={onRemovePhoto} />
+            <Button label={t("Remove")} variant="ghost" icon={Trash2} fullWidth={false} onPress={onRemovePhoto} />
           ) : null}
         </View>
       </View>
@@ -149,11 +152,11 @@ export function ProfileEditorSheet({
       ) : null}
 
       <FormField
-        label="Full name"
+        label={t("Full name")}
         value={draft.name}
         onChangeText={(name) => setDraft((prev) => ({ ...prev, name }))}
         onBlur={() => setTouched(true)}
-        placeholder="Your name"
+        placeholder={t('Your name')}
         autoCapitalize="words"
         autoComplete="name"
         returnKeyType="next"
@@ -161,7 +164,7 @@ export function ProfileEditorSheet({
       />
 
       <FormField
-        label="Email"
+        label={t("Email")}
         value={draft.email}
         onChangeText={(email) => setDraft((prev) => ({ ...prev, email }))}
         placeholder="name@example.com"
@@ -170,15 +173,15 @@ export function ProfileEditorSheet({
         autoCorrect={false}
         autoComplete="email"
         returnKeyType="next"
-        hint="Used for receipts and course updates."
+        hint={t("Used for receipts and course updates.")}
         error={emailError}
       />
 
       <View style={styles.fieldWrap}>
-        <Text style={[type.labelStrong, { color: colors.textMuted }]}>Date of birth</Text>
+        <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("Date of birth")}</Text>
         <View style={styles.dobRow}>
           <FormField
-            accessibilityLabel="Day of birth"
+            accessibilityLabel={t("Day of birth")}
             value={draft.day}
             onChangeText={(day) => setDraft((prev) => ({ ...prev, day }))}
             placeholder="DD"
@@ -187,7 +190,7 @@ export function ProfileEditorSheet({
             containerStyle={styles.dobField}
           />
           <FormField
-            accessibilityLabel="Month of birth"
+            accessibilityLabel={t("Month of birth")}
             value={draft.month}
             onChangeText={(month) => setDraft((prev) => ({ ...prev, month }))}
             placeholder="MM"
@@ -196,7 +199,7 @@ export function ProfileEditorSheet({
             containerStyle={styles.dobField}
           />
           <FormField
-            accessibilityLabel="Year of birth"
+            accessibilityLabel={t("Year of birth")}
             value={draft.year}
             onChangeText={(year) => setDraft((prev) => ({ ...prev, year }))}
             placeholder="YYYY"
@@ -206,22 +209,22 @@ export function ProfileEditorSheet({
           />
         </View>
         <Text style={[type.label, { color: dobError ? colors.error : colors.textSubtle }]}>
-          {dobError ?? DOB_FORMAT_HINT}
+          {dobError ? t(dobError) : DOB_FORMAT_HINT}
         </Text>
       </View>
 
       <FormField
-        label="City"
+        label={t("City")}
         value={draft.city}
         onChangeText={(city) => setDraft((prev) => ({ ...prev, city }))}
-        placeholder="Indore"
+        placeholder={t("Indore")}
         autoCapitalize="words"
         returnKeyType="done"
-        hint="Helps us suggest products and tracks that fit your dairy."
+        hint={t("Helps us suggest products and tracks that fit your dairy.")}
       />
 
       <View style={styles.fieldWrap}>
-        <Text style={[type.labelStrong, { color: colors.textMuted }]}>Dairy goal</Text>
+        <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("Dairy goal")}</Text>
         <View style={styles.chips}>
           {DAIRY_GOALS.map((goal) => (
             <Chip
@@ -232,7 +235,7 @@ export function ProfileEditorSheet({
             />
           ))}
         </View>
-        <Text style={[type.label, { color: colors.textSubtle }]}>Optional. Tap again to clear.</Text>
+        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Optional. Tap again to clear.")}</Text>
       </View>
     </BottomSheet>
   );

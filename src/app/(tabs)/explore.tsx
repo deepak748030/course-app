@@ -19,12 +19,14 @@ import {
   TabHeader,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
+import { useT } from '@/i18n';
 import {
   browseCourses,
   categories,
   courses,
   durationOptions,
   emptyFilters,
+  levelOptions,
   priceBandOptions,
   sortOptions,
   type BrowseFilters,
@@ -33,9 +35,10 @@ import {
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
 
-const levelOptions = ['Beginner', 'Intermediate', 'Advanced'];
 
 export default function ExploreScreen() {
+  const t = useT();
+
   const params = useLocalSearchParams<{ category?: string }>();
   const { state } = useStore();
 
@@ -127,7 +130,7 @@ export default function ExploreScreen() {
       contentStyle={styles.content}
       header={
         <View style={styles.headerBlock}>
-          <TabHeader overline="Discover" title="What will you make today?" />
+          <TabHeader overline={t("Discover")} title={t("What will you make today?")} />
           <View style={styles.searchWrap}>
             <SearchField
               value={filters.query}
@@ -145,8 +148,8 @@ export default function ExploreScreen() {
           {recent.length > 0 ? (
             <View style={styles.block}>
               <SectionHeader
-                title="Recent searches"
-                actionLabel="Clear"
+                title={t("Recent searches")}
+                actionLabel={t("Clear")}
                 onAction={() => {
                   setRecent([]);
                   void clearRecentSearches();
@@ -161,7 +164,7 @@ export default function ExploreScreen() {
           ) : null}
 
           <View style={styles.block}>
-            <SectionHeader title="Try searching" subtitle="Picked from this catalog" />
+            <SectionHeader title={t("Try searching")} subtitle={t("Picked from this catalog")} />
             <DataList>
               {suggestions.map((suggestion) => (
                 <Pressable
@@ -183,11 +186,11 @@ export default function ExploreScreen() {
       ) : (
         <>
         <Rail>
-          <Chip label="All" selected={filters.categoryIds.length === 0} onPress={() => setFilters((prev) => ({ ...prev, categoryIds: [] }))} />
+          <Chip label={t("All")} selected={filters.categoryIds.length === 0} onPress={() => setFilters((prev) => ({ ...prev, categoryIds: [] }))} />
           {categories.map((category) => (
             <Chip
               key={category.id}
-              label={category.label}
+              label={t(category.label)}
               selected={filters.categoryIds.includes(category.id)}
               onPress={() => toggleIn('categoryIds', category.id)}
             />
@@ -202,16 +205,18 @@ export default function ExploreScreen() {
           <View style={styles.toolbar}>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Sort results"
+              accessibilityLabel={t("Sort results")}
               onPress={() => setSortOpen(true)}
               style={({ pressed }) => [styles.tool, pressed && { opacity: 0.7 }]}>
               <Text style={[type.label, { color: colors.text }]}>
-                {sortOptions.find((option) => option.id === filters.sort)?.label ?? 'Sort'}
+                {t(sortOptions.find((option) => option.id === filters.sort)?.label ?? 'Sort')}
               </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={activeChips.length > 0 ? `Filters, ${activeChips.length} active` : 'Filters'}
+              accessibilityLabel={
+                activeChips.length > 0 ? t('Filters, {n} active', { n: activeChips.length }) : t('Filters')
+              }
               onPress={() => setFilterOpen(true)}
               style={({ pressed }) => [
                 styles.tool,
@@ -220,7 +225,7 @@ export default function ExploreScreen() {
               ]}>
               <SlidersHorizontal size={14} color={activeChips.length > 0 ? colors.accentText : colors.text} strokeWidth={1.9} />
               <Text style={[type.label, { color: activeChips.length > 0 ? colors.accentText : colors.text }]}>
-                {activeChips.length > 0 ? `Filters · ${activeChips.length}` : 'Filters'}
+                {activeChips.length > 0 ? t('Filters · {n}', { n: activeChips.length }) : t('Filters')}
               </Text>
             </Pressable>
           </View>
@@ -232,15 +237,15 @@ export default function ExploreScreen() {
               <Pressable
                 key={chip.key}
                 accessibilityRole="button"
-                accessibilityLabel={`Remove filter ${chip.label}`}
+                accessibilityLabel={t('Remove filter {filter}', { filter: chip.label })}
                 onPress={chip.clear}
                 style={styles.activeChip}>
                 <Text style={[type.label, { color: colors.accentText }]}>{chip.label}</Text>
                 <X size={13} color={colors.accentText} strokeWidth={2} />
               </Pressable>
             ))}
-            <Pressable accessibilityRole="button" accessibilityLabel="Clear all filters" onPress={clearAll} hitSlop={8}>
-              <Text style={[type.label, styles.clearAll, { color: colors.textMuted }]}>Clear all</Text>
+            <Pressable accessibilityRole="button" accessibilityLabel={t("Clear all filters")} onPress={clearAll} hitSlop={8}>
+              <Text style={[type.label, styles.clearAll, { color: colors.textMuted }]}>{t("Clear all")}</Text>
             </Pressable>
           </Rail>
         ) : null}
@@ -251,13 +256,13 @@ export default function ExploreScreen() {
           <View style={styles.block}>
             <EmptyState
               icon={Search}
-              title="No courses match these filters"
-              body="Try a different track, level or price range. Clearing the filters brings the full catalog back."
-              actionLabel="Clear filters"
+              title={t("No courses match these filters")}
+              body={t("Try a different track, level or price range. Clearing the filters brings the full catalog back.")}
+              actionLabel={t("Clear filters")}
               onAction={() => setFilters({ ...emptyFilters })}
             />
             <View style={styles.block}>
-              <SectionHeader title="Try searching" subtitle="Picked from this catalog" />
+              <SectionHeader title={t("Try searching")} subtitle={t("Picked from this catalog")} />
               <Rail>
                 {suggestions.map((suggestion) => (
                   <Chip key={suggestion.term} label={suggestion.term} onPress={() => applySearch(suggestion.term)} />
@@ -273,25 +278,23 @@ export default function ExploreScreen() {
           </DataList>
         )}
 
-        <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
-          Catalog, ratings and reviews are sample data for this prototype.
-        </Text>
+        <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>{t("Catalog, ratings and reviews are sample data for this prototype.")}</Text>
         </>
       )}
 
-      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title="Sort by">
+      <BottomSheet visible={sortOpen} onClose={() => setSortOpen(false)} title={t("Sort by")}>
         {sortOptions.map((option) => (
           <Pressable
             key={option.id}
             accessibilityRole="radio"
             accessibilityState={{ selected: filters.sort === option.id }}
-            accessibilityLabel={option.label}
+            accessibilityLabel={t(option.label)}
             onPress={() => {
               setFilters((prev) => ({ ...prev, sort: option.id as SortKey }));
               setSortOpen(false);
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.body, { color: colors.text }]}>{option.label}</Text>
+            <Text style={[type.body, { color: colors.text }]}>{t(option.label)}</Text>
             {filters.sort === option.id ? <Check size={18} color={colors.accentText} strokeWidth={2} /> : null}
           </Pressable>
         ))}
@@ -300,8 +303,8 @@ export default function ExploreScreen() {
       <BottomSheet
         visible={filterOpen}
         onClose={() => setFilterOpen(false)}
-        title="Filters"
-        subtitle="Results update as you choose"
+        title={t("Filters")}
+        subtitle={t("Results update as you choose")}
         scrollable
         footer={
           <View style={styles.sheetFooter}>
@@ -309,10 +312,10 @@ export default function ExploreScreen() {
               label={`Show ${results.length} ${results.length === 1 ? 'course' : 'courses'}`}
               onPress={() => setFilterOpen(false)}
             />
-            <Button label="Clear all filters" onPress={clearAll} variant="ghost" />
+            <Button label={t("Clear all filters")} onPress={clearAll} variant="ghost" />
           </View>
         }>
-        <FilterGroup title="Track or skill">
+        <FilterGroup title={t("Track or skill")}>
           {categories.map((category) => (
             <Chip
               key={category.id}
@@ -322,26 +325,26 @@ export default function ExploreScreen() {
             />
           ))}
         </FilterGroup>
-        <FilterGroup title="Level">
+        <FilterGroup title={t("Level")}>
           {levelOptions.map((level) => (
-            <Chip key={level} label={level} selected={filters.levels.includes(level)} onPress={() => toggleIn('levels', level)} />
+            <Chip key={level} label={t(level)} selected={filters.levels.includes(level)} onPress={() => toggleIn('levels', level)} />
           ))}
         </FilterGroup>
-        <FilterGroup title="Price">
+        <FilterGroup title={t("Price")}>
           {priceBandOptions.map((option) => (
             <Chip
               key={option.id}
-              label={option.label}
+              label={t(option.label)}
               selected={filters.priceBands.includes(option.id)}
               onPress={() => toggleIn('priceBands', option.id)}
             />
           ))}
         </FilterGroup>
-        <FilterGroup title="Duration">
+        <FilterGroup title={t("Duration")}>
           {durationOptions.map((option) => (
             <Chip
               key={option.id}
-              label={option.label}
+              label={t(option.label)}
               selected={filters.durations.includes(option.id)}
               onPress={() => toggleIn('durations', option.id)}
             />

@@ -70,12 +70,14 @@ export function SaveButton({
     burst.value = withTiming(1, { duration: BURST_MS, easing: Easing.out(Easing.quad) });
   };
 
-  // Progress is clamped: an animation that has not started yet must never draw an inverted burst.
+  // Progress is clamped — and clamped *inline*, because these bodies run on the UI runtime: a helper
+  // defined in this file is a Remote Function there and crashes the screen (see "Worklet safety" in
+  // the README). Only Math and Reanimated's own worklets may be called from inside an animated style.
   const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 + clamp(pop.value, -0.18, 1) * 0.45 }],
+    transform: [{ scale: 1 + Math.min(1, Math.max(-0.18, pop.value)) * 0.45 }],
   }));
   const ringStyle = useAnimatedStyle(() => {
-    const t = clamp(burst.value, 0, 1);
+    const t = Math.min(1, Math.max(0, burst.value));
     return {
       opacity: t === 0 || t === 1 ? 0 : (1 - t) * 0.5,
       transform: [{ scale: 0.4 + t * 1.9 }],
@@ -120,8 +122,6 @@ export function SaveButton({
   );
 }
 
-const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
-
 /** One mote: flies out along its own angle, fades and shrinks. Half the burst leaves each side. */
 function Sprinkle({ index, progress, colour }: { index: number; progress: SharedValue<number>; colour: string }) {
   const angle = (MOTES_ANGLES[index % MOTES] * Math.PI) / 180;
@@ -130,7 +130,7 @@ function Sprinkle({ index, progress, colour }: { index: number; progress: Shared
   const dy = Math.round(-Math.sin(angle) * distance);
 
   const style = useAnimatedStyle(() => {
-    const t = clamp(progress.value, 0, 1);
+    const t = Math.min(1, Math.max(0, progress.value));
     return {
       opacity: t === 0 || t === 1 ? 0 : 1 - t,
       transform: [{ translateX: dx * t }, { translateY: dy * t }, { scale: 1 - t * 0.55 }],

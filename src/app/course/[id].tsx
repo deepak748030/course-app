@@ -24,6 +24,7 @@ import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courseById, courseLessonGroups, discountPercent } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson } from '@/types';
@@ -39,6 +40,8 @@ function curriculumSummary(course: Course): string {
 }
 
 export default function CourseDetailsScreen() {
+  const t = useT();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -57,9 +60,9 @@ export default function CourseDetailsScreen() {
       <Screen header={<CourseAppBar />}>
         <EmptyState
           icon={Clapperboard}
-          title="We could not find that course"
-          body="This link may be out of date. Browse the catalog to find a course to learn."
-          actionLabel="Browse courses"
+          title={t("We could not find that course")}
+          body={t("This link may be out of date. Browse the catalog to find a course to learn.")}
+          actionLabel={t("Browse courses")}
           onAction={() => router.replace('/explore')}
         />
       </Screen>
@@ -101,7 +104,7 @@ export default function CourseDetailsScreen() {
               <IconButton
                 icon={ArrowLeft}
                 variant="onImage"
-                accessibilityLabel="Go back"
+                accessibilityLabel={t("Go back")}
                 onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
               />
               <SaveButton
@@ -129,7 +132,7 @@ export default function CourseDetailsScreen() {
               <View style={styles.heroOffer} accessible accessibilityLabel={`${offer} percent off this course`}>
                 <Text style={[type.bodyStrong, tabularNums, { color: colors.textInverse }]}>{offer}</Text>
                 <AnimatedPercent size={15} color={colors.textInverse} />
-                <Text style={[type.overline, { color: colors.textInverse }]}>OFF</Text>
+                <Text style={[type.overline, { color: colors.textInverse }]}>{t("OFF")}</Text>
               </View>
             ) : null}
           </View>
@@ -142,7 +145,7 @@ export default function CourseDetailsScreen() {
           <View style={styles.titleRow}>
             <View style={styles.titleText}>
               <Text style={[type.overline, { color: colors.textSubtle }]}>
-                {categoryLabel} · {course.level}
+                {categoryLabel} · {t(course.level)}
               </Text>
               <Text style={[type.display, { color: colors.text }]}>{course.title}</Text>
             </View>
@@ -154,12 +157,16 @@ export default function CourseDetailsScreen() {
             <FactItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
             <FactItem icon={Clock} label={formatDuration(course.hours * 60)} />
             <FactItem icon={Globe} label={course.language} />
-            <FactItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+            <FactItem icon={ChartNoAxesColumnIncreasing} label={t(course.level)} />
           </View>
 
           {enrolled ? (
             <View style={styles.ratingRow}>
-              <Badge label={`${done} of ${course.lessonCount} done`} tone="success" icon={CircleCheck} />
+              <Badge
+                label={t('{done} of {total} done', { done, total: course.lessonCount })}
+                tone="success"
+                icon={CircleCheck}
+              />
             </View>
           ) : null}
 
@@ -176,7 +183,7 @@ export default function CourseDetailsScreen() {
         <View style={styles.rule} />
 
         <View style={styles.section}>
-          <SectionHeader style={styles.headInset} title="What you'll learn" />
+          <SectionHeader style={styles.headInset} title={t("What you'll learn")} />
           <View style={styles.bullets}>
             {course.outcomes.map((outcome) => (
               <View key={outcome} style={styles.bulletRow}>
@@ -195,7 +202,7 @@ export default function CourseDetailsScreen() {
         <View style={styles.section}>
           <SectionHeader
             style={styles.headInset}
-            title="Curriculum"
+            title={t("Curriculum")}
             subtitle={curriculumSummary(course)}
           />
           <View style={styles.curriculum}>
@@ -220,7 +227,7 @@ export default function CourseDetailsScreen() {
         <View style={[styles.section, styles.sectionTight]}>
           <SectionHeader
             style={styles.headInset}
-            title="Reviews"
+            title={t("Reviews")}
             subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`}
           />
         </View>
@@ -229,9 +236,7 @@ export default function CourseDetailsScreen() {
             <ReviewCard key={review.id} review={review} />
           ))}
         </DataList>
-        <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>
-          Ratings and reviews in this prototype are authored sample content, not verified facts.
-        </Text>
+        <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>{t("Ratings and reviews in this prototype are authored sample content, not verified facts.")}</Text>
 
       </Screen>
 
@@ -239,7 +244,7 @@ export default function CourseDetailsScreen() {
         {enrolled ? (
           <>
             <View style={styles.flex}>
-              <Text style={[type.label, { color: colors.textMuted }]}>You own this course</Text>
+              <Text style={[type.label, { color: colors.textMuted }]}>{t("You own this course")}</Text>
               <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
                 {resumeLesson.title}
               </Text>
@@ -274,10 +279,10 @@ export default function CourseDetailsScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={[type.label, { color: colors.textMuted }]}>One-time · demo checkout</Text>
+              <Text style={[type.label, { color: colors.textMuted }]}>{t("One-time \u00b7 demo checkout")}</Text>
             </View>
             <Button
-              label="Buy now"
+              label={t("Buy now")}
               fullWidth={false}
               sheen
               iconNode={<AnimatedCart size={18} color={colors.onAccent} />}
@@ -290,22 +295,26 @@ export default function CourseDetailsScreen() {
       <BottomSheet
         visible={Boolean(paywallLesson)}
         onClose={() => setPaywallLesson(null)}
-        title="Unlock this course"
-        subtitle={paywallLesson ? `“${paywallLesson.title}” is part of ${course.title}.` : undefined}>
+        title={t("Unlock this course")}
+        subtitle={
+          paywallLesson
+            ? t('“{lesson}” is part of {course}.', { lesson: paywallLesson.title, course: course.title })
+            : undefined
+        }>
         <Text style={[type.body, { color: colors.textMuted }]}>
           Buy the course to watch all {course.lessonCount} lessons, keep notes on every lesson and track your progress.
           Free preview lessons stay open to everyone.
         </Text>
         <View style={styles.paywallActions}>
           <Button
-            label={`Buy for ${formatInr(course.priceInr)}`}
+            label={t('Buy for {price}', { price: formatInr(course.priceInr) })}
             onPress={() => {
               setPaywallLesson(null);
               router.push({ pathname: '/checkout/[id]', params: { id: course.id } });
             }}
           />
           <Button
-            label="Watch a free preview instead"
+            label={t("Watch a free preview instead")}
             variant="ghost"
             onPress={() => {
               const lesson = previewLesson;
@@ -320,11 +329,13 @@ export default function CourseDetailsScreen() {
 }
 
 function CourseAppBar() {
+  const t = useT();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.simpleBar, { paddingTop: insets.top + spacing.xs }]}>
-      <IconButton icon={ArrowLeft} accessibilityLabel="Go back" onPress={() => router.replace('/explore')} />
+      <IconButton icon={ArrowLeft} accessibilityLabel={t("Go back")} onPress={() => router.replace('/explore')} />
     </View>
   );
 }

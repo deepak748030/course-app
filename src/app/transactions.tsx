@@ -15,6 +15,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppBar, Badge, DataList, EmptyState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Enrollment } from '@/types';
@@ -23,6 +24,8 @@ const formatDay = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default function TransactionsScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { state } = useStore();
 
@@ -42,35 +45,33 @@ export default function TransactionsScreen() {
 
   return (
     <Screen
-      header={<AppBar title="Transactions" />}
+      header={<AppBar title={t("Transactions")} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       {rows.length === 0 ? (
         <EmptyState
           icon={Receipt}
-          title="No transactions yet"
-          body="Courses you unlock in this prototype are listed here, with the amount paid, the date and the coupon used."
-          actionLabel="Browse courses"
+          title={t("No transactions yet")}
+          body={t("Courses you unlock in this prototype are listed here, with the amount paid, the date and the coupon used.")}
+          actionLabel={t("Browse courses")}
           onAction={() => router.push('/explore')}
         />
       ) : (
         <>
           <View style={styles.summary}>
             <View style={styles.summaryRow}>
-              <Text style={[type.labelStrong, { color: colors.textMuted }]}>Paid in this prototype</Text>
+              <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("Paid in this prototype")}</Text>
               <Text style={[type.title, tabularNums, { color: colors.accentText }]}>{formatInr(paid)}</Text>
             </View>
             <Text style={[type.label, { color: colors.textMuted }]}>
-              {rows.length} {rows.length === 1 ? 'course' : 'courses'} unlocked on this device
+              {t('{n} courses unlocked on this device', { n: rows.length })}
               {saved > 0 ? ` · ${formatInr(saved)} saved against list prices` : ''}
             </Text>
-            <Text style={[type.label, { color: colors.textSubtle }]}>
-              No card, UPI or bank details were taken: the checkout is a demo and only unlocks the course here.
-            </Text>
+            <Text style={[type.label, { color: colors.textSubtle }]}>{t("No card, UPI or bank details were taken: the checkout is a demo and only unlocks the course here.")}</Text>
           </View>
 
           <View style={styles.section}>
             <Text style={[type.labelStrong, styles.heading, { color: colors.textMuted }]}>
-              {rows.length === 1 ? '1 transaction' : `All ${rows.length} transactions`}
+              {rows.length === 1 ? t('1 transaction') : t('All {n} transactions', { n: rows.length })}
             </Text>
             <DataList dividerInset={layout.screen + 64 + spacing.md}>
               {rows.map(({ enrollment, course }) => {
@@ -96,7 +97,9 @@ export default function TransactionsScreen() {
                       </Text>
                       <View style={styles.badges}>
                         <Badge label={seed ? 'Sample account' : 'Demo purchase'} tone={seed ? 'neutral' : 'gold'} />
-                        {savedHere > 0 ? <Badge label={`Saved ${formatInr(savedHere)}`} tone="sage" /> : null}
+                        {savedHere > 0 ? (
+                          <Badge label={t('Saved {amount}', { amount: formatInr(savedHere) })} tone="sage" />
+                        ) : null}
                       </View>
                     </View>
 

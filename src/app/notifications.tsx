@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { AppBar, Badge, DataList, EmptyState, Screen, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { notifications } from '@/data/content';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import { minutesAgoLabel } from '@/lib/format';
 
@@ -16,6 +17,8 @@ const kindIcon = {
 } as const;
 
 export default function NotificationsScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { state, markNotificationsRead } = useStore();
   const wasUnread = !state.notificationsRead;
@@ -30,14 +33,14 @@ export default function NotificationsScreen() {
 
   return (
     <Screen
-      header={<AppBar title="Notifications" right={wasUnread ? <Badge label="Marked as read" tone="sage" /> : undefined} />}
+      header={<AppBar title={t("Notifications")} right={wasUnread ? <Badge label={t("Marked as read")} tone="sage" /> : undefined} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       {notifications.length === 0 ? (
-        <EmptyState icon={Bell} title="Nothing new" body="Course updates and learning reminders will appear here." />
+        <EmptyState icon={Bell} title={t("Nothing new")} body={t("Course updates and learning reminders will appear here.")} />
       ) : (
         <>
-          <Group title="Today" items={today} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
-          <Group title="Earlier" items={earlier} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
+          <Group title={t("Today")} items={today} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
+          <Group title={t("Earlier")} items={earlier} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
         </>
       )}
 
@@ -58,6 +61,8 @@ function Group({
   items: typeof notifications;
   onOpenCourse: (courseId: string) => void;
 }) {
+  const t = useT();
+
   if (items.length === 0) return null;
 
   return (
@@ -84,7 +89,7 @@ function Group({
                   <Text style={[type.label, { color: colors.textSubtle }]}>{minutesAgoLabel(item.minutesAgo)}</Text>
                 </View>
                 <Text style={[type.label, { color: colors.textMuted }]}>{item.body}</Text>
-                {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.accentText }]}>Open course</Text> : null}
+                {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.accentText }]}>{t("Open course")}</Text> : null}
               </View>
             </Pressable>
           );

@@ -8,6 +8,7 @@ import { SaveButton } from '@/components/save-button';
 import { AppBar, Badge, DataList, EmptyState, MetaItem, Screen, Segmented } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { courseById, courses } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 import { formatDuration } from '@/lib/format';
@@ -16,6 +17,8 @@ import { Clock, Milk } from 'lucide-react-native';
 type Segment = 'courses' | 'recipes';
 
 export default function SavedScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { state, toggleSavedRecipe } = useStore();
   const [segment, setSegment] = useState<Segment>('courses');
@@ -34,12 +37,12 @@ export default function SavedScreen() {
   );
 
   return (
-    <Screen header={<AppBar title="Saved" />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.gap }}>
+    <Screen header={<AppBar title={t("Saved")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.gap }}>
       <View style={styles.segmentWrap}>
         <Segmented<Segment>
           options={[
-            { id: 'courses', label: `Courses · ${savedCourses.length}` },
-            { id: 'recipes', label: `Batch sheets · ${savedRecipes.length}` },
+            { id: 'courses', label: t('Courses · {n}', { n: savedCourses.length }) },
+            { id: 'recipes', label: t('Batch sheets · {n}', { n: savedRecipes.length }) },
           ]}
           value={segment}
           onChange={setSegment}
@@ -50,9 +53,9 @@ export default function SavedScreen() {
         savedCourses.length === 0 ? (
           <EmptyState
             icon={BookOpen}
-            title="Nothing saved yet"
-            body="Tap the bookmark on any course card and it will be waiting here, even while you decide."
-            actionLabel="Browse courses"
+            title={t("Nothing saved yet")}
+            body={t("Tap the bookmark on any course card and it will be waiting here, even while you decide.")}
+            actionLabel={t("Browse courses")}
             onAction={() => router.push('/explore')}
           />
         ) : (
@@ -74,7 +77,7 @@ export default function SavedScreen() {
                   </Text>
                   <View style={styles.metaRow}>
                     <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
-                    <Badge label={course.level} tone="neutral" />
+                    <Badge label={t(course.level)} tone="neutral" />
                   </View>
                 </View>
               </Pressable>
@@ -84,9 +87,9 @@ export default function SavedScreen() {
       ) : savedRecipes.length === 0 ? (
         <EmptyState
           icon={ShoppingBasket}
-          title="No saved batch sheets"
-          body="Batch sheets live inside lessons. Open a lesson, go to the Sheet tab and save the ones you make often."
-          actionLabel="Find a lesson"
+          title={t("No saved batch sheets")}
+          body={t("Batch sheets live inside lessons. Open a lesson, go to the Sheet tab and save the ones you make often.")}
+          actionLabel={t("Find a lesson")}
           onAction={() => router.push('/explore')}
         />
       ) : (
@@ -112,7 +115,7 @@ export default function SavedScreen() {
                     {course.title}
                   </Text>
                   <View style={styles.metaRow}>
-                    <MetaItem icon={Milk} label={`Makes ${lesson.recipe!.servings}`} />
+                    <MetaItem icon={Milk} label={t('Makes {n}', { n: lesson.recipe!.servings })} />
                     <MetaItem
                       icon={Clock}
                       label={formatDuration(lesson.recipe!.prepMinutes + lesson.recipe!.cookMinutes)}
@@ -137,9 +140,7 @@ export default function SavedScreen() {
 
       <View style={styles.footNote}>
         <Bookmark size={14} color={colors.textSubtle} strokeWidth={1.9} />
-        <Text style={[type.label, { color: colors.textSubtle, flex: 1 }]}>
-          Saved items are stored on this device with your session.
-        </Text>
+        <Text style={[type.label, { color: colors.textSubtle, flex: 1 }]}>{t("Saved items are stored on this device with your session.")}</Text>
       </View>
     </Screen>
   );

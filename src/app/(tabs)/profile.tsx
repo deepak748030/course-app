@@ -28,6 +28,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
 import { ProfileEditorSheet } from '@/components/profile-editor';
+import { LanguagePicker } from '@/components/language-picker';
 import { ThemePicker } from '@/components/theme-picker';
 import {
   AppText,
@@ -42,14 +43,17 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { ageFromDateOfBirth, formatDateOfBirth, formatDuration, maskPhone } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
 import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
 
 export default function ProfileScreen() {
+  const t = useT();
+
   const router = useRouter();
-  const { session, state, signOut, updateProfile, setProfileAvatar, setTheme } = useStore();
+  const { session, state, signOut, updateProfile, setProfileAvatar, setTheme, setLanguage } = useStore();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -119,7 +123,7 @@ export default function ProfileScreen() {
           leading={
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Edit profile"
+              accessibilityLabel={t("Edit profile")}
               onPress={() => setEditorOpen(true)}
               style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8 }]}>
               <Avatar name={profile?.name ?? 'Guest'} uri={avatarUri} size={44} />
@@ -133,11 +137,11 @@ export default function ProfileScreen() {
                 <IconButton
                   icon={SquarePen}
                   variant="soft"
-                  accessibilityLabel="Edit profile"
+                  accessibilityLabel={t("Edit profile")}
                   onPress={() => setEditorOpen(true)}
                 />
               ) : null}
-              <IconButton icon={Settings} accessibilityLabel="Settings" onPress={() => router.push('/settings')} />
+              <IconButton icon={Settings} accessibilityLabel={t("Settings")} onPress={() => router.push('/settings')} />
             </>
           }
         />
@@ -146,28 +150,26 @@ export default function ProfileScreen() {
         <View style={styles.summaryCard}>
           {/* Shown, never asked for: the editable fields live behind the Edit icon. */}
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            <ListRow icon={Smartphone} label="Mobile number" subtitle={maskPhone(profile.phone)} chevron={false} />
-            {profile.email ? <ListRow icon={Mail} label="Email" subtitle={profile.email} chevron={false} /> : null}
+            <ListRow icon={Smartphone} label={t("Mobile number")} subtitle={maskPhone(profile.phone)} chevron={false} />
+            {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
             {birthDate ? (
               <ListRow
                 icon={CalendarDays}
-                label="Date of birth"
+                label={t("Date of birth")}
                 subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
                 chevron={false}
               />
             ) : null}
-            {profile.city ? <ListRow icon={MapPin} label="City" subtitle={profile.city} chevron={false} /> : null}
-            {profile.goal ? <ListRow icon={Target} label="Dairy goal" subtitle={profile.goal} chevron={false} /> : null}
+            {profile.city ? <ListRow icon={MapPin} label={t("City")} subtitle={profile.city} chevron={false} /> : null}
+            {profile.goal ? <ListRow icon={Target} label={t("Dairy goal")} subtitle={profile.goal} chevron={false} /> : null}
           </DataList>
         </View>
       ) : (
         <View style={styles.pad}>
           <View style={styles.signInCard}>
-            <Text style={[type.bodyStrong, { color: colors.text }]}>You are not signed in</Text>
-            <Text style={[type.label, { color: colors.textMuted }]}>
-              Sign in to keep your courses, notes and progress on this device.
-            </Text>
-            <Button label="Sign in with mobile" onPress={() => router.push('/auth/phone')} />
+            <Text style={[type.bodyStrong, { color: colors.text }]}>{t("You are not signed in")}</Text>
+            <Text style={[type.label, { color: colors.textMuted }]}>{t("Sign in to keep your courses, notes and progress on this device.")}</Text>
+            <Button label={t("Sign in with mobile")} onPress={() => router.push('/auth/phone')} />
           </View>
         </View>
       )}
@@ -175,42 +177,42 @@ export default function ProfileScreen() {
       <View style={styles.pad}>
         <View style={styles.statsCard}>
           <View style={styles.statRow}>
-            <Stat icon={BookOpen} label="Courses" value={String(stats.courses)} />
+            <Stat icon={BookOpen} label={t("Courses")} value={String(stats.courses)} />
             <View style={styles.statDivider} />
-            <Stat icon={CircleCheck} label="Lessons done" value={String(stats.lessons)} />
+            <Stat icon={CircleCheck} label={t("Lessons done")} value={String(stats.lessons)} />
             <View style={styles.statDivider} />
-            <Stat icon={Clock} label="Time learned" value={formatDuration(stats.minutes)} />
+            <Stat icon={Clock} label={t("Time learned")} value={formatDuration(stats.minutes)} />
           </View>
           <View style={styles.statHairline} />
           <View style={styles.statRow}>
-            <Stat icon={Bookmark} label="Saved courses" value={String(state.savedCourseIds.length)} />
+            <Stat icon={Bookmark} label={t("Saved courses")} value={String(state.savedCourseIds.length)} />
             <View style={styles.statDivider} />
-            <Stat icon={UtensilsCrossed} label="Saved batch sheets" value={String(state.savedRecipeIds.length)} />
+            <Stat icon={UtensilsCrossed} label={t("Saved batch sheets")} value={String(state.savedRecipeIds.length)} />
             <View style={styles.statDivider} />
-            <Stat icon={NotebookPen} label="Notes written" value={String(notesWritten)} />
+            <Stat icon={NotebookPen} label={t("Notes written")} value={String(notesWritten)} />
           </View>
         </View>
       </View>
 
       <View style={styles.group}>
-        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Your library</Text>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>{t("Your library")}</Text>
         <View style={styles.card}>
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
             <ListRow
               icon={Bookmark}
-              label="Saved"
+              label={t("Saved")}
               subtitle={`${state.savedCourseIds.length} courses · ${state.savedRecipeIds.length} batch sheets`}
               onPress={() => router.push('/saved')}
             />
             <ListRow
               icon={Bell}
-              label="Notifications"
+              label={t("Notifications")}
               value={state.notificationsRead ? 'All read' : 'New'}
               onPress={() => router.push('/notifications')}
             />
             <ListRow
               icon={BookOpen}
-              label="My learning"
+              label={t("My learning")}
               subtitle={joined ? `Member since ${joined}` : 'Courses you own and finish'}
               onPress={() => router.push('/learning')}
             />
@@ -219,12 +221,12 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.group}>
-        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Appearance</Text>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>{t("Appearance")}</Text>
         <View style={styles.card}>
           <View style={styles.themeBlock}>
-            <Text style={[type.body, { color: colors.text }]}>Theme</Text>
+            <Text style={[type.body, { color: colors.text }]}>{t("Theme")}</Text>
             <Text style={[type.label, { color: colors.textMuted }]}>
-              Applies to every screen right away, and is remembered on this device.
+              {t("Applies to every screen right away, and is remembered on this device.")}
             </Text>
             <ThemePicker value={state.theme} onChange={setTheme} />
           </View>
@@ -232,38 +234,53 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.group}>
-        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Settings & policies</Text>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>{t("Language")}</Text>
+        <View style={styles.card}>
+          <View style={styles.themeBlock}>
+            <Text style={[type.body, { color: colors.text }]}>{t("App language")}</Text>
+            <Text style={[type.label, { color: colors.textMuted }]}>
+              {t("Switches the whole interface right away, and is remembered on this device.")}
+            </Text>
+            <LanguagePicker value={state.language} onChange={setLanguage} />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.group}>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>
+          {t("Settings & policies")}
+        </Text>
         <View style={styles.card}>
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            <ListRow icon={Settings} label="Settings" subtitle="Notifications, app data" onPress={() => router.push('/settings')} />
+            <ListRow icon={Settings} label={t("Settings")} subtitle={t("Notifications, app data")} onPress={() => router.push('/settings')} />
             <ListRow
               icon={Receipt}
-              label="Transactions"
-              subtitle="Demo purchases made on this device"
+              label={t("Transactions")}
+              subtitle={t("Demo purchases made on this device")}
               onPress={() => router.push('/transactions')}
             />
             <ListRow
               icon={RotateCcw}
-              label="Refund policy"
-              subtitle="When a course can be refunded"
+              label={t("Refund policy")}
+              subtitle={t("When a course can be refunded")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'refund' } })}
             />
             <ListRow
               icon={ShieldCheck}
-              label="Privacy policy"
-              subtitle="What is stored, and where"
+              label={t("Privacy policy")}
+              subtitle={t("What is stored, and where")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}
             />
             <ListRow
               icon={FileText}
-              label="Terms and conditions"
-              subtitle="The terms this prototype runs on"
+              label={t("Terms and conditions")}
+              subtitle={t("The terms this prototype runs on")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
             />
             <ListRow
               icon={LifeBuoy}
-              label="Help and support"
-              subtitle="Answers and how to reach us"
+              label={t("Help and support")}
+              subtitle={t("Answers and how to reach us")}
               onPress={() => router.push('/help')}
             />
           </DataList>
@@ -271,17 +288,15 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.pad}>
-        <Button label="Log out" variant="danger" icon={LogOut} onPress={() => setLogoutOpen(true)} />
+        <Button label={t("Log out")} variant="danger" icon={LogOut} onPress={() => setLogoutOpen(true)} />
         <View style={styles.about}>
           <View style={styles.aboutRow}>
             <AppText variant="label" color={colors.textSubtle}>
               YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
             </AppText>
-            <Badge label="Demo" tone="gold" />
+            <Badge label={t("Demo")} tone="gold" />
           </View>
-          <AppText variant="label" color={colors.textSubtle}>
-            Sample catalog, demo authentication and demo payments. No real transactions.
-          </AppText>
+          <AppText variant="label" color={colors.textSubtle}>{t("Sample catalog, demo authentication and demo payments. No real transactions.")}</AppText>
         </View>
       </View>
 
@@ -305,9 +320,9 @@ export default function ProfileScreen() {
 
       <ConfirmSheet
         visible={logoutOpen}
-        title="Log out of YDU Academy?"
-        body="Your session and the courses, progress and notes stored for it are removed from this device. Onboarding and app preferences stay."
-        confirmLabel="Log out"
+        title={t("Log out of YDU Academy?")}
+        body={t("Your session and the courses, progress and notes stored for it are removed from this device. Onboarding and app preferences stay.")}
+        confirmLabel={t("Log out")}
         destructive
         onConfirm={async () => {
           setLogoutOpen(false);

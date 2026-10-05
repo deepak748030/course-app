@@ -7,11 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BrandMark } from '@/components/marks';
 import { AppBar, Button, ErrorState, FormField, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { normalizePhone, validateIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
 import { DEMO_OFFLINE_PHONE, authService } from '@/services/auth';
 
 export default function PhoneScreen() {
+  const t = useT();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [digits, setDigits] = useState('');
@@ -49,7 +52,7 @@ export default function PhoneScreen() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen
         scroll={false}
-        header={<AppBar title="Sign in" onBack={goBack} borderless />}
+        header={<AppBar title={t("Sign in")} onBack={goBack} borderless />}
         contentStyle={{ paddingBottom: insets.bottom + spacing.md, paddingHorizontal: 0 }}>
         <ScrollView
           contentContainerStyle={styles.content}
@@ -57,15 +60,13 @@ export default function PhoneScreen() {
           showsVerticalScrollIndicator={false}>
           <View style={styles.intro}>
             <BrandMark size={40} />
-            <Text style={[type.title, { color: colors.text }]}>What is your mobile number?</Text>
-            <Text style={[type.body, { color: colors.textMuted }]}>
-              We use it to keep your courses, progress and notes on your account. No marketing calls, ever.
-            </Text>
+            <Text style={[type.title, { color: colors.text }]}>{t("What is your mobile number?")}</Text>
+            <Text style={[type.body, { color: colors.textMuted }]}>{t("We use it to keep your courses, progress and notes on your account. No marketing calls, ever.")}</Text>
           </View>
 
           <FormField
             nativeID="phone"
-            label="Mobile number"
+            label={t("Mobile number")}
             prefix="+91"
             value={digits}
             onChangeText={(text) => {
@@ -81,7 +82,7 @@ export default function PhoneScreen() {
             maxLength={10}
             autoFocus
             error={error}
-            hint="India only. 10 digits, starting with 6, 7, 8 or 9."
+            hint={t("India only. 10 digits, starting with 6, 7, 8 or 9.")}
             returnKeyType="done"
             onSubmitEditing={submit}
             editable={!sending}
@@ -92,13 +93,13 @@ export default function PhoneScreen() {
             onPress={submit}
             loading={sending}
             disabled={digits.length !== 10}
-            accessibilityHint="Sends a one-time code to this number"
+            accessibilityHint={t("Sends a one-time code to this number")}
           />
 
           {networkError ? (
             <ErrorState
               offline
-              title="We could not reach the server"
+              title={t("We could not reach the server")}
               body={
                 digits === DEMO_OFFLINE_PHONE
                   ? 'This number is reserved in the demo to simulate a failed request. Try any other 10-digit number.'
@@ -121,25 +122,21 @@ export default function PhoneScreen() {
             <Text
               accessibilityRole="link"
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
-              style={styles.link}>
-              Terms of use
-            </Text>{' '}
+              style={styles.link}>{t("Terms of use")}</Text>{' '}
             and{' '}
             <Text
               accessibilityRole="link"
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'privacy' } })}
-              style={styles.link}>
-              Privacy policy
-            </Text>
+              style={styles.link}>{t("Privacy policy")}</Text>
             .
           </Text>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Why we ask for your number"
+            accessibilityLabel={t("Why we ask for your number")}
             onPress={() => router.push('/help')}
             style={({ pressed }) => [styles.helpLink, pressed && { opacity: 0.6 }]}>
-            <Text style={[type.labelStrong, { color: colors.accentText }]}>Why do you need this?</Text>
+            <Text style={[type.labelStrong, { color: colors.accentText }]}>{t('Why do you need this?')}</Text>
           </Pressable>
         </ScrollView>
       </Screen>

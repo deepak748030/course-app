@@ -9,6 +9,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
+import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
 import { authService } from '@/services/auth';
 import type {
@@ -44,6 +45,11 @@ type PersistedState = {
    * Chosen look. A device preference rather than account data, so it survives sign-out.
    */
   theme: ThemeId;
+  /**
+   * Chosen interface language. Also a device preference: a learner who switched to Hindi should not be
+   * flipped back to English by signing out.
+   */
+  language: Language;
 };
 
 /** The demo account starts with one course already in progress so Home is not empty. */
@@ -74,6 +80,7 @@ function seedState(): PersistedState {
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
     profileAvatarUri: null,
     theme: DEFAULT_THEME,
+    language: DEFAULT_LANGUAGE,
   };
 }
 
@@ -86,6 +93,7 @@ function restoreState(raw: string): PersistedState | null {
     const parsed = JSON.parse(raw) as Partial<PersistedState>;
     const merged: PersistedState = { ...seedState(), ...parsed };
     merged.theme = isThemeId(merged.theme) ? merged.theme : DEFAULT_THEME;
+    merged.language = isLanguage(merged.language) ? merged.language : DEFAULT_LANGUAGE;
     return merged;
   } catch {
     return null;
@@ -104,6 +112,8 @@ type StoreValue = {
   setProfileAvatar: (uri: string | null) => void;
   /** Applies a theme immediately (whole tree) and remembers it for the next launch. */
   setTheme: (id: ThemeId) => void;
+  /** Switches the whole interface to another language, immediately, and remembers the choice. */
+  setLanguage: (id: Language) => void;
   completeOnboarding: () => void;
 
   toggleInterest: (id: string) => void;
@@ -156,8 +166,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const restored = raw ? restoreState(raw) : null;
       if (restored) {
-        // The theme is applied before the first painted frame of the restored state.
+        // The theme and the language are applied before the first painted frame of the restored state.
         setActiveTheme(restored.theme);
+        setActiveLanguage(restored.language);
         setState(restored);
       }
       setSession(storedSession);
@@ -218,6 +229,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, theme: id }));
       },
 
+      setLanguage: (id) => {
+        setActiveLanguage(id);
+        setState((prev) => ({ ...prev, language: id }));
+      },
+
       signOut: async () => {
         await authService.clearSession();
         setSession(null);
@@ -227,8 +243,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           onboardingDone: true,
           interests: prev.interests,
           preferences: prev.preferences,
-          // The look belongs to the device, not to the account.
+          // The look and the language belong to the device, not to the account.
           theme: prev.theme,
+          language: prev.language,
         }));
       },
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),

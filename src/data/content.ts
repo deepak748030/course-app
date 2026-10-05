@@ -87,8 +87,8 @@ export const faqs: FaqItem[] = [
 ];
 
 export const demoCoupons: { code: string; percentOff: number; label: string }[] = [
-  { code: 'YDU10', percentOff: 10, label: '10% off any course' },
-  { code: 'DAIRY20', percentOff: 20, label: '20% off dairy essentials tracks' },
+  { code: 'YDU10', percentOff: 10, label: '10% OFF any course' },
+  { code: 'DAIRY20', percentOff: 20, label: '20% OFF dairy essentials tracks' },
 ];
 
 /** Sample legal copy. Replace with reviewed documents before shipping. */

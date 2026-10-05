@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppBar, Button, ErrorState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { formatIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
 import { authService, type OtpFailure } from '@/services/auth';
@@ -28,6 +29,8 @@ const RESEND_SECONDS = 30;
  * SMS autofill work) and is visually hidden behind the cells.
  */
 export default function OtpScreen() {
+  const t = useT();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone } = useLocalSearchParams<{ phone: string }>();
@@ -68,9 +71,9 @@ export default function OtpScreen() {
 
       feedback.error();
       const messages: Record<OtpFailure, string> = {
-        incorrect: 'That code is not correct. Check the last message and try again.',
-        expired: 'This code has expired after three attempts. Request a new one.',
-        network: 'We could not verify the code because the connection dropped. Try again.',
+        incorrect: t('That code is not correct. Check the last message and try again.'),
+        expired: t('This code has expired after three attempts. Request a new one.'),
+        network: t('We could not verify the code because the connection dropped. Try again.'),
       };
       setError({ kind: result.error, message: messages[result.error] });
       announce(messages[result.error]);
@@ -111,14 +114,14 @@ export default function OtpScreen() {
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Screen
         scroll={false}
-        header={<AppBar title="Verify number" onBack={changeNumber} backLabel="Back to mobile number" borderless />}
+        header={<AppBar title={t("Verify number")} onBack={changeNumber} backLabel="Back to mobile number" borderless />}
         contentStyle={{ paddingHorizontal: 0, paddingBottom: insets.bottom + spacing.md }}>
         <ScrollView
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.intro}>
-            <Text style={[type.title, { color: colors.text }]}>Enter the 6-digit code</Text>
+            <Text style={[type.title, { color: colors.text }]}>{t("Enter the 6-digit code")}</Text>
             <Text style={[type.body, tabularNums, { color: colors.textMuted }]}>
               Sent to {formatIndianMobile(phone ?? '')}
             </Text>
@@ -175,11 +178,11 @@ export default function OtpScreen() {
           ) : null}
 
           <Button
-            label="Verify and continue"
+            label={t("Verify and continue")}
             onPress={() => verify(code)}
             loading={verifying}
             disabled={code.length !== CODE_LENGTH || error?.kind === 'expired'}
-            accessibilityHint="Verifies the code and continues to the app"
+            accessibilityHint={t("Verifies the code and continues to the app")}
           />
 
           <View style={styles.resendRow}>
@@ -188,7 +191,7 @@ export default function OtpScreen() {
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Resend code"
+              accessibilityLabel={t("Resend code")}
               accessibilityState={{ disabled: secondsLeft > 0 || resending }}
               disabled={secondsLeft > 0 || resending}
               onPress={resend}
@@ -205,11 +208,11 @@ export default function OtpScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Change mobile number"
+            accessibilityLabel={t("Change mobile number")}
             onPress={changeNumber}
             hitSlop={8}
             style={styles.changeLink}>
-            <Text style={[type.labelStrong, { color: colors.accentText }]}>Change number</Text>
+            <Text style={[type.labelStrong, { color: colors.accentText }]}>{t("Change number")}</Text>
           </Pressable>
 
           <Text style={[type.label, { color: colors.textSubtle }]}>

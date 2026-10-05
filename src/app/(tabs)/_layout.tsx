@@ -1,6 +1,7 @@
 import { Tabs, Redirect } from 'expo-router';
 
 import { TabBar } from '@/components/tab-bar';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 
 /**
@@ -9,6 +10,7 @@ import { useStore } from '@/store';
  */
 export default function TabsLayout() {
   const { session, ready } = useStore();
+  const t = useT();
 
   // Deep links must not land inside the app without a session.
   if (ready && !session) return <Redirect href="/auth/phone" />;
@@ -19,10 +21,13 @@ export default function TabsLayout() {
         <TabBar state={props.state} descriptors={props.descriptors} navigation={props.navigation} />
       )}
       screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true }}>
-      <Tabs.Screen name="home" options={{ title: 'Home', tabBarAccessibilityLabel: 'Home' }} />
-      <Tabs.Screen name="explore" options={{ title: 'Explore', tabBarAccessibilityLabel: 'Explore' }} />
-      <Tabs.Screen name="learning" options={{ title: 'Learning', tabBarAccessibilityLabel: 'My learning' }} />
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarAccessibilityLabel: 'Profile' }} />
+      <Tabs.Screen name="home" options={{ title: t('Home'), tabBarAccessibilityLabel: t('Home') }} />
+      <Tabs.Screen name="explore" options={{ title: t('Explore'), tabBarAccessibilityLabel: t('Explore') }} />
+      <Tabs.Screen
+        name="learning"
+        options={{ title: t('Learning'), tabBarAccessibilityLabel: t('My learning') }}
+      />
+      <Tabs.Screen name="profile" options={{ title: t('Profile'), tabBarAccessibilityLabel: t('Profile') }} />
     </Tabs>
   );
 }

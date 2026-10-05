@@ -3,6 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
+import { t } from '@/i18n';
 
 /**
  * Last line of defence. A render error in any screen used to surface as a blank page (or a
@@ -31,24 +32,24 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
           <View style={styles.icon}>
             <CircleAlert size={26} color={colors.error} strokeWidth={1.8} />
           </View>
-          <Text style={[type.title, styles.center, { color: colors.text }]}>Something broke on this screen</Text>
+          <Text style={[type.title, styles.center, { color: colors.text }]}>{t("Something broke on this screen")}</Text>
           <Text style={[type.body, styles.center, { color: colors.textMuted }]}>
             The rest of the app is still usable. Try again, and if it keeps happening open a different tab and come
             back.
           </Text>
 
           <View style={styles.detail}>
-            <Text style={[type.labelStrong, { color: colors.textMuted }]}>What the app reported</Text>
+            <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("What the app reported")}</Text>
             <Text style={[type.label, { color: colors.text }]}>{error.message || String(error)}</Text>
           </View>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Try this screen again"
+            accessibilityLabel={t("Try this screen again")}
             onPress={() => this.setState({ error: null })}
             style={({ pressed }) => [styles.retry, pressed && { opacity: 0.75 }]}>
             <RotateCcw size={16} color={colors.text} strokeWidth={1.9} />
-            <Text style={[type.bodyStrong, { color: colors.text }]}>Try again</Text>
+            <Text style={[type.bodyStrong, { color: colors.text }]}>{t("Try again")}</Text>
           </Pressable>
         </ScrollView>
       </View>

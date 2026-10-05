@@ -7,6 +7,7 @@
  * - Buttons: 48px tall, radius 8, disabled stays readable rather than just faded.
  * - Sticky bars: flush to the edges, no corner radius, safe-area aware.
  */
+import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -769,6 +770,8 @@ export function ErrorState({
   onRetry?: () => void;
   offline?: boolean;
 }) {
+  const t = useT();
+
   return (
     <View style={styles.stateBlock}>
       <View style={[styles.stateIcon, { backgroundColor: colors.errorSoft }]}>
@@ -780,7 +783,7 @@ export function ErrorState({
       </View>
       <Text style={[type.subheading, styles.centerText, { color: colors.text }]}>{title}</Text>
       <Text style={[type.body, styles.centerText, { color: colors.textMuted }]}>{body}</Text>
-      {onRetry ? <Button label="Try again" onPress={onRetry} variant="secondary" fullWidth={false} style={styles.stateAction} /> : null}
+      {onRetry ? <Button label={t("Try again")} onPress={onRetry} variant="secondary" fullWidth={false} style={styles.stateAction} /> : null}
     </View>
   );
 }
@@ -1047,6 +1050,8 @@ export function SearchField({
   autoFocus?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
+  const t = useT();
+
   const [focused, setFocused] = useState(false);
   const input = useRef<TextInput>(null);
 
@@ -1078,7 +1083,7 @@ export function SearchField({
         {value.length > 0 ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t("Clear search")}
             hitSlop={10}
             onPress={() => {
               onChangeText('');
@@ -1092,7 +1097,7 @@ export function SearchField({
       {focused ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Cancel search"
+          accessibilityLabel={t("Cancel search")}
           hitSlop={8}
           onPress={() => {
             onChangeText('');
@@ -1100,7 +1105,7 @@ export function SearchField({
             onCancel?.();
           }}
           style={({ pressed }) => (pressed ? styles.pressed : null)}>
-          <Text style={[type.labelStrong, { color: colors.accentText }]}>Cancel</Text>
+          <Text style={[type.labelStrong, { color: colors.accentText }]}>{t("Cancel")}</Text>
         </Pressable>
       ) : null}
     </View>

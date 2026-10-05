@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button, Chip, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { interests } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 
 /**
@@ -13,6 +14,8 @@ import { useStore } from '@/store';
  * first-class action, so nothing is gated behind a choice.
  */
 export default function InterestsScreen() {
+  const t = useT();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isInterestSelected, toggleInterest, state } = useStore();
@@ -27,10 +30,8 @@ export default function InterestsScreen() {
   return (
     <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.md }}>
       <View style={styles.intro}>
-        <Text style={[type.title, { color: colors.text }]}>What do you work with?</Text>
-        <Text style={[type.body, { color: colors.textMuted }]}>
-          Pick a few tracks and we will put those courses first on your home screen. You can change this anytime in Settings.
-        </Text>
+        <Text style={[type.title, { color: colors.text }]}>{t('What do you work with?')}</Text>
+        <Text style={[type.body, { color: colors.textMuted }]}>{t("Pick a few tracks and we will put those courses first on your home screen. You can change this anytime in Settings.")}</Text>
       </View>
 
       <View style={styles.chips}>
@@ -48,8 +49,8 @@ export default function InterestsScreen() {
         <Text style={[type.label, { color: colors.textMuted }]}>
           {selectedCount === 0 ? 'Nothing selected yet — that is fine.' : `${selectedCount} selected`}
         </Text>
-        <Button label="Start learning" onPress={finish} />
-        <Button label="Maybe later" onPress={finish} variant="ghost" />
+        <Button label={t("Start learning")} onPress={finish} />
+        <Button label={t("Maybe later")} onPress={finish} variant="ghost" />
       </View>
     </Screen>
   );

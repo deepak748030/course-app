@@ -65,6 +65,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, courseLessonGroups, nextLesson } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
 import { formatClock, scaleQuantity } from '@/lib/format';
@@ -78,6 +79,8 @@ const SAVE_INTERVAL_SEC = 10;
 const CONTROLS_HIDE_MS = 3000;
 
 export default function LessonPlayerScreen() {
+  const t = useT();
+
   const params = useLocalSearchParams<{ courseId: string; lessonId: string; tab?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -245,9 +248,9 @@ export default function LessonPlayerScreen() {
       <Screen header={<AppBar onBack={() => router.replace('/learning')} />}>
         <EmptyState
           icon={Clapperboard}
-          title="Lesson not found"
-          body="This lesson may have been moved. Open the course to see the current curriculum."
-          actionLabel="Go to My learning"
+          title={t("Lesson not found")}
+          body={t("This lesson may have been moved. Open the course to see the current curriculum.")}
+          actionLabel={t("Go to My learning")}
           onAction={() => router.replace('/learning')}
         />
       </Screen>
@@ -259,9 +262,9 @@ export default function LessonPlayerScreen() {
       <Screen header={<AppBar onBack={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })} />}>
         <EmptyState
           icon={Lock}
-          title="This lesson is locked"
+          title={t("This lesson is locked")}
           body={`“${lesson.title}” is part of ${course.title}. Buy the course to watch all ${course.lessonCount} lessons, or try one of the free previews.`}
-          actionLabel="See what is included"
+          actionLabel={t("See what is included")}
           onAction={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
         />
       </Screen>
@@ -340,8 +343,8 @@ export default function LessonPlayerScreen() {
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Show player controls"
-            accessibilityHint="They hide again a few seconds after the lesson starts playing"
+            accessibilityLabel={t("Show player controls")}
+            accessibilityHint={t("They hide again a few seconds after the lesson starts playing")}
             onPress={showControls}
             style={StyleSheet.absoluteFill}
           />
@@ -349,18 +352,16 @@ export default function LessonPlayerScreen() {
           {status === 'loading' ? (
             <View style={[styles.centerOverlay, styles.noTouch]}>
               <ActivityIndicator color={colors.onPlayer} />
-              <Text style={[type.label, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
+              <Text style={[type.label, { color: colors.onPlayerMuted }]}>{t("Loading lesson\u2026")}</Text>
             </View>
           ) : null}
 
           {error ? (
             <View style={styles.centerOverlay}>
               <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
-              <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
-                This lesson video could not be played.
-              </Text>
+              <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>{t("This lesson video could not be played.")}</Text>
               <Button
-                label="Try again"
+                label={t("Try again")}
                 variant="secondary"
                 fullWidth={false}
                 onPress={() => {
@@ -398,7 +399,7 @@ export default function LessonPlayerScreen() {
                 <IconButton
                   icon={ArrowLeft}
                   variant="onImage"
-                  accessibilityLabel="Leave the lesson"
+                  accessibilityLabel={t("Leave the lesson")}
                   onPress={() => (router.canGoBack() ? router.back() : router.replace('/learning'))}
                 />
                 <View style={styles.playerTitleWrap}>
@@ -412,7 +413,7 @@ export default function LessonPlayerScreen() {
                 <IconButton
                   icon={Clapperboard}
                   variant="onImage"
-                  accessibilityLabel="Open lesson list"
+                  accessibilityLabel={t("Open lesson list")}
                   onPress={() => setLessonListOpen(true)}
                 />
               </View>
@@ -428,7 +429,7 @@ export default function LessonPlayerScreen() {
                   variant="onImage"
                   size={skipSize}
                   iconSize={largeGlyph ? 24 : 20}
-                  accessibilityLabel="Go back 15 seconds"
+                  accessibilityLabel={t("Go back 15 seconds")}
                   onPress={() => seekTo(position - 15)}
                 />
                 <Pressable
@@ -457,7 +458,7 @@ export default function LessonPlayerScreen() {
                   variant="onImage"
                   size={skipSize}
                   iconSize={largeGlyph ? 24 : 20}
-                  accessibilityLabel="Go forward 15 seconds"
+                  accessibilityLabel={t("Go forward 15 seconds")}
                   onPress={() => seekTo(position + 15)}
                 />
               </View>
@@ -517,12 +518,12 @@ export default function LessonPlayerScreen() {
                       </Pressable>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Play in fullscreen"
+                        accessibilityLabel={t("Play in fullscreen")}
                         hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
                         onPress={() => void videoRef.current?.enterFullscreen()}
                         style={styles.playerAction}>
                         <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
+                        <Text style={[type.label, { color: colors.onPlayer }]}>{t("Fullscreen")}</Text>
                       </Pressable>
                     </View>
                   </Animated.View>
@@ -538,7 +539,7 @@ export default function LessonPlayerScreen() {
                   <SeekBar
                     progress={progressPercent}
                     onSeek={(ratio) => seekTo(ratio * duration)}
-                    accessibilityLabel="Seek within the lesson"
+                    accessibilityLabel={t("Seek within the lesson")}
                     style={{ height: trackHeight }}
                   />
                   <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
@@ -567,7 +568,7 @@ export default function LessonPlayerScreen() {
               <Text style={[type.overline, styles.flex, { color: colors.textSubtle }]} numberOfLines={1}>
                 {currentSection?.title ?? course.title}
               </Text>
-              {lesson.isPreview ? <Badge label="Free preview" tone="sage" icon={CirclePlay} /> : null}
+              {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" icon={CirclePlay} /> : null}
             </View>
             <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
             <View style={styles.metaWrap}>
@@ -577,12 +578,12 @@ export default function LessonPlayerScreen() {
             </View>
             {completed ? (
               <View style={styles.badgeRow}>
-                <Badge label="Completed" tone="success" icon={CircleCheck} />
+                <Badge label={t("Completed")} tone="success" icon={CircleCheck} />
               </View>
             ) : null}
             <View style={styles.progressBlock}>
               <View style={styles.progressHead}>
-                <Text style={[type.label, { color: colors.textMuted }]}>Course progress</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{t("Course progress")}</Text>
                 <Text style={[type.labelStrong, tabularNums, { color: colors.text }]}>
                   {Math.round(courseProgressRatio(course) * 100)}%
                 </Text>
@@ -594,15 +595,15 @@ export default function LessonPlayerScreen() {
           <View style={styles.rule} />
 
           <View style={styles.tabs}>
-            <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
+            <TabButton label={t("Overview")} active={tab === 'overview'} onPress={() => setTab('overview')} />
             <TabButton
-              label="Sheet"
+              label={t("Sheet")}
               active={tab === 'recipe'}
               disabled={!recipe}
               hint={recipe ? undefined : 'This lesson has no batch sheet'}
               onPress={() => recipe && setTab('recipe')}
             />
-            <TabButton label="Notes" active={tab === 'notes'} onPress={() => setTab('notes')} />
+            <TabButton label={t("Notes")} active={tab === 'notes'} onPress={() => setTab('notes')} />
           </View>
 
           {tab === 'overview' ? (
@@ -630,22 +631,20 @@ export default function LessonPlayerScreen() {
                   ) : (
                     <ListRow
                       icon={Trophy}
-                      label="You have reached the last lesson"
-                      subtitle="Open the course for what comes next"
+                      label={t("You have reached the last lesson")}
+                      subtitle={t("Open the course for what comes next")}
                       onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
                     />
                   )}
                   <ListRow
                     icon={ListVideo}
-                    label="All lessons in this course"
+                    label={t("All lessons in this course")}
                     subtitle={`${course.lessonCount} lessons`}
                     onPress={() => setLessonListOpen(true)}
                   />
                 </DataList>
               </View>
-              <Text style={[type.label, { color: colors.textSubtle }]}>
-                Playback position is saved on this device, so you can leave and come back.
-              </Text>
+              <Text style={[type.label, { color: colors.textSubtle }]}>{t("Playback position is saved on this device, so you can leave and come back.")}</Text>
             </View>
           ) : null}
 
@@ -670,14 +669,14 @@ export default function LessonPlayerScreen() {
               </View>
 
               <View style={styles.servingsRow}>
-                <Text style={[type.label, { color: colors.textMuted }]}>Batch</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{t("Batch")}</Text>
                 <View style={styles.stepper}>
                   <IconButton
                     icon={Minus}
                     variant="soft"
                     size={36}
                     iconSize={16}
-                    accessibilityLabel="Smaller batch"
+                    accessibilityLabel={t("Smaller batch")}
                     onPress={() => setServings(Math.max(1, currentServings - 1))}
                   />
                   <Text style={[type.bodyStrong, tabularNums, styles.servingValue, { color: colors.text }]}>
@@ -688,7 +687,7 @@ export default function LessonPlayerScreen() {
                     variant="soft"
                     size={36}
                     iconSize={16}
-                    accessibilityLabel="Larger batch"
+                    accessibilityLabel={t("Larger batch")}
                     onPress={() => setServings(Math.min(12, currentServings + 1))}
                   />
                 </View>
@@ -697,7 +696,7 @@ export default function LessonPlayerScreen() {
               <View style={styles.sectionCard}>
                 <View style={styles.ingredientHead}>
                   <ShoppingBasket size={16} color={colors.sage} strokeWidth={1.9} />
-                  <Text style={[type.labelStrong, { color: colors.text }]}>Materials</Text>
+                  <Text style={[type.labelStrong, { color: colors.text }]}>{t("Materials")}</Text>
                 </View>
                 {recipe.ingredients.map((ingredient) => (
                   <View key={ingredient.item} style={styles.ingredientRow}>
@@ -715,7 +714,7 @@ export default function LessonPlayerScreen() {
               </View>
 
               <View style={styles.sectionCard}>
-                <Text style={[type.labelStrong, { color: colors.text }]}>Steps</Text>
+                <Text style={[type.labelStrong, { color: colors.text }]}>{t("Steps")}</Text>
                 {recipe.steps.map((step, index) => (
                   <View key={step} style={styles.stepRow}>
                     <View style={styles.stepNumber}>
@@ -728,7 +727,7 @@ export default function LessonPlayerScreen() {
 
               {recipe.tips.length > 0 ? (
                 <View style={[styles.sectionCard, styles.tipsCard]}>
-                  <Text style={[type.labelStrong, { color: colors.text }]}>Notes for this lesson</Text>
+                  <Text style={[type.labelStrong, { color: colors.text }]}>{t("Notes for this lesson")}</Text>
                   {recipe.tips.map((tip) => (
                     <Text key={tip} style={[type.body, { color: colors.textMuted }]}>
                       • {tip}
@@ -737,9 +736,7 @@ export default function LessonPlayerScreen() {
                 </View>
               ) : null}
 
-              <Text style={[type.label, { color: colors.textSubtle }]}>
-                Sample batch sheet for learning. This is not food-safety or regulatory advice — check your own process and local rules.
-              </Text>
+              <Text style={[type.label, { color: colors.textSubtle }]}>{t("Sample batch sheet for learning. This is not food-safety or regulatory advice \u2014 check your own process and local rules.")}</Text>
             </View>
           ) : null}
 
@@ -759,14 +756,14 @@ export default function LessonPlayerScreen() {
                   setNoteSaved(true);
                 }}
                 multiline
-                placeholder="What did you change? What will you try next time?"
+                placeholder={t("What did you change? What will you try next time?")}
                 placeholderTextColor={colors.textSubtle}
                 accessibilityLabel={`Notes for ${lesson.title}`}
                 style={[styles.notesInput, type.body, { color: colors.text }]}
               />
               <View style={styles.notesFooter}>
                 <Button
-                  label="Save note"
+                  label={t("Save note")}
                   variant="secondary"
                   fullWidth={false}
                   onPress={() => {
@@ -790,13 +787,13 @@ export default function LessonPlayerScreen() {
           setLessonListOpen(false);
           showControls();
         }}
-        title="Lessons"
+        title={t("Lessons")}
         subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
         scrollable>
         {courseLessonGroups(course).map((group, index) => (
           <View key={group.id} style={styles.sheetSection}>
             <Text style={[type.labelStrong, { color: colors.text }]}>
-              {group.standalone ? group.title : `${index + 1}. ${group.title}`}
+              {group.standalone ? t(group.title) : `${index + 1}. ${t(group.title)}`}
             </Text>
             <DataList>
               {group.lessons.map((entry, lessonIndex) => (
@@ -819,7 +816,7 @@ export default function LessonPlayerScreen() {
           setSpeedOpen(false);
           showControls();
         }}
-        title="Playback speed">
+        title={t("Playback speed")}>
         {SPEEDS.map((speed) => (
           <Pressable
             key={speed}
@@ -844,7 +841,7 @@ export default function LessonPlayerScreen() {
           setQualityOpen(false);
           showControls();
         }}
-        title="Video quality"
+        title={t("Video quality")}
         subtitle={
           tracks.length > 1
             ? `${tracks.length} renditions in this lesson`

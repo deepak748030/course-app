@@ -16,6 +16,7 @@
  * falls back to a static percent glyph, so the badge always reads correctly. A render error is
  * caught by a boundary here rather than being allowed to take the screen down.
  */
+import { useT } from '@/i18n';
 
 import { Percent } from 'lucide-react-native';
 import { Component, useCallback, useState, type ReactNode } from 'react';
@@ -114,6 +115,8 @@ export function OfferMark({
   tone?: Tone;
   color?: string;
 }) {
+  const t = useT();
+
   return (
     <View
       style={styles.mark}
@@ -121,7 +124,7 @@ export function OfferMark({
       importantForAccessibility="no-hide-descendants">
       <Text style={[type.bodyStrong, tabularNums, { color }]}>{percent}</Text>
       <OfferGlyph size={glyph} tone={tone} />
-      <Text style={[type.overline, { color }]}>OFF</Text>
+      <Text style={[type.overline, { color }]}>{t("OFF")}</Text>
     </View>
   );
 }

@@ -18,6 +18,7 @@ import { AppStatusBar } from '@/components/app-status-bar';
 import { BrandMark } from '@/components/marks';
 import { Button } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { images } from '@/media';
 import { useStore } from '@/store';
 import type { ImageSource } from 'expo-image';
@@ -55,6 +56,8 @@ const slides: Slide[] = [
 ];
 
 export default function OnboardingScreen() {
+  const t = useT();
+
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -117,18 +120,20 @@ export default function OnboardingScreen() {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
         <View style={styles.footerRow}>
-          <View style={styles.dots} accessibilityLabel={`Step ${index + 1} of ${slides.length}`}>
+          <View
+            style={styles.dots}
+            accessibilityLabel={t('Step {n} of {total}', { n: index + 1, total: slides.length })}>
             {slides.map((slide, dotIndex) => (
               <Dot key={slide.key} active={dotIndex === index} />
             ))}
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Skip introduction"
+            accessibilityLabel={t("Skip introduction")}
             hitSlop={12}
             onPress={finish}
             style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
-            <Text style={[type.label, { color: colors.textMuted }]}>Skip</Text>
+            <Text style={[type.label, { color: colors.textMuted }]}>{t("Skip")}</Text>
           </Pressable>
         </View>
         <Button

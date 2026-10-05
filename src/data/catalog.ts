@@ -1116,6 +1116,8 @@ export const emptyFilters: BrowseFilters = {
   sort: 'recommended',
 };
 
+export const levelOptions = ['Beginner', 'Intermediate', 'Advanced'] as const;
+
 export const sortOptions: { id: SortKey; label: string }[] = [
   { id: 'recommended', label: 'Recommended' },
   { id: 'rating', label: 'Top rated' },

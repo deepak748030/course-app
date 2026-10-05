@@ -8,6 +8,7 @@
  * - Prices, ratings and counters use tabular figures so columns never wobble.
  * - Every visible metric has a reason to be on the card; nothing is decorative.
  */
+import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -42,6 +43,8 @@ function openCourse(router: ReturnType<typeof useRouter>, id: string) {
 
 /** Rail card: fixed width, 4:3 artwork, title, level, rating + price row. */
 export function CourseCard({ course, style }: { course: Course; style?: StyleProp<ViewStyle> }) {
+  const t = useT();
+
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
@@ -63,7 +66,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
           <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
           {offer ? <OfferBadge percent={offer} style={styles.cardOffer} /> : null}
           <View style={styles.cardImageBadge}>
-            <Badge label={course.level} tone="neutral" />
+            <Badge label={t(course.level)} tone="neutral" />
           </View>
         </View>
 
@@ -72,7 +75,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
             {course.title}
           </Text>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
-            {course.level} · {course.lessonCount} lessons
+            {t(course.level)} · {t('{n} lessons', { n: course.lessonCount })}
           </Text>
 
           <View style={styles.cardMeta}>
@@ -110,6 +113,8 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
 
 /** List row used on Explore / Saved: 96px artwork, details, price. Dividers come from DataList. */
 export function CourseRow({ course }: { course: Course }) {
+  const t = useT();
+
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
@@ -134,7 +139,7 @@ export function CourseRow({ course }: { course: Course }) {
           {course.promise}
         </Text>
         <View style={styles.rowMeta}>
-          <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+          <MetaItem icon={ChartNoAxesColumnIncreasing} label={t(course.level)} />
           <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
         </View>
         <View style={styles.rowPriceLine}>
@@ -237,6 +242,8 @@ export function LessonRow({
   index?: number;
   onPress: () => void;
 }) {
+  const t = useT();
+
   const locked = state === 'locked';
   const Icon = locked ? Lock : state === 'completed' ? CircleCheck : Play;
   const iconColor = locked
@@ -268,9 +275,9 @@ export function LessonRow({
         </Text>
         <View style={styles.lessonMeta}>
           <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lesson.minutes} min</Text>
-          {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
-          {state === 'completed' ? <Badge label="Completed" tone="success" /> : null}
-          {state === 'current' ? <Badge label="Next up" tone="primary" /> : null}
+          {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" /> : null}
+          {state === 'completed' ? <Badge label={t("Completed")} tone="success" /> : null}
+          {state === 'current' ? <Badge label={t("Next up")} tone="primary" /> : null}
         </View>
       </View>
       <Icon size={16} color={iconColor} strokeWidth={1.75} />
@@ -317,16 +324,20 @@ export function PriceSummary({
   couponPercent?: number;
   couponCode?: string;
 }) {
+  const t = useT();
+
   const discountFromList = course.listPriceInr ? course.listPriceInr - course.priceInr : 0;
   const couponValue = Math.round((course.priceInr * couponPercent) / 100);
   const total = course.priceInr - couponValue;
 
   return (
     <View style={styles.summary}>
-      <SummaryRow label="Course price" value={formatInr(course.listPriceInr ?? course.priceInr)} />
+      <SummaryRow label={t("Course price")} value={formatInr(course.listPriceInr ?? course.priceInr)} />
       {discountFromList > 0 ? (
         <SummaryRow
-          label={`Course discount (${Math.round((discountFromList / (course.listPriceInr ?? course.priceInr)) * 100)}% off)`}
+          label={t('Course discount ({n}% OFF)', {
+            n: Math.round((discountFromList / (course.listPriceInr ?? course.priceInr)) * 100),
+          })}
           value={`− ${formatInr(discountFromList)}`}
           tone="success"
         />
@@ -335,10 +346,8 @@ export function PriceSummary({
         <SummaryRow label={`Coupon ${couponCode ?? ''}`.trim()} value={`− ${formatInr(couponValue)}`} tone="success" />
       ) : null}
       <View style={styles.summaryDivider} />
-      <SummaryRow label="Total payable" value={formatInr(total)} strong accent />
-      <Text style={[type.label, { color: colors.textMuted }]}>
-        Inclusive of taxes. Demo checkout — no payment is processed.
-      </Text>
+      <SummaryRow label={t("Total payable")} value={formatInr(total)} strong accent />
+      <Text style={[type.label, { color: colors.textMuted }]}>{t("Inclusive of taxes. Demo checkout \u2014 no payment is processed.")}</Text>
     </View>
   );
 }

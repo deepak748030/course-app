@@ -5,8 +5,11 @@ import { Share, StyleSheet, Text, View } from 'react-native';
 import { Accordion, AppBar, Badge, Button, DataList, ListRow, Screen, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { faqs } from '@/data/content';
+import { useT } from '@/i18n';
 
 export default function HelpScreen() {
+  const t = useT();
+
   const router = useRouter();
 
   const shareQuestion = async () => {
@@ -18,16 +21,14 @@ export default function HelpScreen() {
   };
 
   return (
-    <Screen header={<AppBar title="Help and support" />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
+    <Screen header={<AppBar title={t("Help and support")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       <View style={styles.intro}>
-        <Text style={[type.title, { color: colors.text }]}>How can we help?</Text>
-        <Text style={[type.body, { color: colors.textMuted }]}>
-          Answers to the questions this prototype raises most often.
-        </Text>
+        <Text style={[type.title, { color: colors.text }]}>{t('How can we help?')}</Text>
+        <Text style={[type.body, { color: colors.textMuted }]}>{t("Answers to the questions this prototype raises most often.")}</Text>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Common questions" />
+        <SectionHeader title={t("Common questions")} />
         <View style={styles.card}>
           {faqs.map((faq, index) => (
             <Accordion key={faq.id} title={faq.question} defaultOpen={index === 0}>
@@ -40,18 +41,18 @@ export default function HelpScreen() {
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="Things you can do right now" />
+        <SectionHeader title={t("Things you can do right now")} />
         <DataList>
           <ListRow
             icon={RefreshCcw}
-            label="Reset demo data"
-            subtitle="Start the learning flow from a clean slate"
+            label={t("Reset demo data")}
+            subtitle={t("Start the learning flow from a clean slate")}
             onPress={() => router.push('/settings')}
           />
           <ListRow
             icon={BookOpen}
-            label="Browse the catalog"
-            subtitle="Sample courses across eight subject areas"
+            label={t("Browse the catalog")}
+            subtitle={t("Sample courses across eight subject areas")}
             onPress={() => router.push('/explore')}
           />
         </DataList>
@@ -59,9 +60,9 @@ export default function HelpScreen() {
 
       <View style={styles.section}>
         <View style={styles.sectionHead}>
-          <SectionHeader title="Still stuck?" />
+          <SectionHeader title={t("Still stuck?")} />
           <View style={styles.badgePad}>
-            <Badge label="No inbox connected" tone="neutral" />
+            <Badge label={t("No inbox connected")} tone="neutral" />
           </View>
         </View>
         <View style={styles.supportCard}>
@@ -72,12 +73,12 @@ export default function HelpScreen() {
               share button to pass feedback to your team, along with the screen you were on.
             </Text>
           </View>
-          <Button label="Share feedback" icon={Share2} variant="secondary" onPress={shareQuestion} />
+          <Button label={t("Share feedback")} icon={Share2} variant="secondary" onPress={shareQuestion} />
         </View>
       </View>
 
       <View style={styles.section}>
-        <SectionHeader title="About this build" />
+        <SectionHeader title={t("About this build")} />
         <View style={styles.supportCard}>
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
@@ -87,9 +88,7 @@ export default function HelpScreen() {
               working control.
             </Text>
           </View>
-          <Text style={[type.label, { color: colors.textSubtle }]}>
-            Offline downloads, captions, casting and certificates are not part of this build.
-          </Text>
+          <Text style={[type.label, { color: colors.textSubtle }]}>{t("Offline downloads, captions, casting and certificates are not part of this build.")}</Text>
         </View>
       </View>
     </Screen>

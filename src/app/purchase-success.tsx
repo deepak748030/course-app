@@ -8,10 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText, Badge, Button, DataList, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, firstPlayableLesson } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import { formatInr } from '@/lib/format';
 
 export default function PurchaseSuccessScreen() {
+  const t = useT();
+
   const { courseId } = useLocalSearchParams<{ courseId: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,13 +41,11 @@ export default function PurchaseSuccessScreen() {
     return (
       <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.xl, paddingTop: spacing.xxl, gap: layout.gap }}>
         <View style={styles.markWrap}>
-          <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>Course not found</Text>
-          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
-            This confirmation link is out of date, so the purchase cannot be shown.
-          </Text>
+          <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>{t("Course not found")}</Text>
+          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>{t("This confirmation link is out of date, so the purchase cannot be shown.")}</Text>
         </View>
         <View style={styles.pad}>
-          <Button label="Back to My learning" onPress={() => router.replace('/learning')} />
+          <Button label={t("Back to My learning")} onPress={() => router.replace('/learning')} />
         </View>
       </Screen>
     );
@@ -72,36 +73,34 @@ export default function PurchaseSuccessScreen() {
 
       <DataList>
         <View style={styles.summaryRow}>
-          <Text style={[type.label, { color: colors.textMuted }]}>Course</Text>
+          <Text style={[type.label, { color: colors.textMuted }]}>{t("Course")}</Text>
           <Text style={[type.bodyStrong, styles.right]} numberOfLines={2}>
             {course.title}
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[type.label, { color: colors.textMuted }]}>Paid (demo)</Text>
+          <Text style={[type.label, { color: colors.textMuted }]}>{t('Paid (demo)')}</Text>
           <AppText variant="bodyStrong" style={[tabularNums, styles.right]}>
             {enrollment ? formatInr(enrollment.priceInr) : '—'}
           </AppText>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[type.label, { color: colors.textMuted }]}>Reference</Text>
+          <Text style={[type.label, { color: colors.textMuted }]}>{t("Reference")}</Text>
           <Text style={[type.label, styles.right, { color: colors.textMuted }]}>local demo enrolment</Text>
         </View>
       </DataList>
 
       <View style={styles.pad}>
-        <Badge label="Demo purchase — no payment was processed" tone="gold" />
+        <Badge label={t("Demo purchase \u2014 no payment was processed")} tone="gold" />
       </View>
 
       {!isEnrolled(course.id) ? (
-        <Text style={[type.label, styles.pad, { color: colors.error }]}>
-          This enrolment is not on your account. Return to the course page to buy it again.
-        </Text>
+        <Text style={[type.label, styles.pad, { color: colors.error }]}>{t("This enrolment is not on your account. Return to the course page to buy it again.")}</Text>
       ) : null}
 
       <View style={[styles.actions, { paddingBottom: 0 }]}>
         <Button
-          label="Start the first lesson"
+          label={t("Start the first lesson")}
           icon={Play}
           onPress={() =>
             router.replace({
@@ -110,9 +109,9 @@ export default function PurchaseSuccessScreen() {
             })
           }
         />
-        <Button label="Go to My learning" variant="secondary" onPress={() => router.replace('/learning')} />
+        <Button label={t("Go to My learning")} variant="secondary" onPress={() => router.replace('/learning')} />
         <Button
-          label="Back to course page"
+          label={t("Back to course page")}
           variant="ghost"
           onPress={() => router.replace({ pathname: '/course/[id]', params: { id: course.id } })}
         />

@@ -7,9 +7,12 @@ import { StyleSheet, Text, View } from 'react-native';
 import { ConfirmSheet } from '@/components/bottom-sheet';
 import { AppBar, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
+import { useT } from '@/i18n';
 import { useStore } from '@/store';
 
 export default function SettingsScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { state, setPreference, resetDemoData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
@@ -17,48 +20,46 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.root}>
-      <Screen header={<AppBar title="Settings" />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
+      <Screen header={<AppBar title={t("Settings")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
         <View style={styles.section}>
-          <SectionHeader title="Notifications" subtitle="Stored on this device" />
+          <SectionHeader title={t("Notifications")} subtitle={t("Stored on this device")} />
           <DataList>
             <Toggle
-              label="Course updates"
-              help="New lessons added to courses you own"
+              label={t("Course updates")}
+              help={t("New lessons added to courses you own")}
               value={state.preferences.courseUpdates}
               onChange={(value) => setPreference('courseUpdates', value)}
             />
             <Toggle
-              label="Learning reminders"
-              help="A nudge when you have not watched for a few days"
+              label={t("Learning reminders")}
+              help={t("A nudge when you have not watched for a few days")}
               value={state.preferences.learningReminders}
               onChange={(value) => setPreference('learningReminders', value)}
             />
             <Toggle
-              label="Product news"
-              help="New courses and features"
+              label={t("Product news")}
+              help={t("New courses and features")}
               value={state.preferences.productNews}
               onChange={(value) => setPreference('productNews', value)}
             />
           </DataList>
-          <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
-            Push delivery is not wired up in this prototype, so these switches only control what the app would send.
-          </Text>
+          <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>{t("Push delivery is not wired up in this prototype, so these switches only control what the app would send.")}</Text>
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Data on this device" />
+          <SectionHeader title={t("Data on this device")} />
           <DataList>
             <ListRow
               icon={RefreshCcw}
-              label="Reset demo data"
-              subtitle="Clears purchases, progress, notes and saved items. Keeps your session."
+              label={t("Reset demo data")}
+              subtitle={t("Clears purchases, progress, notes and saved items. Keeps your session.")}
               onPress={() => setResetOpen(true)}
             />
             <ListRow
               icon={LogOut}
-              label="Log out"
+              label={t("Log out")}
               tone="danger"
-              subtitle="Also removes the learning data stored for this session"
+              subtitle={t("Also removes the learning data stored for this session")}
               onPress={() => setLogoutOpen(true)}
             />
           </DataList>
@@ -68,17 +69,15 @@ export default function SettingsScreen() {
           <Text style={[type.label, { color: colors.textSubtle }]}>
             YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
           </Text>
-          <Text style={[type.label, { color: colors.textSubtle }]}>
-            Prototype build: sample catalog, demo authentication, demo payments.
-          </Text>
+          <Text style={[type.label, { color: colors.textSubtle }]}>{t("Prototype build: sample catalog, demo authentication, demo payments.")}</Text>
         </View>
       </Screen>
 
       <ConfirmSheet
         visible={resetOpen}
-        title="Reset demo data?"
-        body="Purchases, lesson progress, notes and saved items on this device are cleared. You stay signed in."
-        confirmLabel="Reset data"
+        title={t("Reset demo data?")}
+        body={t("Purchases, lesson progress, notes and saved items on this device are cleared. You stay signed in.")}
+        confirmLabel={t("Reset data")}
         destructive
         onConfirm={() => {
           setResetOpen(false);
@@ -89,9 +88,9 @@ export default function SettingsScreen() {
 
       <ConfirmSheet
         visible={logoutOpen}
-        title="Log out?"
-        body="You will need to verify your mobile number again to sign back in. Learning data for this session is removed."
-        confirmLabel="Log out"
+        title={t("Log out?")}
+        body={t("You will need to verify your mobile number again to sign back in. Learning data for this session is removed.")}
+        confirmLabel={t("Log out")}
         destructive
         onConfirm={async () => {
           setLogoutOpen(false);

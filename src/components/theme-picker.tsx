@@ -7,6 +7,7 @@
  * Accessibility: the pair is a radio group, each option is a radio with a checked state, a label
  * and the description as its hint; both options clear the 44pt touch target by a wide margin.
  */
+import { useT } from '@/i18n';
 
 import { Check } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -32,8 +33,10 @@ export function ThemePicker({
   value: ThemeId;
   onChange: (id: ThemeId) => void;
 }) {
+  const t = useT();
+
   return (
-    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel="App theme">
+    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={t("App theme")}>
       {THEMES.map((theme) => (
         <ThemeOption
           key={theme.id}

@@ -32,6 +32,7 @@ import {
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, discountPercent, firstPlayableLesson } from '@/data/catalog';
 import { demoCoupons, purchaseTerms } from '@/data/content';
+import { useT } from '@/i18n';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
 import { useStore } from '@/store';
 import { formatDuration, formatInr } from '@/lib/format';
@@ -40,6 +41,8 @@ import { feedback } from '@/lib/util';
 type Outcome = { kind: 'failed'; message: string } | { kind: 'cancelled' } | null;
 
 export default function CheckoutScreen() {
+  const t = useT();
+
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -58,13 +61,11 @@ export default function CheckoutScreen() {
 
   if (!course) {
     return (
-      <Screen header={<AppBar title="Checkout" onBack={() => router.replace('/explore')} />}>
+      <Screen header={<AppBar title={t("Checkout")} onBack={() => router.replace('/explore')} />}>
         <View style={styles.missing}>
-          <Text style={[type.subheading, { color: colors.text }]}>Course unavailable</Text>
-          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
-            We could not load this course. Start again from the catalog.
-          </Text>
-          <Button label="Browse courses" onPress={() => router.replace('/explore')} fullWidth={false} />
+          <Text style={[type.subheading, { color: colors.text }]}>{t("Course unavailable")}</Text>
+          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>{t("We could not load this course. Start again from the catalog.")}</Text>
+          <Button label={t("Browse courses")} onPress={() => router.replace('/explore')} fullWidth={false} />
         </View>
       </Screen>
     );
@@ -116,14 +117,14 @@ export default function CheckoutScreen() {
     }
 
     feedback.error();
-    if (result.status === 'failed') setOutcome({ kind: 'failed', message: result.reason });
+    if (result.status === 'failed') setOutcome({ kind: 'failed', message: t(result.reason) });
     else setOutcome({ kind: 'cancelled' });
   };
 
   return (
     <View style={styles.root}>
       <Screen
-        header={<AppBar title="Checkout" onBack={back} />}
+        header={<AppBar title={t("Checkout")} onBack={back} />}
         contentStyle={{ paddingBottom: insets.bottom + 150, gap: layout.sectionGap }}>
         {/* What is being bought and what it costs are one decision, so they are one card: the course
             on top, the order lines under a hairline, the total last. */}
@@ -150,19 +151,19 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Coupon" subtitle="Demo codes only — nothing is charged" />
+          <SectionHeader title={t("Coupon")} subtitle={t("Demo codes only \u2014 nothing is charged")} />
           {coupon ? (
             <View style={styles.couponRow}>
               <Tag size={16} color={colors.success} strokeWidth={2} />
               <Text style={[type.labelStrong, { color: colors.success, flex: 1 }]}>
-                {coupon.code} applied · {coupon.percentOff}% off
+                {t('{code} applied · {n}% OFF', { code: coupon.code, n: coupon.percentOff })}
               </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Remove coupon ${coupon.code}`}
                 onPress={() => setCoupon(null)}
                 hitSlop={8}>
-                <Text style={[type.labelStrong, { color: colors.textMuted }]}>Remove</Text>
+                <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("Remove")}</Text>
               </Pressable>
             </View>
           ) : (
@@ -173,8 +174,8 @@ export default function CheckoutScreen() {
                   setCouponInput(text);
                   if (couponError) setCouponError(null);
                 }}
-                placeholder="Enter a demo code"
-                accessibilityLabel="Coupon code"
+                placeholder={t("Enter a demo code")}
+                accessibilityLabel={t("Coupon code")}
                 autoCapitalize="characters"
                 autoCorrect={false}
                 editable={!processing}
@@ -184,7 +185,7 @@ export default function CheckoutScreen() {
                 rightSlot={
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Apply coupon"
+                    accessibilityLabel={t("Apply coupon")}
                     onPress={applyCoupon}
                     hitSlop={8}
                     disabled={processing || couponInput.trim().length === 0}>
@@ -195,9 +196,7 @@ export default function CheckoutScreen() {
                           color:
                             processing || couponInput.trim().length === 0 ? colors.textSubtle : colors.accentText,
                         },
-                      ]}>
-                      Apply
-                    </Text>
+                      ]}>{t("Apply")}</Text>
                   </Pressable>
                 }
               />
@@ -206,7 +205,7 @@ export default function CheckoutScreen() {
                 {demoCoupons.map((entry) => (
                   <Chip
                     key={entry.code}
-                    label={`${entry.code} · ${entry.percentOff}% off`}
+                    label={t('{code} · {n}% OFF', { code: entry.code, n: entry.percentOff })}
                     icon={Ticket}
                     disabled={processing}
                     onPress={() => applyCode(entry.code, entry.percentOff)}
@@ -218,12 +217,12 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="What you get" />
+          <SectionHeader title={t("What you get")} />
           <View style={styles.terms}>
             {purchaseTerms.map((term) => (
               <View key={term} style={styles.termRow}>
                 <AnimatedIcon icon={CircleCheck} size={16} color={colors.gold} motion="pulse" />
-                <Text style={[type.body, { color: colors.text, flex: 1 }]}>{term}</Text>
+                <Text style={[type.body, { color: colors.text, flex: 1 }]}>{t(term)}</Text>
               </View>
             ))}
           </View>
@@ -232,11 +231,11 @@ export default function CheckoutScreen() {
         <View style={styles.section}>
           <View style={styles.headRow}>
             <SectionHeader
-              title="Demo payment"
-              subtitle="Pick the outcome the demo should reproduce"
+              title={t("Demo payment")}
+              subtitle={t("Pick the outcome the demo should reproduce")}
               style={styles.flex}
             />
-            <Badge label="No real payment" tone="gold" />
+            <Badge label={t("No real payment")} tone="gold" />
           </View>
           <View style={styles.card}>
             {demoScenarios.map((option, index) => {
@@ -247,7 +246,7 @@ export default function CheckoutScreen() {
                   <Pressable
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
-                    accessibilityLabel={`${option.label}. ${option.help}`}
+                    accessibilityLabel={t('{label}. {help}', { label: t(option.label), help: t(option.help) })}
                     disabled={processing}
                     onPress={() => {
                       feedback.select();
@@ -256,8 +255,8 @@ export default function CheckoutScreen() {
                     }}
                     style={({ pressed }) => [styles.scenarioRow, pressed && { opacity: 0.7 }]}>
                     <View style={styles.flex}>
-                      <Text style={[type.body, { color: colors.text }]}>{option.label}</Text>
-                      <Text style={[type.label, { color: colors.textMuted }]}>{option.help}</Text>
+                      <Text style={[type.body, { color: colors.text }]}>{t(option.label)}</Text>
+                      <Text style={[type.label, { color: colors.textMuted }]}>{t(option.help)}</Text>
                     </View>
                     <View style={[styles.radio, selected && styles.radioSelected]}>
                       {selected ? <View style={styles.radioDot} /> : null}
@@ -295,7 +294,7 @@ export default function CheckoutScreen() {
                 : 'You closed the demo payment before it finished. Nothing was charged and the course stays locked.'}
             </Text>
             <Button
-              label="Try the demo payment again"
+              label={t("Try the demo payment again")}
               variant="secondary"
               fullWidth={false}
               onPress={pay}
@@ -308,7 +307,7 @@ export default function CheckoutScreen() {
           <View style={styles.notice}>
             <View style={styles.noticeHead}>
               <CircleCheck size={18} color={colors.success} strokeWidth={2} />
-              <Text style={[type.bodyStrong, { color: colors.text }]}>Already purchased</Text>
+              <Text style={[type.bodyStrong, { color: colors.text }]}>{t("Already purchased")}</Text>
             </View>
             <Text style={[type.body, { color: colors.textMuted }]}>
               This course is already unlocked on your account. Buying again would only create a duplicate demo
@@ -327,13 +326,13 @@ export default function CheckoutScreen() {
         {enrolled ? (
           <>
             <View style={styles.flex}>
-              <Text style={[type.label, { color: colors.textMuted }]}>You own this course</Text>
+              <Text style={[type.label, { color: colors.textMuted }]}>{t("You own this course")}</Text>
               <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
                 {firstLesson.title}
               </Text>
             </View>
             <Button
-              label="Start learning"
+              label={t("Start learning")}
               icon={Play}
               fullWidth={false}
               onPress={() =>
@@ -362,11 +361,11 @@ export default function CheckoutScreen() {
                 {coupon ? <Badge label={coupon.code} tone="success" /> : null}
               </View>
               <Text style={[type.label, { color: colors.textMuted }]}>
-                {coupon ? `Coupon applied · total` : 'Total payable · one-time'}
+                {coupon ? t('Coupon applied · total') : t('Total payable · one-time')}
               </Text>
             </View>
             <Button
-              label={processing ? 'Processing' : `Pay ${formatInr(payable)}`}
+              label={processing ? t('Processing…') : t('Pay {amount}', { amount: formatInr(payable) })}
               onPress={pay}
               loading={processing}
               fullWidth={false}

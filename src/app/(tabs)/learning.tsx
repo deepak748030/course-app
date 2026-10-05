@@ -18,12 +18,15 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
+import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
 
 type Segment = 'progress' | 'completed';
 
 export default function MyLearningScreen() {
+  const t = useT();
+
   const router = useRouter();
   const { state, courseProgressRatio, completedCount, resumeLesson } = useStore();
   const [segment, setSegment] = useState<Segment>('progress');
@@ -55,12 +58,12 @@ export default function MyLearningScreen() {
         /* The tab says where you are; the header says how it is going. */
         <TabHeader
           bordered
-          overline="Your progress"
-          title="Keep learning"
+          overline={t("Your progress")}
+          title={t("Keep learning")}
           actions={
             <IconButton
               icon={Bookmark}
-              accessibilityLabel="Saved items"
+              accessibilityLabel={t("Saved items")}
               onPress={() => router.push('/saved')}
             />
           }
@@ -69,11 +72,11 @@ export default function MyLearningScreen() {
 
       <View style={styles.pad}>
         <View style={styles.statsCard}>
-          <Stat icon={BookOpen} label="Courses" value={String(enrolled.length)} />
+          <Stat icon={BookOpen} label={t("Courses")} value={String(enrolled.length)} />
           <View style={styles.statDivider} />
-          <Stat icon={CircleCheck} label="Lessons done" value={String(stats.lessons)} />
+          <Stat icon={CircleCheck} label={t("Lessons done")} value={String(stats.lessons)} />
           <View style={styles.statDivider} />
-          <Stat icon={Clock} label="Time learned" value={formatDuration(stats.minutes)} />
+          <Stat icon={Clock} label={t("Time learned")} value={formatDuration(stats.minutes)} />
         </View>
       </View>
 
@@ -90,17 +93,17 @@ export default function MyLearningScreen() {
         segment === 'progress' ? (
           <EmptyState
             icon={BookOpen}
-            title="Nothing in progress yet"
-            body="Enrol in a course and it appears here with your progress, the next lesson and your notes."
-            actionLabel="Browse courses"
+            title={t("Nothing in progress yet")}
+            body={t("Enrol in a course and it appears here with your progress, the next lesson and your notes.")}
+            actionLabel={t("Browse courses")}
             onAction={() => router.push('/explore')}
           />
         ) : (
           <EmptyState
             icon={CircleCheck}
-            title="No completed courses yet"
-            body="Finish every lesson in a course and it moves here so you can revisit it anytime."
-            actionLabel="Continue learning"
+            title={t("No completed courses yet")}
+            body={t("Finish every lesson in a course and it moves here so you can revisit it anytime.")}
+            actionLabel={t("Continue learning")}
             onAction={() => setSegment('progress')}
           />
         )
@@ -138,7 +141,7 @@ export default function MyLearningScreen() {
                   {course.title}
                 </Text>
                 <View style={styles.completedMeta}>
-                  <Badge label="All lessons done" tone="success" icon={CircleCheck} />
+                  <Badge label={t("All lessons done")} tone="success" icon={CircleCheck} />
                   <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
                     {completedCount(course)}/{course.lessonCount} · {formatDuration(course.hours * 60)}
                   </Text>
@@ -155,7 +158,7 @@ export default function MyLearningScreen() {
 
       <View style={styles.pad}>
         <Button
-          label="Find more courses"
+          label={t("Find more courses")}
           variant="secondary"
           icon={Search}
           onPress={() => router.push('/explore')}
