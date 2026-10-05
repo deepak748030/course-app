@@ -98,8 +98,7 @@ export function TabBar({ state, descriptors, navigation }: TabBarProps) {
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       {itemWidth > 0 ? (
         <Animated.View
-          pointerEvents="none"
-          style={[styles.pill, { width: itemWidth - PILL_INSET * 2 }, pillStyle]}
+          style={[styles.pill, { width: itemWidth - PILL_INSET * 2 }, styles.noTouch, pillStyle]}
         />
       ) : null}
 
@@ -185,6 +184,7 @@ function TabItem({
 }
 
 const styles = StyleSheet.create({
+  noTouch: { pointerEvents: 'none' },
   bar: {
     flexDirection: 'row',
     alignItems: 'flex-start',

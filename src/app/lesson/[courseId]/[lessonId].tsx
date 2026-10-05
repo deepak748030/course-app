@@ -248,7 +248,7 @@ export default function LessonPlayerScreen() {
         />
 
         {status === 'loading' ? (
-          <View style={styles.centerOverlay} pointerEvents="none">
+          <View style={[styles.centerOverlay, styles.noTouch]}>
             <ActivityIndicator color={colors.onPlayer} />
             <Text style={[type.label, { color: colors.onPlayerMuted }]}>Loading lesson…</Text>
           </View>
@@ -273,7 +273,7 @@ export default function LessonPlayerScreen() {
         ) : null}
 
         {controlsVisible && !error ? (
-          <Animated.View entering={FadeIn.duration(160)} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <Animated.View entering={FadeIn.duration(160)} style={[StyleSheet.absoluteFill, styles.boxNone]}>
             <View style={[styles.playerTop, { paddingTop: insets.top + spacing.xs }]}>
               <IconButton
                 icon={ArrowLeft}
@@ -297,7 +297,7 @@ export default function LessonPlayerScreen() {
               />
             </View>
 
-            <View style={styles.playerCenter} pointerEvents="box-none">
+            <View style={[styles.playerCenter, styles.boxNone]}>
               <IconButton
                 icon={SkipBack}
                 variant="onImage"
@@ -673,6 +673,8 @@ function TabButton({
 }
 
 const styles = StyleSheet.create({
+  noTouch: { pointerEvents: 'none' },
+  boxNone: { pointerEvents: 'box-none' },
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   playerWrap: { backgroundColor: colors.player },

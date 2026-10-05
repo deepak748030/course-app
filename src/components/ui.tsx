@@ -860,8 +860,7 @@ export function Scrim({ from = 'transparent', to = colors.scrim, style }: { from
       colors={[from, to]}
       start={{ x: 0.5, y: 0 }}
       end={{ x: 0.5, y: 1 }}
-      style={[StyleSheet.absoluteFill, style]}
-      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, style, styles.noTouch]}
     />
   );
 }
@@ -1097,6 +1096,8 @@ const styles = StyleSheet.create({
   listDivider: { height: 1, backgroundColor: colors.divider },
 
   divider: { height: 1, backgroundColor: colors.divider },
+  noTouch: { pointerEvents: 'none' },
+  boxNone: { pointerEvents: 'box-none' },
 
   appBar: {
     flexDirection: 'row',
