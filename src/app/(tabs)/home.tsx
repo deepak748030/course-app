@@ -1,10 +1,11 @@
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Bell, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
+import { Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { AnimatedBellRing } from '@/components/animated-icons';
 import { CourseCard, CourseRow, ContinueCard } from '@/components/course-cards';
 import {
   AvatarButton,
@@ -83,12 +84,15 @@ export default function HomeScreen() {
                 accessibilityLabel="Search courses"
                 onPress={() => router.push('/explore')}
               />
-              <IconButton
-                icon={Bell}
-                badge={unread}
-                accessibilityLabel="Notifications"
-                onPress={() => router.push('/notifications')}
-              />
+              {/* The bell itself is the notification cue, so it is animated, not just badged. */}
+              <View style={styles.bellWrap}>
+                <IconButton
+                  iconNode={<AnimatedBellRing size={20} color={colors.text} animated={unread > 0} />}
+                  badge={unread}
+                  accessibilityLabel="Notifications"
+                  onPress={() => router.push('/notifications')}
+                />
+              </View>
               <AvatarButton
                 name={session?.profile.name ?? 'Guest'}
                 accessibilityLabel="Your profile"
@@ -108,19 +112,18 @@ export default function HomeScreen() {
             actionLabel="My learning"
             onAction={() => router.push('/learning')}
           />
-          <DataList>
-            <ContinueCard
-              course={activeCourse}
-              lessonTitle={resume.lesson.title}
-              progress={courseProgressRatio(activeCourse)}
-              onPress={() =>
-                router.push({
-                  pathname: '/lesson/[courseId]/[lessonId]',
-                  params: { courseId: activeCourse.id, lessonId: resume.lesson.id },
-                })
-              }
-            />
-          </DataList>
+          <ContinueCard
+            boxed
+            course={activeCourse}
+            lessonTitle={resume.lesson.title}
+            progress={courseProgressRatio(activeCourse)}
+            onPress={() =>
+              router.push({
+                pathname: '/lesson/[courseId]/[lessonId]',
+                params: { courseId: activeCourse.id, lessonId: resume.lesson.id },
+              })
+            }
+          />
         </View>
       ) : null}
 
@@ -222,8 +225,10 @@ const styles = StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
-  /* Tight sides and a slimmer gap, with a little more room under the header before the banner. */
-  headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.md, gap: spacing.xs },
+  /* Tight sides and a tight icon gap, with just enough room under the header for the banner. */
+  headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm, gap: spacing.xs },
+  /* Search and the bell sit almost flush; the avatar keeps its own slot after them. */
+  bellWrap: { marginLeft: -spacing.xs },
   hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },

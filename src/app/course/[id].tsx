@@ -9,18 +9,21 @@ import {
   Clock,
   Globe,
   Play,
+  Sparkles,
   ShoppingBasket,
 } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
+import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
 import { LessonRow, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
-import { Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
+import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById } from '@/data/catalog';
+import { categories, courseById, discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Lesson } from '@/types';
@@ -33,6 +36,11 @@ export default function CourseDetailsScreen() {
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
   const course = useMemo(() => courseById(id), [id]);
+  const offer = course ? discountPercent(course) : null;
+  const categoryLabel = useMemo(
+    () => categories.find((category) => category.id === course?.categoryId)?.label ?? 'Course',
+    [course?.categoryId],
+  );
 
   if (!course) {
     return (
@@ -108,16 +116,20 @@ export default function CourseDetailsScreen() {
             </Pressable>
           </View>
         }>
+        {/* Title block. Reads as a title: an uppercase overline, the largest type on the screen,
+            then one paragraph. The facts sit on their own tone block instead of running into it. */}
         <View style={styles.intro}>
-          <Text style={[type.title, { color: colors.text }]}>{course.title}</Text>
+          <Text style={[type.overline, { color: colors.textSubtle }]}>
+            {categoryLabel} · {course.level}
+          </Text>
+          <Text style={[type.display, { color: colors.text }]}>{course.title}</Text>
           <Text style={[type.body, { color: colors.textMuted }]}>{course.promise}</Text>
 
-          {/* Facts sit on their own tone block so they read as a summary, not more prose. */}
           <View style={styles.facts}>
-            <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
-            <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
-            <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
-            <MetaItem icon={Globe} label={course.language} />
+            <FactItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
+            <FactItem icon={Clock} label={formatDuration(course.hours * 60)} />
+            <FactItem icon={Globe} label={course.language} />
+            <FactItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
           </View>
 
           <View style={styles.ratingRow}>
@@ -142,7 +154,11 @@ export default function CourseDetailsScreen() {
           <View style={styles.bullets}>
             {course.outcomes.map((outcome) => (
               <View key={outcome} style={styles.bulletRow}>
-                <CircleCheck size={16} color={colors.sage} strokeWidth={1.9} />
+                {/* Icon column is one body line tall, so the icon centres on the first line of
+                    the text whether the item wraps or not. */}
+                <View style={styles.bulletIcon}>
+                  <AnimatedCheck size={16} color={colors.gold} strokeWidth={2} />
+                </View>
                 <Text style={[type.body, { color: colors.text, flex: 1 }]}>{outcome}</Text>
               </View>
             ))}
@@ -177,7 +193,9 @@ export default function CourseDetailsScreen() {
           <View style={styles.bullets}>
             {course.equipment.map((item) => (
               <View key={item} style={styles.bulletRow}>
-                <ShoppingBasket size={16} color={colors.textMuted} strokeWidth={1.75} />
+                <View style={styles.bulletIcon}>
+                  <AnimatedIcon icon={ShoppingBasket} size={16} color={colors.textMuted} motion="pulse" />
+                </View>
                 <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>{item}</Text>
               </View>
             ))}
@@ -228,12 +246,24 @@ export default function CourseDetailsScreen() {
         ) : (
           <>
             <View style={styles.flex}>
-              <Text style={[type.title, tabularNums, { color: colors.text }]}>{formatInr(course.priceInr)}</Text>
+              {/* Price line carries the offer too, so the discount is visible where the decision
+                  is made — not only on the artwork. */}
+              <View style={styles.priceRow}>
+                <Text style={[type.title, tabularNums, { color: colors.text }]}>{formatInr(course.priceInr)}</Text>
+                {course.listPriceInr ? (
+                  <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
+                    {formatInr(course.listPriceInr)}
+                  </Text>
+                ) : null}
+                {offer ? <Badge label={`${offer}% off`} tone="primary" icon={Sparkles} /> : null}
+              </View>
               <Text style={[type.label, { color: colors.textMuted }]}>One-time · demo checkout</Text>
             </View>
             <Button
-              label="Buy course"
+              label="Buy now"
               fullWidth={false}
+              sheen
+              iconNode={<AnimatedCart size={18} color={colors.onAccent} />}
               onPress={() => router.push({ pathname: '/checkout/[id]', params: { id: course.id } })}
             />
           </>
@@ -278,6 +308,21 @@ function CourseAppBar() {
   return (
     <View style={[styles.simpleBar, { paddingTop: insets.top + spacing.xs }]}>
       <IconButton icon={ArrowLeft} accessibilityLabel="Go back" onPress={() => router.replace('/explore')} />
+    </View>
+  );
+}
+
+/**
+ * One fact in the summary row: animated yellow icon plus its label, the icon column centred on
+ * the text line — the same treatment as the check marks under "What you'll learn".
+ */
+function FactItem({ icon, label }: { icon: LucideIcon; label: string }) {
+  return (
+    <View style={styles.factItem}>
+      <View style={styles.factIcon}>
+        <AnimatedIcon icon={icon} size={15} color={colors.gold} motion="pulse" />
+      </View>
+      <Text style={[type.label, { color: colors.text }]}>{label}</Text>
     </View>
   );
 }
@@ -364,9 +409,9 @@ const styles = StyleSheet.create({
 
   intro: {
     paddingHorizontal: layout.section,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.xl,
-    gap: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: spacing.sm,
   },
   facts: {
     flexDirection: 'row',
@@ -385,13 +430,18 @@ const styles = StyleSheet.create({
    * boundaries so titles never run into the block above them. Content sits at 16px, the same
    * inset as the curriculum rows, so text lines up in one column down the screen.
    */
-  section: { paddingTop: spacing.xl, paddingBottom: spacing.xl, gap: spacing.md },
+  section: { paddingTop: spacing.md, paddingBottom: spacing.lg, gap: spacing.sm },
   sectionTight: { paddingBottom: spacing.sm },
   headInset: { paddingHorizontal: layout.section },
   rule: { height: 1, backgroundColor: colors.divider },
   sectionNote: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
-  bullets: { gap: spacing.md, paddingHorizontal: layout.section },
+  bullets: { gap: spacing.sm, paddingHorizontal: layout.section },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
+  bulletIcon: { height: 22, justifyContent: 'center' },
+  factItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
+  factIcon: { height: 16, justifyContent: 'center' },
+  priceRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  strike: { textDecorationLine: 'line-through' },
 
   curriculum: { borderTopWidth: 1, borderColor: colors.border },
   curriculumBlock: { borderBottomWidth: 1, borderColor: colors.border },

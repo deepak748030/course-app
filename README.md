@@ -75,7 +75,7 @@ src/
     purchase-success.tsx   confirmation → first lesson
     lesson/[courseId]/[lessonId].tsx   player: Overview · Recipe · Notes
     saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
-  components/              UI kit (ui.tsx), course cards, bottom sheet, brand marks
+  components/              UI kit (ui.tsx), course cards, animated icons, bottom sheet, brand marks
   constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
   data/                    catalog.ts (courses, categories, recipes), content.ts (FAQ, coupons, legal)
   lib/format.ts            pure formatters/validators (runnable outside the app)
@@ -94,9 +94,10 @@ Photography in `assets/images` was **AI-generated for this prototype** using the
 project brief (warm editorial culinary style). Photography is used for illustration only; every course
 cover corresponds to fictional sample content.
 
-Generated so far: three onboarding plates, the home hero and six course covers. Two covers
-(`course-eggless-desserts.jpg`, `course-knife-skills.jpg`) and any other missing photograph fall back to
-`placeholder-panel-4x3.jpg` — a deliberately branded warm panel so nothing ever renders as a broken image. Replace them with real photography using the
+Every course cover is now a real generated photograph, including `course-eggless-desserts.jpg` and
+`course-knife-skills.jpg`. Any photograph that has not been generated yet falls back to
+`placeholder-panel-4x3.jpg` — a designed brand panel (ivory ground, ink bowl-and-play mark, yellow arc),
+not a grey box, so nothing ever renders as a broken image. Replace them with real photography using the
 same file names; no code changes are needed.
 
 Derived media is reproducible and documented in scripts:
@@ -131,6 +132,16 @@ The UI follows the project's design rules document and is generated from one tok
   targets with 48px controls.
 - **Motion is restrained**: press feedback under 100ms, entrances 160–320ms, and every animation checks
   reduced-motion first.
+- **Animated icons** (`src/components/animated-icons.tsx`): the glyphs that carry meaning are animated —
+  the notification bell swings and rests, the offer sparkle pops, the check marks and course facts pulse,
+  the cart hops. Each one is a lucide glyph inside a Reanimated wrapper driven by one looping shared
+  value on the UI thread; there is **no CSS animation and no animation asset**, and every loop freezes
+  into a static icon under reduced motion. `Button` also accepts `sheen` for a slow light sweep across a
+  primary fill (used by Buy now and Pay), held under reduced motion.
+- **Offers are derived, never typed twice**: a course seed may carry `listPriceInr`, and
+  `discountPercent()` computes the percentage from the two prices. The card artwork shows it in a
+  top-left badge with the animated sparkle, and the course sticky bar repeats it next to the struck-out
+  price, so a price change can never disagree with the badge that advertises it.
 
 A UI reference board of 100 course-app screens used for this redesign is kept in `image-search/`.
 
@@ -149,10 +160,11 @@ A UI reference board of 100 course-app screens used for this redesign is kept in
   shows progress with a Saved shortcut, Profile is the identity block (avatar, name, member since) with a
   Settings action. Stacked screens keep the centred 56px `AppBar` with a back button — which now only
   renders when the router can actually go back.
-- **Search**: one pill component on the warm surface tone with a hairline border (`SearchField` for typing,
-  `SearchEntry` for the Home shortcut). Focusing it reveals **recent searches** (last five, stored through
-  the crash-proof storage wrapper) and **"Try searching"** suggestions that are pre-filtered against the
-  catalog, so a suggestion can never return nothing; zero results offer the same chips as a recovery path.
+- **Search**: the Home header carries a search icon (no search bar in the screen body) that opens Explore,
+  where one pill component on the warm surface tone with a hairline border does the typing. Focusing it
+  reveals **recent searches** (last five, stored through the crash-proof storage wrapper) and
+  **"Try searching"** suggestions that are pre-filtered against the catalog, so a suggestion can never
+  return nothing; zero results offer the same chips as a recovery path.
 
 ## What is intentionally not included
 

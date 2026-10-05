@@ -212,6 +212,7 @@ const courseSeeds: CourseSeed[] = [
     level: 'Beginner',
     language: 'English + Hindi',
     priceInr: 1199,
+    listPriceInr: 1799,
     rating: 4.7,
     reviewCount: 2051,
     outcomes: [
@@ -354,6 +355,7 @@ const courseSeeds: CourseSeed[] = [
     level: 'Beginner',
     language: 'English',
     priceInr: 2999,
+    listPriceInr: 3999,
     rating: 4.9,
     reviewCount: 876,
     outcomes: [
@@ -596,6 +598,7 @@ const courseSeeds: CourseSeed[] = [
     level: 'Intermediate',
     language: 'English + Hindi',
     priceInr: 1799,
+    listPriceInr: 2499,
     rating: 4.7,
     reviewCount: 612,
     outcomes: [
@@ -697,6 +700,7 @@ const courseSeeds: CourseSeed[] = [
     level: 'Beginner',
     language: 'English',
     priceInr: 799,
+    listPriceInr: 1099,
     rating: 4.5,
     reviewCount: 938,
     outcomes: [
@@ -1033,6 +1037,15 @@ function makeCourse(seed: CourseSeed): Course {
 }
 
 export const courses: Course[] = courseSeeds.map(makeCourse);
+
+/**
+ * Percent off when the sample data models a real discount, else null. Derived so a price change
+ * can never disagree with the badge that advertises it.
+ */
+export function discountPercent(course: Course): number | null {
+  if (!course.listPriceInr || course.listPriceInr <= course.priceInr) return null;
+  return Math.round(((course.listPriceInr - course.priceInr) / course.listPriceInr) * 100);
+}
 
 export function courseById(id: string | undefined): Course | undefined {
   return courses.find((course) => course.id === id);

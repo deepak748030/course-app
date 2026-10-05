@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AnimatedCart } from '@/components/animated-icons';
 import { PriceSummary, StickyBar } from '@/components/course-cards';
 import { AppBar, AppText, Badge, Button, DataList, ErrorState, FormField, MetaItem, Screen, SectionHeader } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
@@ -268,6 +269,8 @@ export default function CheckoutScreen() {
           loading={processing}
           disabled={enrolled}
           fullWidth={false}
+          sheen
+          iconNode={<AnimatedCart size={18} color={colors.onAccent} />}
         />
       </StickyBar>
     </View>

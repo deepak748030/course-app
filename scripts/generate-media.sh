@@ -5,7 +5,10 @@
 #
 #   assets/videos/*.mp4              short, silent demo clips (slow push-in over a still) used as
 #                                    placeholder trailer/lesson footage until real course video exists.
-#   assets/images/placeholder-*.jpg  warm brand panels for assets that have not been generated yet.
+#   assets/images/placeholder-panel-4x3.jpg  the brand fallback panel for a photograph that does
+#                                    not exist yet. It is a designed panel (ivory ground, ink bowl
+#                                    and play mark, yellow arc) committed to the repo; regenerate it
+#                                    from the same brief when the brand mark changes.
 #
 # Requires: ffmpeg (or `pip install imageio-ffmpeg`) and ImageMagick `convert`.
 set -euo pipefail
@@ -28,24 +31,7 @@ clip() { # clip <still> <out> [seconds]
 clip "$IMG/course-restaurant-gravies.jpg" "$VID/demo-clip-gravies.mp4"
 clip "$IMG/course-everyday-indian.jpg"    "$VID/demo-clip-home-cooking.mp4"
 clip "$IMG/course-baking-basics.jpg"      "$VID/demo-clip-baking.mp4"
-# Knife-skills cover is not generated yet, so the foundations clip pushes in over the countertop lesson still.
-clip "$IMG/onboarding-guided-learning.jpg" "$VID/demo-clip-foundations.mp4"
-
-panel() { # panel <out> <w> <h> <accent>
-  local out="$1" w="$2" h="$3" accent="$4"
-  convert -size "${w}x${h}" gradient:'#F8F2E9-#EBE0D2' \
-    -fill "$accent" -draw "circle $((w / 2)),$((h / 2)) $((w / 2)),$((h / 2 - h / 9))" \
-    -fill '#F8F2E9' -draw "polygon $((w / 2 - w / 26)),$((h / 2 - h / 30)) $((w / 2 - w / 26)),$((h / 2 + h / 30)) $((w / 2 + w / 40)),$((h / 2))" \
-    "$out"
-  echo "wrote $out"
-}
-
-panel "$IMG/placeholder-panel-4x3.jpg" 900 675 '#9F3F2F'
-panel "$IMG/placeholder-portrait.jpg" 700 700 '#65755A'
+# Foundations uses its own cover still.
+clip "$IMG/course-knife-skills.jpg"          "$VID/demo-clip-foundations.mp4"
 
 # Fill any photograph that has not been generated yet with its documented placeholder.
-[ -f "$IMG/course-eggless-desserts.jpg" ] || cp "$IMG/placeholder-panel-4x3.jpg" "$IMG/course-eggless-desserts.jpg"
-[ -f "$IMG/course-knife-skills.jpg" ]     || cp "$IMG/placeholder-panel-4x3.jpg" "$IMG/course-knife-skills.jpg"
-for id in meera arjun rhea vikram nandini; do
-  [ -f "$IMG/instructor-$id.jpg" ] || cp "$IMG/placeholder-portrait.jpg" "$IMG/instructor-$id.jpg"
-done

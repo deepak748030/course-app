@@ -31,11 +31,13 @@ import {
 } from 'react-native';
 import Animated, {
   cancelAnimation,
+  Easing,
   FadeIn,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withRepeat,
+  withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -289,9 +291,11 @@ export function Button({
   onPress,
   variant = 'primary',
   icon: Icon,
+  iconNode,
   disabled = false,
   loading = false,
   fullWidth = true,
+  sheen = false,
   style,
   accessibilityHint,
 }: {
@@ -299,14 +303,41 @@ export function Button({
   onPress: () => void;
   variant?: ButtonVariant;
   icon?: LucideIcon;
+  /** Rendered instead of `icon` — used for animated icons. */
+  iconNode?: ReactNode;
   disabled?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
+  /** A slow light sweep across the fill. Primary variant only; still under reduced motion. */
+  sheen?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityHint?: string;
 }) {
   const press = usePressScale(0.985);
+  const reduced = useReducedMotion();
   const inactive = disabled || loading;
+  const sheenValue = useSharedValue(0);
+
+  useEffect(() => {
+    if (!sheen || inactive || reduced || variant !== 'primary') {
+      sheenValue.value = 0;
+      return;
+    }
+    sheenValue.value = withRepeat(
+      withSequence(
+        withTiming(1, { duration: 900, easing: Easing.inOut(Easing.quad) }),
+        // Hold off-screen between sweeps so the button is not permanently shimmering.
+        withTiming(1, { duration: 2600 }),
+      ),
+      -1,
+      false,
+    );
+  }, [sheen, inactive, reduced, variant, sheenValue]);
+
+  const sheenStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: -90 + sheenValue.value * 300 }],
+    opacity: sheenValue.value > 0 && sheenValue.value < 1 ? 0.5 : 0,
+  }));
 
   const tones = {
     primary: { bg: colors.primary, fg: colors.onAccent, border: 'transparent' },
@@ -337,13 +368,16 @@ export function Button({
             borderWidth: variant === 'secondary' ? 1 : 0,
             // Disabled stays legible: the label explains what is missing elsewhere on screen.
             opacity: inactive ? 0.55 : 1,
+            overflow: 'hidden',
           },
         ]}>
+        {sheen ? <Animated.View style={[styles.buttonSheen, sheenStyle]} /> : null}
         {loading ? (
           <ActivityIndicator color={tones.fg} size="small" />
         ) : (
           <>
             {Icon ? <Icon size={18} color={tones.fg} strokeWidth={1.9} /> : null}
+            {iconNode}
             <Text style={[type.bodyStrong, { color: tones.fg }]} numberOfLines={1}>
               {label}
             </Text>
@@ -356,6 +390,7 @@ export function Button({
 
 export function IconButton({
   icon: Icon,
+  iconNode,
   onPress,
   accessibilityLabel,
   size = layout.touchTarget,
@@ -365,7 +400,9 @@ export function IconButton({
   badge,
   style,
 }: {
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  /** Rendered instead of `icon` — used for animated icons. */
+  iconNode?: ReactNode;
   onPress: () => void;
   accessibilityLabel: string;
   size?: number;
@@ -400,7 +437,7 @@ export function IconButton({
           { width: size, height: size, backgroundColor: bg, opacity: pressed ? 0.7 : 1 },
           style,
         ]}>
-        <Icon size={iconSize} color={color} strokeWidth={1.75} />
+        {Icon ? <Icon size={iconSize} color={color} strokeWidth={1.75} /> : iconNode}
         {badge && badge > 0 ? (
           <View style={styles.badgeDot}>
             <Text style={styles.badgeDotText}>{badge > 99 ? '99+' : badge}</Text>
@@ -1160,6 +1197,13 @@ const styles = StyleSheet.create({
   },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 },
 
+  buttonSheen: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 64,
+    backgroundColor: 'rgba(255, 255, 255, 0.42)',
+  },
   button: {
     minHeight: layout.buttonHeight,
     borderRadius: radius.sm,

@@ -24,8 +24,10 @@ import {
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
+import { AnimatedSparkle } from '@/components/animated-icons';
 import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
@@ -38,11 +40,26 @@ function openCourse(router: ReturnType<typeof useRouter>, id: string) {
   router.push({ pathname: '/course/[id]', params: { id } });
 }
 
+/**
+ * Offer badge for card artwork: brand yellow, top-left of the image, with an animated sparkle so
+ * it reads as live information rather than a printed sticker. The percentage is derived from the
+ * listing price, never written by hand.
+ */
+export function OfferBadge({ percent }: { percent: number }) {
+  return (
+    <View style={styles.offerBadge} accessibilityRole="text" accessibilityLabel={`${percent} percent off`}>
+      <AnimatedSparkle size={13} color={colors.onAccent} strokeWidth={2.1} />
+      <Text style={[type.labelStrong, { color: colors.onAccent }]}>{percent}% off</Text>
+    </View>
+  );
+}
+
 /** Rail card: fixed width, 4:3 artwork, title, level, rating + price row. */
 export function CourseCard({ course, style }: { course: Course; style?: StyleProp<ViewStyle> }) {
   const router = useRouter();
   const { isCourseSaved, toggleSavedCourse } = useStore();
   const saved = isCourseSaved(course.id);
+  const offer = discountPercent(course);
   const press = usePressScale(0.985);
 
   return (
@@ -58,6 +75,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
         onPressOut={press.onPressOut}>
         <View style={styles.cardImageWrap}>
           <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
+          {offer ? <OfferBadge percent={offer} /> : null}
           <View style={styles.cardImageBadge}>
             <Badge label={course.level} tone="neutral" />
           </View>
@@ -167,11 +185,14 @@ export function ContinueCard({
   lessonTitle,
   progress,
   onPress,
+  boxed = false,
 }: {
   course: Course;
   lessonTitle: string;
   progress: number;
   onPress: () => void;
+  /** Boxed variant: hairline border all round, used when the card stands alone on a screen. */
+  boxed?: boolean;
 }) {
   const press = usePressScale(0.99);
   return (
@@ -185,7 +206,7 @@ export function ContinueCard({
         onPress={onPress}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
-        style={({ pressed }) => [styles.continueRow, pressed && { opacity: 0.75 }]}>
+        style={({ pressed }) => [styles.continueRow, boxed && styles.continueRowBoxed, pressed && { opacity: 0.75 }]}>
         <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={140} />
         <View style={styles.continueCopy}>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
@@ -403,6 +424,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageWrap: { backgroundColor: colors.surfaceAlt },
+  offerBadge: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.primary,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
   cardImage: { width: '100%', aspectRatio: 4 / 3 },
   cardImageBadge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
   cardBody: { padding: spacing.sm, gap: spacing.xs },
@@ -424,6 +457,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   continueCopy: { flex: 1, minWidth: 0 },
+  continueRowBoxed: {
+    marginHorizontal: layout.screen,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   continueImage: { width: 64, height: 64, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, flexShrink: 0 },
   continueProgress: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs },
   continuePercent: { minWidth: 34, textAlign: 'right' },
