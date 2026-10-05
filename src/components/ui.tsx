@@ -16,7 +16,6 @@ import { Children, type ReactNode, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  Switch,
   ScrollView,
   StyleSheet,
   Text,
@@ -578,20 +577,38 @@ export function Toggle({
   value: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const press = usePressScale(0.97);
+  const reduced = useReducedMotion();
+  const position = useSharedValue(value ? 1 : 0);
+
+  useEffect(() => {
+    position.value = reduced ? (value ? 1 : 0) : withTiming(value ? 1 : 0, { duration: 160 });
+  }, [value, reduced, position]);
+
+  const knobStyle = useAnimatedStyle(() => ({ transform: [{ translateX: position.value * 20 }] }));
+
   return (
     <View style={styles.toggleRow}>
       <View style={styles.flex}>
         <Text style={[type.body, { color: colors.text }]}>{label}</Text>
         {help ? <Text style={[type.label, { color: colors.textMuted }]}>{help}</Text> : null}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        accessibilityHint={help}
-        trackColor={{ false: 'rgba(28,26,23,0.16)', true: colors.sage }}
-        thumbColor={colors.surface}
-      />
+      <Animated.View style={press.style}>
+        <Pressable
+          accessibilityRole="switch"
+          accessibilityLabel={label}
+          accessibilityHint={help}
+          accessibilityState={{ checked: value }}
+          onPress={() => {
+            feedback.select();
+            onChange(!value);
+          }}
+          onPressIn={press.onPressIn}
+          onPressOut={press.onPressOut}
+          style={[styles.switchTrack, value ? styles.switchTrackOn : styles.switchTrackOff]}>
+          <Animated.View style={[styles.switchKnob, knobStyle]} />
+        </Pressable>
+      </Animated.View>
     </View>
   );
 }
@@ -954,7 +971,25 @@ const styles = StyleSheet.create({
   },
   segment: { flex: 1, minHeight: 36, alignItems: 'center', justifyContent: 'center', borderRadius: radius.xs },
   segmentActive: { backgroundColor: colors.primary },
-  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, minHeight: layout.touchTarget },
+  switchTrack: {
+    width: 48,
+    height: 28,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+  },
+  switchTrackOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  switchTrackOff: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+  switchKnob: {
+    width: 22,
+    height: 22,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
 
   progressTrack: { width: '100%', overflow: 'hidden' },
   progressFill: { height: '100%' },
