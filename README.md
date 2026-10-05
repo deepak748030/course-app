@@ -143,6 +143,16 @@ The UI follows the project's design rules document and is generated from one tok
   rendition with its resolution, bitrate and which one is in use, and says plainly that the demo lessons
   ship a single 540p file each: no invented 480p/720p/1080p menu that changes nothing. (The bundled demo
   clips are video-only, so the sound toggle has no audio to reveal until a lesson with a track plays.)
+- **The rating is the one thing beside the title.** On a course page the overline and the title are
+  one unit (2px apart), and the empty column to their right carries the rating: a 36px star that
+  leans left and right every couple of seconds with five fine star motes drifting down past it, the
+  value in the title size next to it and the review count muted underneath. Under reduced motion it is
+  a still star with no motes. The old separate `4.9 (876)` line is gone — the rating is stated once.
+- **Money wears two colours.** The amount you pay uses the theme accent (amber on white+yellow, deep
+  green on white+green) and the price it replaced is struck through in red — `#B42318`, 6.3:1 on
+  white, because the amber this design language uses for decoration cannot clear 4.5:1 at 12px. Both
+  the course page's bar and the checkout bar read the same way, and the checkout bar carries the list
+  price too, so the saving is visible where the Pay button is.
 - **Checkout reads as one order.** The course and its price lines are a single card — artwork, facts,
   then `Course price / Course discount (33% off) / Total payable` under a hairline — instead of a
   summary row followed by a separate boxed price card. The coupon offers the demo codes as tappable
@@ -276,6 +286,11 @@ onboarding completion and app preferences are kept.
   is gone again; a pause brings it back and it stays. The four transport buttons were dumped together:
   two groups of two, `speed · 540p` on the left and `Mute · Fullscreen` on the right, and the quality
   sheet reports "540p · 960 x 540 · in use" with the single-rendition note.
+- The course page's head was dumped at a 390pt viewport: intro padding 12/16 with a 4px gap, the
+  kicker and title 2px apart in their column, the rating block 8px away on the right holding one big
+  star and five motes (one star and no motes with reduced motion on) and reading
+  `Rated 4.9 out of 5 from 876 reviews`, and the sticky bar showing ₹2,999 in the theme accent with
+  ₹3,999 struck in red — amber on the yellow theme, `rgb(20, 83, 45)` on the green one.
 - The checkout screen was walked in both states: the order card with its hairlines and 8pt rows
   (course price, 33% off, total), the coupon field with its two demo-code chips, the gold-check list,
   the three outcome rows with their radios, and the pay bar reading "₹1,199 · 33% off · Total payable ·

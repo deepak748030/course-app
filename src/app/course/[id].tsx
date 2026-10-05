@@ -20,7 +20,8 @@ import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
 import { OfferBadge } from '@/components/offer-tag';
-import { LessonRow, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { RatingStar } from '@/components/rating-star';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courseById, discountPercent } from '@/data/catalog';
@@ -117,17 +118,24 @@ export default function CourseDetailsScreen() {
           </View>
         }>
         {/* Title block. Reads as a title: an uppercase overline, the largest type on the screen,
-            then one paragraph. The facts sit on their own tone block instead of running into it. */}
+            one paragraph, then the facts on their own tone block. The rating is the one thing that
+            belongs beside the title rather than under it, so it takes the empty column on the right
+            and the block below stays three lines tall instead of six. */}
         <View style={styles.intro}>
           {offer ? (
             <View style={styles.offerRow}>
               <OfferBadge percent={offer} />
             </View>
           ) : null}
-          <Text style={[type.overline, { color: colors.textSubtle }]}>
-            {categoryLabel} · {course.level}
-          </Text>
-          <Text style={[type.display, { color: colors.text }]}>{course.title}</Text>
+          <View style={styles.titleRow}>
+            <View style={styles.titleText}>
+              <Text style={[type.overline, { color: colors.textSubtle }]}>
+                {categoryLabel} · {course.level}
+              </Text>
+              <Text style={[type.display, { color: colors.text }]}>{course.title}</Text>
+            </View>
+            <RatingStar rating={course.rating} reviewCount={course.reviewCount} />
+          </View>
           <Text style={[type.body, { color: colors.textMuted }]}>{course.promise}</Text>
 
           <View style={styles.facts}>
@@ -137,10 +145,11 @@ export default function CourseDetailsScreen() {
             <FactItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
           </View>
 
-          <View style={styles.ratingRow}>
-            <RatingInline rating={course.rating} reviewCount={course.reviewCount} />
-            {enrolled ? <Badge label={`${done} of ${course.lessonCount} done`} tone="success" icon={CircleCheck} /> : null}
-          </View>
+          {enrolled ? (
+            <View style={styles.ratingRow}>
+              <Badge label={`${done} of ${course.lessonCount} done`} tone="success" icon={CircleCheck} />
+            </View>
+          ) : null}
 
           {enrolled ? (
             <View style={styles.progressBlock}>
@@ -254,9 +263,14 @@ export default function CourseDetailsScreen() {
               {/* Price line carries the offer too, so the discount is visible where the decision
                   is made — not only on the artwork. */}
               <View style={styles.priceRow}>
-                <Text style={[type.title, tabularNums, { color: colors.text }]}>{formatInr(course.priceInr)}</Text>
+                {/* The payable price wears the theme's accent; the list price it replaced is struck
+                    through in red, because that is the one colour that reads as "not this one" at
+                    12px and still clears 4.5:1 on white. */}
+                <Text style={[type.title, tabularNums, { color: colors.accentText }]}>
+                  {formatInr(course.priceInr)}
+                </Text>
                 {course.listPriceInr ? (
-                  <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
+                  <Text style={[type.label, styles.strike, tabularNums, { color: colors.error }]}>
                     {formatInr(course.listPriceInr)}
                   </Text>
                 ) : null}
@@ -414,9 +428,12 @@ const styles = createStyles(() => StyleSheet.create({
   intro: {
     paddingHorizontal: layout.section,
     paddingTop: spacing.md,
-    paddingBottom: spacing.lg,
-    gap: spacing.sm,
+    paddingBottom: spacing.md,
+    gap: spacing.xs,
   },
+  /** Kicker and title are one unit: 2px between them, and the rating column centred against both. */
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  titleText: { flex: 1, gap: 2 },
   facts: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -425,6 +442,7 @@ const styles = createStyles(() => StyleSheet.create({
     borderRadius: radius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    marginTop: spacing.sm,
   },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   progressBlock: { gap: spacing.xs, marginTop: spacing.xs },

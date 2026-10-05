@@ -347,9 +347,16 @@ export default function CheckoutScreen() {
           <>
             <View style={styles.flex}>
               <View style={styles.payableRow}>
-                <AppText variant="subheading" style={tabularNums}>
+                {/* Same price language as the course page's bar: the amount you pay carries the
+                    theme accent, the price it replaced is struck through in red. */}
+                <AppText variant="subheading" color={colors.accentText} style={tabularNums}>
                   {formatInr(payable)}
                 </AppText>
+                {course.listPriceInr && course.listPriceInr > payable ? (
+                  <Text style={[type.label, styles.strike, tabularNums, { color: colors.error }]}>
+                    {formatInr(course.listPriceInr)}
+                  </Text>
+                ) : null}
                 {offer && !coupon ? <OfferBadge percent={offer} /> : null}
                 {coupon ? <Badge label={coupon.code} tone="success" /> : null}
               </View>
@@ -396,6 +403,7 @@ const styles = createStyles(() => StyleSheet.create({
   headRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingRight: layout.screen },
   payableRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
 
+  strike: { textDecorationLine: 'line-through' },
   couponBlock: { gap: spacing.sm, paddingHorizontal: layout.screen },
   couponChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   couponRow: {
