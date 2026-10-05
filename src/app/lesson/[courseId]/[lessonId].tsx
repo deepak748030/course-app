@@ -88,6 +88,8 @@ export default function LessonPlayerScreen() {
   const [lessonListOpen, setLessonListOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
+  /** True once the lesson has actually played in this visit: the extras wait for that. */
+  const [hasStarted, setHasStarted] = useState(false);
   const [servings, setServings] = useState<number | null>(null);
   const [noteDraft, setNoteDraft] = useState(() => (lesson ? noteFor(lesson.id) : ''));
   const [noteSaved, setNoteSaved] = useState(true);
@@ -103,6 +105,8 @@ export default function LessonPlayerScreen() {
   const videoRef = useRef<VideoView>(null);
   const lastSavedRef = useRef(storedPosition.positionSec);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Bumped by `showControls` so the peek effect restarts the three-second window. */
+  const [showTick, setShowTick] = useState(0);
 
   /**
    * Every player control floats over the picture, so the picture's height is the budget everything
@@ -154,6 +158,8 @@ export default function LessonPlayerScreen() {
     const target = lessonProgress(course.id, lesson.id).positionSec;
     lastSavedRef.current = target;
     setPosition(target);
+    // A lesson the learner has not played yet is back to the short transport.
+    setHasStarted(player.playing);
     if (player.status === 'readyToPlay') player.currentTime = target;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lesson?.id]);
@@ -167,25 +173,38 @@ export default function LessonPlayerScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.id, lesson?.id, unlocked]);
 
-  /**
-   * The controls are a peek, not permanent furniture: they are called up on mount, on a tap on the
-   * picture and after any transport action, and they hide again three seconds later — playing or
-   * paused — so the learner sees the whole frame. Only a deliberate action restarts that window;
-   * the once-a-second time updates deliberately do not, or the timer would keep resetting itself
-   * and the controls would never leave.
-   */
+  /** Call the controls up: on mount, on a tap on the picture, or after any transport action. */
   const showControls = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
     setControlsVisible(true);
-    hideTimer.current = setTimeout(() => setControlsVisible(false), CONTROLS_HIDE_MS);
+    setShowTick((value) => value + 1);
   }, []);
 
+  // Playback is what unlocks the extras, so the flag latches on the first play and stays for the
+  // rest of the visit — pausing afterwards must not take the speed and fullscreen buttons away.
   useEffect(() => {
-    showControls();
+    if (isPlaying) setHasStarted(true);
+  }, [isPlaying]);
+
+  /**
+   * The peek only runs while the lesson is playing — that is the whole point of it: the picture gets
+   * out of the way once there is motion to watch. Before the first play, and whenever the video is
+   * paused, the transport stays up for as long as the learner needs it, so the very first tap is not
+   * something they have to aim at a picture that keeps going blank. Only a deliberate action (the
+   * tap layer, play/pause, a seek, another lesson) restarts the three-second window; the
+   * once-a-second time updates deliberately do not, or the timer would reset itself forever and the
+   * controls would never leave.
+   */
+  useEffect(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    if (!isPlaying) {
+      setControlsVisible(true);
+      return;
+    }
+    hideTimer.current = setTimeout(() => setControlsVisible(false), CONTROLS_HIDE_MS);
     return () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, [showControls]);
+  }, [isPlaying, showTick, lesson?.id]);
 
   useEventListener(player, 'playToEnd', () => {
     showControls();
@@ -270,9 +289,12 @@ export default function LessonPlayerScreen() {
       {/* Player. The system bar strip is left to the app background and the video sits below it.
           Everything else floats over the picture, so the dark area is exactly the 16:9 video and
           nothing hangs under it: play/pause and the skip buttons in the free band in the middle,
-          then — in the order asked for — the scrubber, the speed and fullscreen row, and the two
-          timers on the very bottom line. The rows are sized from the surface height (see
-          `videoHeight` above) so they stay clear of each other on every screen. */}
+          then — in the order asked for — the speed and fullscreen row and the timeline, with the
+          start and end times owning the ends of its row. The rows are sized from the surface height
+          (see `videoHeight` above) so they stay clear of each other on every screen. Before the
+          lesson starts playing only the short transport is on screen; speed and fullscreen join it
+          once there is something to watch, and from then on the controls peek for three seconds at
+          a time. */}
       <View style={[styles.playerWrap, { paddingTop: insets.top }]}>
         <View
           style={styles.playerSurface}
@@ -290,7 +312,7 @@ export default function LessonPlayerScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Show player controls"
-            accessibilityHint="The controls hide again after a few seconds"
+            accessibilityHint="They hide again a few seconds after the lesson starts playing"
             onPress={showControls}
             style={StyleSheet.absoluteFill}
           />
@@ -412,26 +434,35 @@ export default function LessonPlayerScreen() {
               </View>
 
               <View style={[styles.playerBottom, { paddingBottom: overlayPad, gap: blockGap }]}>
-                <View style={[styles.playerActions, { minHeight: actionHeight }]}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
-                    hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                    onPress={() => setSpeedOpen(true)}
-                    style={styles.playerAction}>
-                    <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                    <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Play in fullscreen"
-                    hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                    onPress={() => void videoRef.current?.enterFullscreen()}
-                    style={styles.playerAction}>
-                    <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                    <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
-                  </Pressable>
-                </View>
+                {/* Speed and fullscreen are for a lesson that is under way; before the first play
+                    their band is reserved but empty, so the timeline and the play button hold
+                    their place and the row can slide in without shifting anything. */}
+                {hasStarted ? (
+                  <Animated.View
+                    entering={FadeIn.duration(160)}
+                    style={[styles.playerActions, { minHeight: actionHeight }]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
+                      hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                      onPress={() => setSpeedOpen(true)}
+                      style={styles.playerAction}>
+                      <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel="Play in fullscreen"
+                      hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                      onPress={() => void videoRef.current?.enterFullscreen()}
+                      style={styles.playerAction}>
+                      <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
+                    </Pressable>
+                  </Animated.View>
+                ) : (
+                  <View style={[styles.playerActions, { minHeight: actionHeight }]} />
+                )}
                 {/* Timeline between the two times: the track is shorter than the picture, so the
                     start and end numbers own the ends of the row. */}
                 <View style={[styles.timeRow, { gap: overlayPad }]}>

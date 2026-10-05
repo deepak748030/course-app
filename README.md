@@ -131,8 +131,12 @@ The UI follows the project's design rules document and is generated from one tok
   timeline with the start and end times owning the ends of the row — with play/pause and the skip
   buttons in the free band between them. Every size is derived from the measured surface height (16:9,
   so ~200pt on a phone), so the rows can never crowd each other and the dark area is exactly the video.
-  The controls are a three-second peek: they show on mount, on a tap on the picture and after any
-  transport action, and then hide again — playing or paused — so the frame stays unobstructed.
+- **The transport waits for the lesson to start.** Before the first play the picture shows the short
+  transport only — title, back and lesson list, skip and play, the timeline — and speed and fullscreen
+  hold their band empty so nothing shifts when they arrive. They join as soon as the lesson plays, and
+  from then on the whole overlay is a three-second peek: it shows on a tap on the picture or any
+  transport action and hides again while the video is playing. A paused picture keeps its controls, so
+  a learner who stops to read the frame is never left with a blank one.
 - **Hairlines over boxes.** Data lists draw a divider between rows (none after the last) instead of
   spacing every row apart, and dividers inset to the row content when a row has a leading icon.
 - **Concentric radii** (4 / 8 / 12 / 16, pill only for single-line content) and 44pt minimum touch
@@ -244,10 +248,14 @@ onboarding completion and app preferences are kept.
      painted the bar with the player surface — the black bar in the report. They now keep the app
      background: the strip above the video is white with dark icons, and the video starts below it.
 - Player geometry and the control peek, in the same DOM harness at a 390pt viewport: the transport is
-  pinned to the picture's edges (top row 58pt, transport 65pt, play button 64pt in the 96pt band
-  between them), the timeline row holds `0:00 · track · 0:00` with the track taking the remaining
-  width, no element outside the video surface is painted in the player colour, and the overlay is gone
-  after three seconds and back after a tap on the picture, in both themes.
+  pinned to the picture's edges (top row 58pt, transport 65pt with the speed/fullscreen band reserved,
+  play button 64pt in the free band between them), the timeline row holds `0:00 · track · 0:00` with the
+  track taking the remaining width, and no element outside the video surface is painted in the player
+  colour, in both themes. The peek was walked through the state machine by firing the media events the
+  player listens to: before the first play the transport stays up for as long as you look at it and the
+  speed and fullscreen buttons are absent; on play they appear; three seconds later the overlay is gone
+  and the tap layer is all that is left; a tap brings the whole transport back; three seconds later it
+  is gone again; a pause brings it back and it stays.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 
