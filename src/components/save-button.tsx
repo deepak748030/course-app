@@ -5,9 +5,9 @@
  * Every tap does three things at once, all Reanimated (no CSS, no assets) — saving and removing
  * alike, so the icon reacts wherever it is touched:
  *   - the glyph pops — scale up past the icon size, then settle back below it;
- *   - eight motes fly out left and right on a wide arc, in the theme accent, fading and shrinking
- *     as they go, plus a ring that opens behind the button, so a tap reads as a small celebration
- *     rather than a silent state change;
+ *   - eight motes spray out of the icon, four to each side, tilted above and below the horizontal, in
+ *     the theme accent, fading and shrinking as they go, plus a ring that opens behind the button, so a
+ *     tap reads as a small celebration rather than a silent state change;
  *   - the button itself gives the usual press feedback.
  *
  * The motes are inert while they wait — progress 0 draws nothing — so mounting them up front costs
@@ -32,8 +32,13 @@ import { feedback } from '@/lib/util';
 
 /** Motes: how many, how far they travel, and how long the burst takes. */
 const MOTES = 8;
-const SPRINKLE_DISTANCE = 34;
-const BURST_MS = 680;
+const SPRINKLE_DISTANCE = 40;
+const BURST_MS = 700;
+/**
+ * One angle per mote, mirrored around the icon: four to the right — tilted up and down — and four to the
+ * left, so the spray leaves the sides of the bookmark instead of shooting off in one direction.
+ */
+const MOTES_ANGLES = [30, 10, -10, -30, 150, 170, 190, 210];
 
 export function SaveButton({
   saved,
@@ -117,10 +122,9 @@ export function SaveButton({
 
 const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
 
-/** One mote: flies out along its own angle, fades and shrinks. Left and right, never straight up. */
+/** One mote: flies out along its own angle, fades and shrinks. Half the burst leaves each side. */
 function Sprinkle({ index, progress, colour }: { index: number; progress: SharedValue<number>; colour: string }) {
-  // Spread the eight motes over a wide fan: 150° to 30°, so they leave the sides of the icon.
-  const angle = (150 - (index * 120) / (MOTES - 1)) * (Math.PI / 180);
+  const angle = (MOTES_ANGLES[index % MOTES] * Math.PI) / 180;
   const distance = SPRINKLE_DISTANCE * (0.72 + (index % 3) * 0.16);
   const dx = Math.round(Math.cos(angle) * distance);
   const dy = Math.round(-Math.sin(angle) * distance);

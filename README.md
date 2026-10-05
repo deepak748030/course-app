@@ -184,9 +184,9 @@ The UI follows the project's design rules document and is generated from one tok
 - **Every save icon celebrates the tap.** `src/components/save-button.tsx` replaces the four bookmark
   `IconButton`s (course card, course row, course hero, lesson batch sheet, saved list) and animates on
   the tap itself — save or remove — rather than on the state change, so a tap always answers:
-  the glyph pops up past its size and settles back below it, eight accent motes fly out left and right
-  on a 150°→30° fan up to ~34px with a ring opening behind them, and the button gives the usual press
-  feedback. Reducing the motion drops the motes and the spring entirely; the clamped animated values
+  the glyph pops up past its size and settles back below it, eight accent motes spray out of the icon —
+  four to each side, tilted above and below the horizontal, out to ~40px — with a ring opening behind
+  them, and the button gives the usual press feedback. Reducing the motion drops the motes and the spring entirely; the clamped animated values
   mean a burst that has not started can never draw an inverted one. Motes park outside the button box,
   so a parent that clips (a card edge) will clip them — the cards, the hero and the sheet do not.
 - **Money wears two colours.** The amount you pay uses the theme accent (amber on white+yellow, deep
