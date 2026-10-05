@@ -112,7 +112,8 @@ export default function CourseDetailsScreen() {
           <Text style={[type.title, { color: colors.text }]}>{course.title}</Text>
           <Text style={[type.body, { color: colors.textMuted }]}>{course.promise}</Text>
 
-          <View style={styles.metaWrap}>
+          {/* Facts sit on their own tone block so they read as a summary, not more prose. */}
+          <View style={styles.facts}>
             <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
             <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} />
             <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} />
@@ -134,8 +135,10 @@ export default function CourseDetailsScreen() {
           ) : null}
         </View>
 
+        <View style={styles.rule} />
+
         <View style={styles.section}>
-          <SectionHeader title="What you'll learn" />
+          <SectionHeader style={styles.headInset} title="What you'll learn" />
           <View style={styles.bullets}>
             {course.outcomes.map((outcome) => (
               <View key={outcome} style={styles.bulletRow}>
@@ -148,7 +151,11 @@ export default function CourseDetailsScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="Curriculum" subtitle={`${course.sections.length} sections · ${course.lessonCount} lessons`} />
+          <SectionHeader
+            style={styles.headInset}
+            title="Curriculum"
+            subtitle={`${course.sections.length} sections · ${course.lessonCount} lessons`}
+          />
           <View style={styles.curriculum}>
             {course.sections.map((section, index) => (
               <CurriculumSectionBlock
@@ -166,7 +173,7 @@ export default function CourseDetailsScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title="What you'll need" />
+          <SectionHeader style={styles.headInset} title="What you'll need" />
           <View style={styles.bullets}>
             {course.equipment.map((item) => (
               <View key={item} style={styles.bulletRow}>
@@ -177,8 +184,14 @@ export default function CourseDetailsScreen() {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <SectionHeader title="Reviews" subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`} />
+        <View style={styles.rule} />
+
+        <View style={[styles.section, styles.sectionTight]}>
+          <SectionHeader
+            style={styles.headInset}
+            title="Reviews"
+            subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`}
+          />
         </View>
         <DataList>
           {course.reviews.map((review) => (
@@ -349,14 +362,35 @@ const styles = StyleSheet.create({
   },
   simpleBar: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
 
-  intro: { paddingHorizontal: layout.section, paddingVertical: spacing.lg, gap: spacing.sm },
-  metaWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  intro: {
+    paddingHorizontal: layout.section,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
+  },
+  facts: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   progressBlock: { gap: spacing.xs, marginTop: spacing.xs },
 
-  section: { paddingHorizontal: layout.screen, paddingTop: spacing.xl, gap: layout.gap },
+  /**
+   * Section rhythm: every block gets 24px above and below, and full-bleed hairlines mark the
+   * boundaries so titles never run into the block above them. Content sits at 16px, the same
+   * inset as the curriculum rows, so text lines up in one column down the screen.
+   */
+  section: { paddingTop: spacing.xl, paddingBottom: spacing.xl, gap: spacing.md },
+  sectionTight: { paddingBottom: spacing.sm },
+  headInset: { paddingHorizontal: layout.section },
+  rule: { height: 1, backgroundColor: colors.divider },
   sectionNote: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
-  bullets: { gap: spacing.sm, paddingHorizontal: layout.section },
+  bullets: { gap: spacing.md, paddingHorizontal: layout.section },
   bulletRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
 
   curriculum: { borderTopWidth: 1, borderColor: colors.border },

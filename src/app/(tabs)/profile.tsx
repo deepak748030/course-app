@@ -5,7 +5,6 @@ import {
   Bookmark,
   BookOpen,
   CalendarDays,
-  Camera,
   CircleCheck,
   Clock,
   LogOut,
@@ -17,7 +16,6 @@ import {
   Smartphone,
   SquarePen,
   Target,
-  UserRound,
   UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react-native';
@@ -34,7 +32,6 @@ import {
   DataList,
   IconButton,
   ListRow,
-  ProgressBar,
   Screen,
   TabHeader,
 } from '@/components/ui';
@@ -84,28 +81,6 @@ export default function ProfileScreen() {
   const birthDate = formatDateOfBirth(profile?.dateOfBirth);
   const age = ageFromDateOfBirth(profile?.dateOfBirth);
 
-  const details = useMemo(
-    () =>
-      [
-        { key: 'name', label: 'Full name', icon: UserRound, value: profile?.name ?? null },
-        { key: 'email', label: 'Email', icon: Mail, value: profile?.email ?? null },
-        {
-          key: 'dob',
-          label: 'Date of birth',
-          icon: CalendarDays,
-          value: birthDate ? `${birthDate}${age !== null ? ` · ${age} years` : ''}` : null,
-        },
-        { key: 'city', label: 'City', icon: MapPin, value: profile?.city ?? null },
-        { key: 'goal', label: 'Cooking goal', icon: Target, value: profile?.goal ?? null },
-      ] as const,
-    [age, birthDate, profile?.city, profile?.email, profile?.goal, profile?.name],
-  );
-
-  const filled = details.filter((detail) => detail.value).length + (avatarUri ? 1 : 0);
-  const total = details.length + 1;
-  const missing = details.filter((detail) => !detail.value).map((detail) => detail.label.toLowerCase());
-  const completion = Math.round((filled / total) * 100);
-
   async function changePhoto() {
     if (photoBusy) return;
     setPhotoBusy(true);
@@ -139,19 +114,14 @@ export default function ProfileScreen() {
           leading={
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={avatarUri ? 'Change profile photo' : 'Add a profile photo'}
-              onPress={changePhoto}
+              accessibilityLabel="Edit profile"
+              onPress={() => setEditorOpen(true)}
               style={({ pressed }) => [styles.avatarWrap, pressed && { opacity: 0.8 }]}>
               <Avatar name={profile?.name ?? 'Guest'} uri={avatarUri} size={44} />
-              <View style={styles.avatarBadge}>
-                <Camera size={11} color={colors.onAccent} strokeWidth={2.2} />
-              </View>
             </Pressable>
           }
           title={profile?.name ?? 'Signed out'}
-          meta={
-            profile ? profile.email ?? maskPhone(profile.phone) : 'Sign in to keep your progress on this device'
-          }
+          meta={profile ? `Member since ${joined ?? 'today'}` : 'Sign in to keep your progress on this device'}
           actions={
             <>
               {profile ? (
@@ -169,57 +139,21 @@ export default function ProfileScreen() {
       }>
       {profile ? (
         <View style={styles.summaryCard}>
+          {/* Shown, never asked for: the editable fields live behind the Edit icon. */}
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            <ListRow
-              icon={Camera}
-              label="Profile photo"
-              onPress={changePhoto}
-              rightSlot={
-                avatarUri ? (
-                  <Avatar name={profile.name} uri={avatarUri} size={28} />
-                ) : (
-                  <Text style={[type.labelStrong, { color: colors.accentText }]}>Add</Text>
-                )
-              }
-            />
-            {details.map((detail) => (
-              <ListRow
-                key={detail.key}
-                icon={detail.icon}
-                label={detail.label}
-                value={detail.value ?? undefined}
-                onPress={() => setEditorOpen(true)}
-                rightSlot={
-                  detail.value ? undefined : <Text style={[type.labelStrong, { color: colors.accentText }]}>Add</Text>
-                }
-              />
-            ))}
-            {/* Read-only: changing the sign-in number means verifying a new one. */}
             <ListRow icon={Smartphone} label="Mobile number" subtitle={maskPhone(profile.phone)} chevron={false} />
+            {profile.email ? <ListRow icon={Mail} label="Email" subtitle={profile.email} chevron={false} /> : null}
+            {birthDate ? (
+              <ListRow
+                icon={CalendarDays}
+                label="Date of birth"
+                subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
+                chevron={false}
+              />
+            ) : null}
+            {profile.city ? <ListRow icon={MapPin} label="City" subtitle={profile.city} chevron={false} /> : null}
+            {profile.goal ? <ListRow icon={Target} label="Cooking goal" subtitle={profile.goal} chevron={false} /> : null}
           </DataList>
-
-          <View style={styles.completion}>
-            <View style={styles.completionRow}>
-              <Text style={[type.labelStrong, { color: colors.textMuted }]}>{`Profile ${filled} of ${total}`}</Text>
-              <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{`${completion}%`}</Text>
-            </View>
-            <ProgressBar value={filled / total} accessibilityLabel="Profile completeness" />
-            <Text style={[type.label, { color: colors.textSubtle }]}>
-              {missing.length === 0
-                ? 'Your profile is complete.'
-                : `Add ${missing.slice(0, 2).join(' and ')}${missing.length > 2 ? ` and ${missing.length - 2} more` : ''} to complete it.`}
-            </Text>
-            <Button
-              label={missing.length === 0 ? 'Edit profile' : 'Complete your profile'}
-              variant="secondary"
-              icon={SquarePen}
-              onPress={() => setEditorOpen(true)}
-            />
-          </View>
-
-          {photoNotice ? (
-            <Text style={[type.label, styles.notice, { color: colors.error }]}>{photoNotice}</Text>
-          ) : null}
         </View>
       ) : (
         <View style={styles.pad}>
@@ -311,6 +245,7 @@ export default function ProfileScreen() {
           avatarUri={avatarUri}
           saving={saving}
           photoBusy={photoBusy}
+          photoNotice={photoNotice}
           onClose={() => setEditorOpen(false)}
           onPickPhoto={changePhoto}
           onRemovePhoto={() => {
@@ -358,19 +293,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.screen, gap: layout.gap },
   avatarWrap: { width: 44, height: 44 },
-  avatarBadge: {
-    position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 18,
-    height: 18,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
   summaryCard: {
     marginHorizontal: layout.screen,
     backgroundColor: colors.surface,
@@ -379,9 +301,6 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     overflow: 'hidden',
   },
-  completion: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md },
-  completionRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  notice: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   signInCard: {
     gap: spacing.sm,
     padding: spacing.lg,

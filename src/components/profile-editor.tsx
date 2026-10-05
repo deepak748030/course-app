@@ -57,6 +57,7 @@ export function ProfileEditorSheet({
   avatarUri,
   saving,
   photoBusy,
+  photoNotice,
   onClose,
   onPickPhoto,
   onRemovePhoto,
@@ -67,6 +68,8 @@ export function ProfileEditorSheet({
   avatarUri: string | null;
   saving: boolean;
   photoBusy: boolean;
+  /** Set when the last photo pick failed (permission or unreadable file); shown next to the row. */
+  photoNotice?: string | null;
   onClose: () => void;
   onPickPhoto: () => void;
   onRemovePhoto: () => void;
@@ -140,6 +143,10 @@ export function ProfileEditorSheet({
           ) : null}
         </View>
       </View>
+
+      {photoNotice ? (
+        <Text style={[type.label, styles.notice, { color: colors.error }]}>{photoNotice}</Text>
+      ) : null}
 
       <FormField
         label="Full name"
@@ -233,6 +240,7 @@ export function ProfileEditorSheet({
 
 const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  notice: { paddingTop: spacing.xs },
   photoActions: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   fieldWrap: { gap: spacing.xs, marginTop: spacing.xs },
   dobRow: { flexDirection: 'row', gap: spacing.sm },

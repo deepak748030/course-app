@@ -68,7 +68,7 @@ export default function HomeScreen() {
       header={
         /* Identity header: the brand, not a greeting, plus the two things reached from home. */
         <TabHeader
-          style={styles.headerFlush}
+          style={styles.headerCompact}
           leading={
             <BrandTile size={40}>
               <BrandMark size={26} color={colors.onAccent} />
@@ -80,13 +80,11 @@ export default function HomeScreen() {
             <>
               <IconButton
                 icon={Search}
-                variant="soft"
                 accessibilityLabel="Search courses"
                 onPress={() => router.push('/explore')}
               />
               <IconButton
                 icon={Bell}
-                variant="soft"
                 badge={unread}
                 accessibilityLabel="Notifications"
                 onPress={() => router.push('/notifications')}
@@ -224,7 +222,8 @@ const styles = StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
-  headerFlush: { paddingBottom: 0 },
+  /* Tight sides and a slimmer gap, with a little more room under the header before the banner. */
+  headerCompact: { paddingHorizontal: layout.screen, paddingBottom: spacing.md, gap: spacing.xs },
   hero: { height: 220, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroCopy: { flex: 1, justifyContent: 'flex-end', padding: spacing.lg, gap: spacing.sm },

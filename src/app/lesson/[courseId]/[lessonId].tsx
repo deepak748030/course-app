@@ -8,6 +8,7 @@ import {
   Check,
   CircleAlert,
   CircleCheck,
+  ChartNoAxesColumnIncreasing,
   Clapperboard,
   Clock,
   Gauge,
@@ -40,7 +41,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
-import { AppBar, Badge, Button, DataList, EmptyState, IconButton, Screen } from '@/components/ui';
+import { AppBar, Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen } from '@/components/ui';
 import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';
@@ -191,6 +192,7 @@ export default function LessonPlayerScreen() {
   const currentServings = servings ?? baseServings;
   const factor = currentServings / baseServings;
   const currentSection = course.sections.find((section) => section.id === lesson.sectionId);
+  const lessonNumber = course.lessons.findIndex((item) => item.id === lesson.id) + 1;
 
   const seekTo = (seconds: number) => {
     const clamped = Math.max(0, Math.min(seconds, duration || seconds));
@@ -366,20 +368,36 @@ export default function LessonPlayerScreen() {
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          <View style={styles.lessonHeader}>
-            <View style={styles.flex}>
-              <Text style={[type.subheading, { color: colors.text }]}>{lesson.title}</Text>
-              <View style={styles.metaRow}>
-                <Text style={[type.label, { color: colors.textMuted }]}>
-                  {course.level} · {course.lessonCount} lessons
-                </Text>
-                <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>{lesson.minutes} min</Text>
+          {/* Title block under the video: overline, title, facts and progress, then a hairline
+              so the tabs read as a separate control instead of more body copy. */}
+          <View style={styles.lessonHead}>
+            <Text style={[type.overline, { color: colors.textSubtle }]} numberOfLines={1}>
+              {currentSection?.title ?? course.title}
+            </Text>
+            <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
+            <View style={styles.metaWrap}>
+              <MetaItem icon={Clapperboard} label={`Lesson ${lessonNumber} of ${course.lessonCount}`} />
+              <MetaItem icon={Clock} label={`${lesson.minutes} min`} />
+              <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
+            </View>
+            {lesson.isPreview || completed ? (
+              <View style={styles.badgeRow}>
                 {lesson.isPreview ? <Badge label="Free preview" tone="sage" /> : null}
                 {completed ? <Badge label="Completed" tone="success" icon={CircleCheck} /> : null}
               </View>
+            ) : null}
+            <View style={styles.progressBlock}>
+              <View style={styles.progressHead}>
+                <Text style={[type.label, { color: colors.textMuted }]}>Course progress</Text>
+                <Text style={[type.labelStrong, tabularNums, { color: colors.text }]}>
+                  {Math.round(courseProgressRatio(course) * 100)}%
+                </Text>
+              </View>
+              <ProgressBar value={courseProgressRatio(course)} accessibilityLabel={`${course.title} progress`} />
             </View>
-            <Badge label={`${Math.round(courseProgressRatio(course) * 100)}%`} tone="primary" />
           </View>
+
+          <View style={styles.rule} />
 
           <View style={styles.tabs}>
             <TabButton label="Overview" active={tab === 'overview'} onPress={() => setTab('overview')} />
@@ -396,10 +414,6 @@ export default function LessonPlayerScreen() {
           {tab === 'overview' ? (
             <View style={styles.tabBody}>
               <Text style={[type.body, styles.prose, { color: colors.text }]}>{lesson.description}</Text>
-              <View style={styles.sectionCard}>
-                <Text style={[type.labelStrong, { color: colors.textMuted }]}>Section</Text>
-                <Text style={[type.body, { color: colors.text }]}>{currentSection?.title}</Text>
-              </View>
               <View style={styles.overviewActions}>
                 <Button
                   label={completed ? 'Completed — mark as not done' : 'Mark lesson as complete'}
@@ -737,13 +751,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
 
-  content: { gap: layout.gap, paddingTop: spacing.sm },
-  lessonHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
+  content: { gap: layout.gap },
+  lessonHead: {
     paddingHorizontal: layout.section,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+    gap: spacing.md,
   },
+  metaWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flexWrap: 'wrap' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  progressBlock: { gap: spacing.xs },
+  progressHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  rule: { height: 1, backgroundColor: colors.divider },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
 
   tabs: {

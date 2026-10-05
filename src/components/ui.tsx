@@ -204,14 +204,16 @@ export function SectionHeader({
   subtitle,
   actionLabel,
   onAction,
+  style,
 }: {
   title: string;
   subtitle?: string;
   actionLabel?: string;
   onAction?: () => void;
+  style?: StyleProp<ViewStyle>;
 }) {
   return (
-    <View style={styles.sectionHeader}>
+    <View style={[styles.sectionHeader, style]}>
       <View style={styles.flex}>
         <AppText variant="subheading">{title}</AppText>
         {subtitle ? (
