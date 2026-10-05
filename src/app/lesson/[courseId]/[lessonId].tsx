@@ -14,6 +14,7 @@ import {
   Clapperboard,
   Clock,
   Gauge,
+  Hd,
   ListVideo,
   Lock,
   Maximize2,
@@ -25,6 +26,8 @@ import {
   SkipBack,
   SkipForward,
   Trophy,
+  Volume2,
+  VolumeX,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -63,7 +66,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, nextLesson } from '@/data/catalog';
-import { videos } from '@/media';
+import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
 import { formatClock, scaleQuantity } from '@/lib/format';
 import { feedback } from '@/lib/util';
@@ -102,6 +105,7 @@ export default function LessonPlayerScreen() {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const [lessonListOpen, setLessonListOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
+  const [qualityOpen, setQualityOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   /** True once the lesson has actually played in this visit: the extras wait for that. */
   const [hasStarted, setHasStarted] = useState(false);
@@ -147,6 +151,17 @@ export default function LessonPlayerScreen() {
   const largeGlyph = playSize >= 56;
 
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
+  const mutedEvent = useEvent(player, 'mutedChange', { muted: player.muted });
+  const muted = mutedEvent?.muted ?? player.muted;
+  /**
+   * The rendition the lesson is playing. Android and iOS report the video tracks a source carries;
+   * web reports none, so the bundled clips' known size stands in. The demo lessons ship a single
+   * 540p file, and this list says exactly that — the control never invents options to switch to.
+   */
+  const tracks = player.availableVideoTracks ?? [];
+  const rendition = tracks[0] ?? null;
+  const renditionSize = rendition?.size ?? { width: CLIP_RENDITION.width, height: CLIP_RENDITION.height };
+  const renditionLabel = `${renditionSize.height}p`;
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
   const error = statusEvent?.error;
@@ -456,24 +471,61 @@ export default function LessonPlayerScreen() {
                   <Animated.View
                     entering={FadeIn.duration(160)}
                     style={[styles.playerActions, { minHeight: actionHeight }]}>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
+                    <View style={[styles.actionGroup, { gap: overlayPad }]}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
                       hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
                       onPress={() => setSpeedOpen(true)}
                       style={styles.playerAction}>
-                      <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{player.playbackRate}×</Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel="Play in fullscreen"
-                      hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                      onPress={() => void videoRef.current?.enterFullscreen()}
-                      style={styles.playerAction}>
-                      <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                      <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
-                    </Pressable>
+                        <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                        <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>
+                          {player.playbackRate}×
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`Video quality, currently ${renditionLabel}`}
+                        accessibilityHint={
+                          tracks.length > 1
+                            ? `${tracks.length} renditions available`
+                            : 'This demo clip ships one rendition'
+                        }
+                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                        onPress={() => setQualityOpen(true)}
+                        style={styles.playerAction}>
+                        <Hd size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                        <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{renditionLabel}</Text>
+                      </Pressable>
+                    </View>
+                    <View style={[styles.actionGroup, { gap: overlayPad }]}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={muted ? 'Turn lesson sound on' : 'Mute lesson sound'}
+                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                        onPress={() => {
+                          feedback.tap();
+                          player.muted = !muted;
+                          showControls();
+                        }}
+                        style={styles.playerAction}>
+                        {muted ? (
+                          <VolumeX size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                        ) : (
+                          <Volume2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                        )}
+                        <Text style={[type.label, { color: colors.onPlayer }]}>{muted ? 'Unmute' : 'Mute'}</Text>
+                      </Pressable>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Play in fullscreen"
+                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
+                        onPress={() => void videoRef.current?.enterFullscreen()}
+                        style={styles.playerAction}>
+                        <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                        <Text style={[type.label, { color: colors.onPlayer }]}>Fullscreen</Text>
+                      </Pressable>
+                    </View>
                   </Animated.View>
                 ) : (
                   <View style={[styles.playerActions, { minHeight: actionHeight }]} />
@@ -789,6 +841,47 @@ export default function LessonPlayerScreen() {
           </Pressable>
         ))}
       </BottomSheet>
+
+      <BottomSheet
+        visible={qualityOpen}
+        onClose={() => {
+          setQualityOpen(false);
+          showControls();
+        }}
+        title="Video quality"
+        subtitle={
+          tracks.length > 1
+            ? `${tracks.length} renditions in this lesson`
+            : 'This demo lesson ships a single rendition'
+        }>
+        {(tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
+          const active = rendition ? track.id === rendition.id : index === 0;
+          const size = track.size;
+          const bitrate = 'averageBitrate' in track ? track.averageBitrate : null;
+          const detail = [
+            `${size.width} × ${size.height}`,
+            bitrate ? `${Math.round(bitrate / 1000)} kbps` : null,
+            active ? 'in use' : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          return (
+            <View key={track.id} style={styles.sheetRow} accessibilityLabel={`${size.height}p, ${detail}`}>
+              <View style={styles.flex}>
+                <Text style={[type.body, { color: colors.text }]}>{size.height}p</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{detail}</Text>
+              </View>
+              {active ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+            </View>
+          );
+        })}
+        {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
+        <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
+          The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons
+          that stream from a server list every rendition they carry, and the player picks the best one for the
+          connection automatically.
+        </Text>
+      </BottomSheet>
     </View>
   );
 }
@@ -927,6 +1020,9 @@ const styles = createStyles(() => StyleSheet.create({
   seekRailLine: { height: 4, borderRadius: 2, backgroundColor: colors.onPlayerMuted, opacity: 0.45 },
   seekFill: { height: 4, borderRadius: 2, backgroundColor: colors.gold },
   playerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  actionGroup: { flexDirection: 'row', alignItems: 'center' },
+  /** The one line of honest explanation the sheets end on. */
+  sheetNote: { paddingHorizontal: spacing.sm, paddingTop: spacing.sm, paddingBottom: spacing.xs },
   playerAction: {
     flexDirection: 'row',
     alignItems: 'center',

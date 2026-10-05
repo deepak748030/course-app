@@ -28,6 +28,12 @@ export const images = {
 } as const;
 
 /** Demo clips. Replace with real lesson media; keys stay the same. */
+/**
+ * Every bundled demo lesson clip is 960×540 (verified from the files themselves), which is what the
+ * player's quality readout names on platforms that do not report video tracks — web, for instance.
+ */
+export const CLIP_RENDITION = { width: 960, height: 540 } as const;
+
 export const videos: Record<VideoKey, number> = {
   'home-cooking': require('@/assets/videos/demo-clip-home-cooking.mp4'),
   gravies: require('@/assets/videos/demo-clip-gravies.mp4'),

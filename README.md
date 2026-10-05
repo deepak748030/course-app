@@ -127,16 +127,29 @@ The UI follows the project's design rules document and is generated from one tok
 - **8px baseline.** Screen side padding is 8, gap between items is 8, cards and forms pad 16, sections
   breathe 24. Banners and the player are full-bleed with a 0 side gap.
 - **The player is all picture.** The lesson screen paints nothing dark under the video: the transport
-  floats on the picture itself over two short gradients — the speed and fullscreen row, then the
-  timeline with the start and end times owning the ends of the row — with play/pause and the skip
-  buttons in the free band between them. Every size is derived from the measured surface height (16:9,
+  floats on the picture itself over two short gradients — the transport row (speed, quality, sound,
+  fullscreen), then the timeline with the start and end times owning the ends of the row — with
+  play/pause and the skip buttons in the free band between them. Every size is derived from the measured surface height (16:9,
   so ~200pt on a phone), so the rows can never crowd each other and the dark area is exactly the video.
 - **The transport waits for the lesson to start.** Before the first play the picture shows the short
-  transport only — title, back and lesson list, skip and play, the timeline — and speed and fullscreen
-  hold their band empty so nothing shifts when they arrive. They join as soon as the lesson plays, and
+  transport only — title, back and lesson list, skip and play, the timeline — and the transport row
+  holds its band empty so nothing shifts when it arrives. They join as soon as the lesson plays, and
   from then on the whole overlay is a three-second peek: it shows on a tap on the picture or any
   transport action and hides again while the video is playing. A paused picture keeps its controls, so
   a learner who stops to read the frame is never left with a blank one.
+- **The transport row says what it can honestly do.** Speed is a real rate change, sound is a real
+  `player.muted` toggle, and quality names the rendition actually on screen — from the video tracks the
+  platform reports, or from the bundled clips' known 960x540 when it reports none. Opening it lists every
+  rendition with its resolution, bitrate and which one is in use, and says plainly that the demo lessons
+  ship a single 540p file each: no invented 480p/720p/1080p menu that changes nothing. (The bundled demo
+  clips are video-only, so the sound toggle has no audio to reveal until a lesson with a track plays.)
+- **Checkout reads as one order.** The course and its price lines are a single card — artwork, facts,
+  then `Course price / Course discount (33% off) / Total payable` under a hairline — instead of a
+  summary row followed by a separate boxed price card. The coupon offers the demo codes as tappable
+  chips next to the field, "what you get" is a gold-check list on the 8pt gutter, the three demo
+  outcomes are hairline radio rows in one card, and the failure, cancellation and already-purchased
+  notices are full-bleed strips directly above the pay bar. A course that is already owned turns the pay
+  bar into "You own this course / Start learning" instead of a dead disabled button.
 - **The lesson screen keeps the app gutter under the picture.** Section and status share the first
   line — the status is a badge with its own glyph — and the title, the facts and the course progress
   follow on a 4 / 8 / 12 rhythm instead of four evenly-spaced lines. The tabs' body stays on the 8pt
@@ -258,9 +271,16 @@ onboarding completion and app preferences are kept.
   track taking the remaining width, and no element outside the video surface is painted in the player
   colour, in both themes. The peek was walked through the state machine by firing the media events the
   player listens to: before the first play the transport stays up for as long as you look at it and the
-  speed and fullscreen buttons are absent; on play they appear; three seconds later the overlay is gone
+  the transport row is absent; on play it appears; three seconds later the overlay is gone
   and the tap layer is all that is left; a tap brings the whole transport back; three seconds later it
-  is gone again; a pause brings it back and it stays.
+  is gone again; a pause brings it back and it stays. The four transport buttons were dumped together:
+  two groups of two, `speed · 540p` on the left and `Mute · Fullscreen` on the right, and the quality
+  sheet reports "540p · 960 x 540 · in use" with the single-rendition note.
+- The checkout screen was walked in both states: the order card with its hairlines and 8pt rows
+  (course price, 33% off, total), the coupon field with its two demo-code chips, the gold-check list,
+  the three outcome rows with their radios, and the pay bar reading "₹1,199 · 33% off · Total payable ·
+  one-time · Pay ₹1,199" when the course is not owned, or "You own this course" with "Start learning"
+  when it is.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 

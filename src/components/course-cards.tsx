@@ -327,7 +327,11 @@ export function PriceSummary({
     <View style={styles.summary}>
       <SummaryRow label="Course price" value={formatInr(course.listPriceInr ?? course.priceInr)} />
       {discountFromList > 0 ? (
-        <SummaryRow label="Course discount" value={`− ${formatInr(discountFromList)}`} tone="success" />
+        <SummaryRow
+          label={`Course discount (${Math.round((discountFromList / (course.listPriceInr ?? course.priceInr)) * 100)}% off)`}
+          value={`− ${formatInr(discountFromList)}`}
+          tone="success"
+        />
       ) : null}
       {couponValue > 0 ? (
         <SummaryRow label={`Coupon ${couponCode ?? ''}`.trim()} value={`− ${formatInr(couponValue)}`} tone="success" />
@@ -493,14 +497,8 @@ const styles = createStyles(() => StyleSheet.create({
   lessonIndex: { width: 20 },
   lessonMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2, flexWrap: 'wrap' },
 
-  summary: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
+  /** Plain order lines: the caller owns the container, so the rows line up with the page gutter. */
+  summary: { gap: spacing.xs },
   summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
   summaryDivider: { height: 1, backgroundColor: colors.divider, marginVertical: spacing.xs },
 
