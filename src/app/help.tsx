@@ -3,7 +3,7 @@ import { BookOpen, Mail, MessageCircle, RefreshCcw, Share2 } from 'lucide-react-
 import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { Accordion, AppBar, Badge, Button, DataList, ListRow, Screen, SectionHeader } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { faqs } from '@/data/content';
 
 export default function HelpScreen() {
@@ -96,7 +96,7 @@ export default function HelpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   intro: { gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.sm },
   section: { gap: layout.gap },
   sectionHead: { gap: spacing.xs },
@@ -111,4 +111,4 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   supportRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-});
+}));

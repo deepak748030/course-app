@@ -7,7 +7,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Path, Polygon } from 'react-native-svg';
 
-import { colors, font, spacing } from '@/constants/theme';
+import { createStyles, colors, font, spacing } from '@/constants/theme';
 
 export function BrandMark({ size = 40, color = colors.accentText }: { size?: number; color?: string }) {
   return (
@@ -44,6 +44,6 @@ export function Wordmark({ size = 22, color = colors.text }: { size?: number; co
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-});
+}));

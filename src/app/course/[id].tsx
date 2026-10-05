@@ -22,7 +22,7 @@ import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated
 import { OfferBadge } from '@/components/offer-tag';
 import { LessonRow, RatingInline, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courseById, discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
@@ -392,7 +392,7 @@ function CurriculumSectionBlock({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   hero: { height: 240, backgroundColor: colors.player, overflow: 'hidden' },
@@ -461,4 +461,4 @@ const styles = StyleSheet.create({
   },
 
   paywallActions: { gap: spacing.sm },
-});
+}));

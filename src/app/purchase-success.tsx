@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Badge, Button, DataList, Screen } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, firstPlayableLesson } from '@/data/catalog';
 import { useStore } from '@/store';
 import { formatInr } from '@/lib/format';
@@ -121,7 +121,7 @@ export default function PurchaseSuccessScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   pad: { paddingHorizontal: layout.screen },
   markWrap: { alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.section },
   mark: {
@@ -136,4 +136,4 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md },
   right: { flex: 1, textAlign: 'right' },
   actions: { gap: layout.gap, marginTop: 'auto', paddingHorizontal: layout.screen },
-});
+}));

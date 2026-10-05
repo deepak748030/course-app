@@ -132,6 +132,21 @@ The UI follows the project's design rules document and is generated from one tok
   targets with 48px controls.
 - **Motion is restrained**: press feedback under 100ms, entrances 160–320ms, and every animation checks
   reduced-motion first.
+- **Two themes, switchable from Profile.** `src/constants/theme.ts` holds two palettes — white + yellow
+  (the default, and the original look, unchanged) and white + deep green — and `THEMES` is the picker's
+  list. Both are white-surface: only the accent, the tinted block and the text tones differ, so layout,
+  type and the 8px rhythm are identical in both. The switch lives on **Profile → Appearance** as a radio
+  pair, each option showing a live miniature of the theme it picks. Two mechanisms carry the change to
+  every screen without touching component code: `colors` is a live proxy over the active palette (so
+  inline props and default parameter values resolve per render), and style sheets are declared as
+  `createStyles(() => StyleSheet.create({ ... }))` instead of being built once at module load, so
+  `styles.card` re-resolves for the picked theme. Changing the theme remounts the tree under the
+  navigation theme (`key` in `src/app/_layout.tsx`) — a fresh mount is what re-resolves every style, and
+  it is also why the switch does not depend on the React Compiler's memoisation, which cannot see a
+  palette read through a module-level proxy. The choice is written with the rest of the local state
+  (`state.theme`) and survives a restart; it is kept across sign-out, because it belongs to the device
+  and not to the account. One deliberate exception: **the offer mark keeps the brand yellow ground in
+  both themes**, because the Lottie mark inside it is drawn in ink and would vanish on the deep green.
 - **The offer mark is a real Lottie animation.** `assets/lottie/offer.json` is played by a Lottie
   runtime — `lottie-react-native` on Android/iOS (native cores, no WASM), `lottie-web`'s SVG renderer
   on web (`src/components/offer-lottie.web.tsx`). The composition is bundled with the app, so the
@@ -192,11 +207,12 @@ onboarding completion and app preferences are kept.
 ## Verification performed
 
 - `npx tsc --noEmit` (also run with `--noUnusedLocals`) — clean.
-- `bun scripts/selfcheck.ts` (`npm run check`) — 10 checks: phone normalisation/validation/masking,
+- `bun scripts/selfcheck.ts` (`npm run check`) — 11 checks: phone normalisation/validation/masking,
   quantity scaling, INR/clock/duration formatting, the greeting helper, catalog derivation (unique
   lesson ids, counts, section integrity, preview lessons), the search/filter/sort behaviour of the
-  Explore screen, and a source scan that fails the build if any Reanimated animation callback or
-  animated-style body touches React state (see "Native worklet safety"). All pass.
+  Explore screen, the profile field validators (email, date of birth), and a source scan that fails the
+  build if any Reanimated animation callback or animated-style body touches React state (see "Native
+  worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
   returned HTTP 200 from the dev server.
 - The exported web bundle is executed inside a JSDOM DOM (`/tmp/domtest/run3.mjs`, `run4.mjs`, `tabs.mjs`

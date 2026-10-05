@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { BrandMark } from '@/components/marks';
 import { AppBar, Button, ErrorState, FormField, Screen } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { normalizePhone, validateIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
 import { DEMO_OFFLINE_PHONE, authService } from '@/services/auth';
@@ -147,7 +147,7 @@ export default function PhoneScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: layout.screen,
@@ -169,4 +169,4 @@ const styles = StyleSheet.create({
   },
   link: { color: colors.accentText, textDecorationLine: 'underline' },
   helpLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, minHeight: layout.touchTarget, justifyContent: 'center' },
-});
+}));

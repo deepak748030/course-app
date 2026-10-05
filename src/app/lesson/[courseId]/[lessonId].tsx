@@ -42,7 +42,7 @@ import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
 import { AppBar, Badge, Button, DataList, EmptyState, IconButton, MetaItem, ProgressBar, Screen } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseById, nextLesson } from '@/data/catalog';
 import { videos } from '@/media';
 import { useStore } from '@/store';
@@ -693,7 +693,7 @@ function TabButton({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   noTouch: { pointerEvents: 'none' },
   boxNone: { pointerEvents: 'box-none' },
   root: { flex: 1, backgroundColor: colors.background },
@@ -832,4 +832,4 @@ const styles = StyleSheet.create({
     minHeight: layout.touchTarget,
     paddingVertical: spacing.sm,
   },
-});
+}));

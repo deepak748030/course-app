@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, Screen } from '@/components/ui';
-import { colors, layout, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { interests } from '@/data/catalog';
 import { useStore } from '@/store';
 
@@ -55,8 +55,8 @@ export default function InterestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   intro: { gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.md },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: layout.gap, paddingHorizontal: layout.screen, paddingTop: spacing.lg },
   footer: { gap: spacing.sm, paddingHorizontal: layout.screen, paddingTop: spacing.xl },
-});
+}));

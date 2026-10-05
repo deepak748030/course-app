@@ -26,7 +26,7 @@ import Animated from 'react-native-reanimated';
 
 import { OfferBadge } from '@/components/offer-tag';
 import { Badge, IconButton, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/data/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
@@ -425,7 +425,7 @@ export function RatingInline({ rating, reviewCount }: { rating: number; reviewCo
 }
 
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1 },
   strike: { textDecorationLine: 'line-through' },
 
@@ -524,4 +524,4 @@ const styles = StyleSheet.create({
     maxWidth: layout.maxWidth,
     alignSelf: 'center',
   },
-});
+}));

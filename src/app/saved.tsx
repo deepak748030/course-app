@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, DataList, EmptyState, IconButton, MetaItem, Screen, Segmented } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { courseById, courses } from '@/data/catalog';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
@@ -142,7 +142,7 @@ export default function SavedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1 },
   segmentWrap: { paddingHorizontal: 0 },
   courseRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
@@ -151,4 +151,4 @@ const styles = StyleSheet.create({
   recipeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.md },
   recipeInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
   footNote: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.sm },
-});
+}));

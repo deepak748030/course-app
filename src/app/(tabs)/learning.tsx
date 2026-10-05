@@ -16,7 +16,7 @@ import {
   Segmented,
   TabHeader,
 } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
@@ -187,7 +187,7 @@ function Stat({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.gap, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.screen },
@@ -213,4 +213,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-});
+}));

@@ -14,7 +14,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppBar, Button, ErrorState, Screen } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { formatIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
 import { authService, type OtpFailure } from '@/services/auth';
@@ -222,7 +222,7 @@ export default function OtpScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   content: {
     paddingHorizontal: layout.screen,
@@ -249,4 +249,4 @@ const styles = StyleSheet.create({
   hiddenInput: { position: 'absolute', opacity: 0, height: 1, width: 1 },
   resendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexWrap: 'wrap', paddingHorizontal: spacing.sm },
   changeLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm },
-});
+}));

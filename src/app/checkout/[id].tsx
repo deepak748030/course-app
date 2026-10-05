@@ -9,7 +9,7 @@ import { AnimatedCart } from '@/components/animated-icons';
 import { PriceSummary, StickyBar } from '@/components/course-cards';
 import { OfferBadge } from '@/components/offer-tag';
 import { AppBar, AppText, Badge, Button, DataList, ErrorState, FormField, MetaItem, Screen, SectionHeader } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { Clapperboard, Clock } from 'lucide-react-native';
 import { courseById, discountPercent } from '@/data/catalog';
 import { demoCoupons, purchaseTerms } from '@/data/content';
@@ -283,7 +283,7 @@ export default function CheckoutScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.section },
@@ -338,4 +338,4 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     alignItems: 'flex-start',
   },
-});
+}));

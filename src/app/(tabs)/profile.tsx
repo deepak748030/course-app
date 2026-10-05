@@ -24,6 +24,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
 import { ProfileEditorSheet } from '@/components/profile-editor';
+import { ThemePicker } from '@/components/theme-picker';
 import {
   AppText,
   Avatar,
@@ -35,7 +36,7 @@ import {
   Screen,
   TabHeader,
 } from '@/components/ui';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
 import { ageFromDateOfBirth, formatDateOfBirth, formatDuration, maskPhone } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
@@ -44,7 +45,7 @@ import type { UserProfile } from '@/types';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { session, state, signOut, updateProfile, setProfileAvatar } = useStore();
+  const { session, state, signOut, updateProfile, setProfileAvatar, setTheme } = useStore();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -214,6 +215,19 @@ export default function ProfileScreen() {
       </View>
 
       <View style={styles.group}>
+        <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Appearance</Text>
+        <View style={styles.card}>
+          <View style={styles.themeBlock}>
+            <Text style={[type.body, { color: colors.text }]}>Theme</Text>
+            <Text style={[type.label, { color: colors.textMuted }]}>
+              Applies to every screen right away, and is remembered on this device.
+            </Text>
+            <ThemePicker value={state.theme} onChange={setTheme} />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.group}>
         <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>Settings & support</Text>
         <View style={styles.card}>
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
@@ -288,7 +302,7 @@ function Stat({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.sectionGap, paddingTop: spacing.lg, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.screen, gap: layout.gap },
@@ -323,6 +337,7 @@ const styles = StyleSheet.create({
   group: { gap: spacing.sm },
   groupTitle: { paddingHorizontal: layout.section },
   card: { backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
+  themeBlock: { gap: spacing.sm, paddingHorizontal: layout.section, paddingVertical: spacing.md },
   about: { gap: spacing.xs, paddingTop: spacing.md },
   aboutRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-});
+}));

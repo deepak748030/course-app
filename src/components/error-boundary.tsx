@@ -2,7 +2,7 @@ import { CircleAlert, RotateCcw } from 'lucide-react-native';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 
 /**
  * Last line of defence. A render error in any screen used to surface as a blank page (or a
@@ -56,7 +56,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, { error: E
   }
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   content: { paddingHorizontal: layout.section, paddingVertical: spacing.xxxl, gap: spacing.md, alignItems: 'center' },
   icon: {
@@ -88,4 +88,4 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
   },
-});
+}));

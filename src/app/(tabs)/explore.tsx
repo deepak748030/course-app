@@ -18,7 +18,7 @@ import {
   SectionHeader,
   TabHeader,
 } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import {
   browseCourses,
   categories,
@@ -361,7 +361,7 @@ function FilterGroup({ title, children }: { title: string; children: React.React
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.gap, paddingBottom: spacing.xxl },
   headerBlock: {
     backgroundColor: colors.surface,
@@ -411,4 +411,4 @@ const styles = StyleSheet.create({
   sheetFooter: { gap: spacing.sm },
   filterGroup: { gap: spacing.sm, marginBottom: spacing.lg },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-});
+}));

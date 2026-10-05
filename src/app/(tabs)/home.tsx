@@ -23,7 +23,7 @@ import {
   usePressScale,
 } from '@/components/ui';
 import { BrandMark } from '@/components/marks';
-import { colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courses, discountPercent } from '@/data/catalog';
 import { notifications } from '@/data/content';
 import { images } from '@/media';
@@ -228,7 +228,7 @@ function HeroBanner({ course }: { course: Course }) {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.sectionGap, paddingBottom: spacing.xxl },
   flex: { flex: 1 },
   block: { gap: layout.gap },
@@ -260,4 +260,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: layout.section,
     paddingTop: spacing.sm,
   },
-});
+}));

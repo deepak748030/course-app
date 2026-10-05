@@ -8,6 +8,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
+import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
 import { storage } from '@/lib/storage';
 import { authService } from '@/services/auth';
 import type {
@@ -39,6 +40,10 @@ type PersistedState = {
    * It lives here rather than in the session because SecureStore refuses values over ~2 KB.
    */
   profileAvatarUri: string | null;
+  /**
+   * Chosen look. A device preference rather than account data, so it survives sign-out.
+   */
+  theme: ThemeId;
 };
 
 /** The demo account starts with one course already in progress so Home is not empty. */
@@ -68,7 +73,23 @@ function seedState(): PersistedState {
     notificationsRead: false,
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
     profileAvatarUri: null,
+    theme: DEFAULT_THEME,
   };
+}
+
+/**
+ * Reads a stored blob and keeps only what this build understands, so a value written by an older
+ * or newer version can never break a screen (an unknown theme id falls back to the default).
+ */
+function restoreState(raw: string): PersistedState | null {
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedState>;
+    const merged: PersistedState = { ...seedState(), ...parsed };
+    merged.theme = isThemeId(merged.theme) ? merged.theme : DEFAULT_THEME;
+    return merged;
+  } catch {
+    return null;
+  }
 }
 
 type StoreValue = {
@@ -81,6 +102,8 @@ type StoreValue = {
   /** Merges profile edits into the session and writes it back to the secure store. */
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
   setProfileAvatar: (uri: string | null) => void;
+  /** Applies a theme immediately (whole tree) and remembers it for the next launch. */
+  setTheme: (id: ThemeId) => void;
   completeOnboarding: () => void;
 
   toggleInterest: (id: string) => void;
@@ -131,12 +154,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         // Storage is unavailable; the app continues with the seeded demo state.
       }
       if (cancelled) return;
-      if (raw) {
-        try {
-          setState({ ...seedState(), ...(JSON.parse(raw) as PersistedState) });
-        } catch {
-          // Corrupt local data should not block the app.
-        }
+      const restored = raw ? restoreState(raw) : null;
+      if (restored) {
+        // The theme is applied before the first painted frame of the restored state.
+        setActiveTheme(restored.theme);
+        setState(restored);
       }
       setSession(storedSession);
       hydrated.current = true;
@@ -191,6 +213,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setProfileAvatar: (uri) => setState((prev) => ({ ...prev, profileAvatarUri: uri })),
 
+      setTheme: (id) => {
+        setActiveTheme(id);
+        setState((prev) => ({ ...prev, theme: id }));
+      },
+
       signOut: async () => {
         await authService.clearSession();
         setSession(null);
@@ -200,6 +227,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           onboardingDone: true,
           interests: prev.interests,
           preferences: prev.preferences,
+          // The look belongs to the device, not to the account.
+          theme: prev.theme,
         }));
       },
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),

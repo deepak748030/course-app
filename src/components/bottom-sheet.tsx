@@ -11,7 +11,7 @@ import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSprin
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Button, IconButton } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 
 export function BottomSheet({
   visible,
@@ -128,7 +128,7 @@ export function ConfirmSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.player },
   sheet: {
@@ -154,4 +154,4 @@ const styles = StyleSheet.create({
   scrollContent: { gap: spacing.md, paddingBottom: spacing.sm },
   footer: { paddingTop: spacing.sm },
   confirmActions: { gap: spacing.sm },
-});
+}));

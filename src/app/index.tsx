@@ -2,7 +2,7 @@ import { Redirect } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
 import { BrandMark } from '@/components/marks';
-import { colors } from '@/constants/theme';
+import { createStyles, colors } from '@/constants/theme';
 import { useStore } from '@/store';
 
 /**
@@ -28,6 +28,6 @@ export default function Index() {
   return <Redirect href="/home" />;
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   splash: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-});
+}));

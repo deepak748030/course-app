@@ -13,7 +13,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Avatar, Button, Chip, FormField } from '@/components/ui';
-import { colors, spacing, type } from '@/constants/theme';
+import { createStyles, colors, spacing, type } from '@/constants/theme';
 import { buildDateOfBirth, DOB_FORMAT_HINT, validateEmail } from '@/lib/format';
 import type { UserProfile } from '@/types';
 
@@ -238,7 +238,7 @@ export function ProfileEditorSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   photoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   notice: { paddingTop: spacing.xs },
   photoActions: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
@@ -247,4 +247,4 @@ const styles = StyleSheet.create({
   dobField: { flex: 1 },
   dobFieldWide: { flex: 1.4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-});
+}));

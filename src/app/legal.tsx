@@ -2,7 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, Button, Divider, Screen } from '@/components/ui';
-import { colors, layout, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { legalDocs } from '@/data/content';
 
 type DocKey = keyof typeof legalDocs;
@@ -47,10 +47,10 @@ export default function LegalScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   pad: { paddingHorizontal: layout.screen },
   header: { gap: spacing.sm, alignItems: 'flex-start', paddingHorizontal: layout.section, paddingTop: spacing.sm },
   paragraphs: { paddingHorizontal: layout.screen },
   paragraph: { paddingVertical: spacing.md },
   divider: { marginLeft: 0 },
-});
+}));

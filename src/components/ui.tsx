@@ -43,7 +43,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, font, layout, radius, spacing, tabularNums, type, type TypeToken } from '@/constants/theme';
+import { createStyles, colors, font, layout, radius, spacing, tabularNums, type, type TypeToken } from '@/constants/theme';
 import { feedback } from '@/lib/util';
 
 /* ------------------------------------------------------------------ *
@@ -1107,7 +1107,7 @@ export function SearchField({
  * Styles
  * ------------------------------------------------------------------ */
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   fullWidth: { alignSelf: 'stretch' },
@@ -1310,4 +1310,4 @@ const styles = StyleSheet.create({
     minHeight: layout.touchTarget,
     paddingHorizontal: layout.screen,
   },
-});
+}));

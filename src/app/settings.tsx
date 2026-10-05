@@ -6,7 +6,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
 import { AppBar, Badge, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
-import { colors, layout, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { useStore } from '@/store';
 import { formatIndianMobile } from '@/lib/format';
 
@@ -143,9 +143,9 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   section: { gap: layout.gap },
   note: { paddingHorizontal: layout.section, paddingTop: spacing.xs },
   about: { gap: spacing.xs, paddingHorizontal: layout.section, paddingTop: spacing.sm },
-});
+}));

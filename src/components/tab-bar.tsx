@@ -23,7 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { feedback } from '@/lib/util';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
@@ -183,7 +183,7 @@ function TabItem({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   noTouch: { pointerEvents: 'none' },
   bar: {
     flexDirection: 'row',
@@ -211,4 +211,4 @@ const styles = StyleSheet.create({
   itemPressed: { opacity: 0.85 },
   iconWrap: { width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   iconLayer: { position: 'absolute', top: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-});
+}));

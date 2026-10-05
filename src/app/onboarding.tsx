@@ -17,7 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BrandMark } from '@/components/marks';
 import { Button } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { images } from '@/media';
 import { useStore } from '@/store';
 import type { ImageSource } from 'expo-image';
@@ -199,7 +199,7 @@ function SlideView({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   topBar: { paddingHorizontal: layout.screen, paddingVertical: spacing.sm, width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center' },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingLeft: spacing.sm },
@@ -228,4 +228,4 @@ const styles = StyleSheet.create({
   dot: { height: 6, borderRadius: radius.pill },
   dotActive: { width: 22, backgroundColor: colors.primary },
   dotIdle: { width: 6, backgroundColor: colors.border },
-});
+}));

@@ -23,12 +23,22 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { OfferLottie } from '@/components/offer-lottie';
-import { colors, radius, spacing, type } from '@/constants/theme';
+import { createStyles, radius, spacing, type } from '@/constants/theme';
 
 // Metro inlines the composition, so there is no file to fetch at run time.
 const OFFER_ANIMATION = require('@/assets/lottie/offer.json');
 
 type Tone = 'onYellow' | 'onSurface';
+
+/**
+ * Brand yellow, fixed in both themes.
+ *
+ * The offer mark is the one piece of artwork that does not follow the theme: the Lottie animation
+ * is drawn in ink and amber, so it needs the yellow ground in the green theme too (ink on the deep
+ * green accent would all but disappear). Everything else on the screen changes with the theme.
+ */
+const BRAND_YELLOW = '#FFC629';
+const BRAND_YELLOW_SOFT = '#FFF4CC';
 
 const TONES: Record<Tone, string> = {
   /** Ink mark on the brand yellow pill: the combination used on course artwork. */
@@ -108,17 +118,17 @@ export function OfferBadge({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   glyphBox: { alignItems: 'center', justifyContent: 'center' },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.primary,
+    backgroundColor: BRAND_YELLOW,
     borderRadius: radius.pill,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
   },
   badgeMd: { paddingVertical: spacing.xs },
-  badgeSurface: { backgroundColor: colors.primarySoft },
-});
+  badgeSurface: { backgroundColor: BRAND_YELLOW_SOFT },
+}));

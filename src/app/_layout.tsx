@@ -3,14 +3,14 @@ import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
-import { colors, font } from '@/constants/theme';
+import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
 import { StoreProvider, useStore } from '@/store';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -34,20 +34,53 @@ if (Platform.OS !== 'web') {
  */
 const SPLASH_MAX_MS = 1600;
 
-const navigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.background,
-    card: colors.surface,
-    text: colors.text,
-    border: colors.border,
-    primary: colors.accentText,
-  },
-};
+const BASE_NAVIGATION_THEME = DefaultTheme;
 
 function hideSplash() {
   void SplashScreen.hideAsync().catch(() => {});
+}
+
+/**
+ * Applies the theme the user picked on Profile to the whole tree.
+ *
+ * `setActiveTheme` runs during render, before any child renders, so the live `colors` proxy and
+ * every `createStyles` factory below resolve against the picked palette, and the navigation theme
+ * is rebuilt here (a module-scope object would have kept the palette of the first launch).
+ *
+ * The `<Fragment key>` is the part that makes the switch complete: it mounts the tree again, and a
+ * fresh mount is what re-resolves every style. Re-rendering alone is not enough, because a
+ * component that is not re-rendered keeps the style objects it already holds, and a palette read
+ * through a module-level proxy is invisible to the React Compiler, which is therefore free to
+ * reuse the elements it built for the previous theme. Remounting below the navigation container
+ * keeps the current route and tab — the navigation state lives in the container, above this.
+ */
+function ThemedApp({ children }: { children: ReactNode }) {
+  const { state } = useStore();
+  setActiveTheme(state.theme);
+
+  const navigationTheme = useMemo(
+    () => ({
+      ...BASE_NAVIGATION_THEME,
+      colors: {
+        ...BASE_NAVIGATION_THEME.colors,
+        background: colors.background,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.border,
+        primary: colors.accentText,
+      },
+    }),
+    // `colors` is a live proxy: the id is what actually changes the values read above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.theme],
+  );
+
+  return (
+    <ThemeProvider value={navigationTheme}>
+      {/* The key is the switch itself: mount the tree again and every style is resolved afresh. */}
+      <Fragment key={state.theme}>{children}</Fragment>
+    </ThemeProvider>
+  );
 }
 
 /** Some hosts repaint the window on resume, so the colour is re-applied on every foreground. */
@@ -93,8 +126,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
-        <ThemeProvider value={navigationTheme}>
-          <StoreProvider>
+        <StoreProvider>
+          <ThemedApp>
             <ErrorBoundary>
               <SplashGate>
                 <View style={styles.flex}>
@@ -115,13 +148,13 @@ export default function RootLayout() {
                 </View>
               </SplashGate>
             </ErrorBoundary>
-          </StoreProvider>
-        </ThemeProvider>
+          </ThemedApp>
+        </StoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
-});
+}));

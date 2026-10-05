@@ -28,7 +28,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { AppState, Platform, StatusBar as NativeStatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors } from '@/constants/theme';
+import { createStyles, colors } from '@/constants/theme';
 
 /** `light` = light surface behind the bar (dark icons); `dark` = dark surface (light icons). */
 type Tone = 'light' | 'dark';
@@ -94,7 +94,7 @@ export function AppStatusBar({ style = 'dark' }: { style?: 'dark' | 'light' }) {
   return <StatusBar style={style} />;
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   backdrop: {
     position: 'absolute',
     top: 0,
@@ -103,4 +103,4 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     pointerEvents: 'none',
   },
-});
+}));

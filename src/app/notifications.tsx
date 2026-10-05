@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, DataList, EmptyState, Screen, SectionHeader } from '@/components/ui';
-import { colors, layout, radius, spacing, type } from '@/constants/theme';
+import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { notifications } from '@/data/content';
 import { useStore } from '@/store';
 import { minutesAgoLabel } from '@/lib/format';
@@ -94,7 +94,7 @@ function Group({
   );
 }
 
-const styles = StyleSheet.create({
+const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1 },
   group: { gap: layout.gap },
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.sm, minHeight: layout.touchTarget },
@@ -109,4 +109,4 @@ const styles = StyleSheet.create({
   },
   openLink: { marginTop: spacing.xs },
   note: { paddingHorizontal: layout.section, paddingTop: spacing.sm },
-});
+}));
