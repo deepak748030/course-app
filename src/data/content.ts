@@ -174,6 +174,23 @@ export const legalDocs = {
 
 /** What a purchase includes in this prototype. Deliberately conservative — nothing is promised
  *  that the product does not actually do. */
+/**
+ * The rating page's vocabulary.
+ *
+ * Both lists are read through `t()` where they are rendered, exactly like the catalog's sort and
+ * price options: the words stay in the data layer, the translation happens at the call site.
+ */
+export const ratingWords: string[] = ['Not for me', 'Could be better', 'It was fine', 'Really good', 'Excellent'];
+
+/** What stood out: a fixed list, so reviews stay comparable instead of turning into free text. */
+export const ratingHighlights: string[] = [
+  'Clear explanations',
+  'Practical, step by step',
+  'Good camera work',
+  'Honest about mistakes',
+  'Worth the price',
+];
+
 export const purchaseTerms: string[] = [
   'Stream every lesson of this course on this account',
   'Lessons unlock immediately after the demo purchase completes',

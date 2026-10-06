@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
+  ArrowRight,
   ChartNoAxesColumnIncreasing,
   CircleCheck,
   Clapperboard,
@@ -19,6 +20,7 @@ import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon, AnimatedPercent } from '@/components/animated-icons';
 import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { StarsDisplay } from '@/components/rating-input';
 import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
@@ -45,10 +47,11 @@ export default function CourseDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isEnrolled, isCourseSaved, toggleSavedCourse, completedCount, courseProgressRatio, lessonProgress } = useStore();
+  const { isEnrolled, isCourseSaved, toggleSavedCourse, completedCount, courseProgressRatio, lessonProgress, ratingFor } = useStore();
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
   const course = useMemo(() => courseById(id), [id]);
+  const rating = course ? ratingFor(course.id) : null;
   const offer = course ? discountPercent(course) : null;
   const categoryLabel = useMemo(
     () => categories.find((category) => category.id === course?.categoryId)?.label ?? 'Course',
@@ -231,6 +234,39 @@ export default function CourseDetailsScreen() {
             subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`}
           />
         </View>
+
+        {/* The learner's own rating sits above the sample reviews: it is the one review on this page
+            that belongs to them, so it is also the way back into editing it. Only for a course they
+            own — nobody else can rate one. */}
+        {enrolled ? (
+          <View style={styles.padInset}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={rating ? t('Your rating: {n} stars. Edit it.', { n: rating.stars }) : t('Rate this course')}
+              onPress={() => router.push({ pathname: '/rate/[courseId]', params: { courseId: course.id } })}
+              style={({ pressed }) => [styles.rateCard, pressed && { opacity: 0.75 }]}>
+              <View style={styles.flex}>
+                <Text style={[type.bodyStrong, { color: colors.text }]}>
+                  {rating ? t('Your rating') : t('Rate this course')}
+                </Text>
+                {rating ? (
+                  <View style={styles.rateStars}>
+                    <StarsDisplay value={rating.stars} />
+                    <Text style={[type.label, { color: colors.textMuted }]}>
+                      {t('{n} stars · tap to edit', { n: rating.stars })}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={[type.label, { color: colors.textMuted }]}>
+                    {t('Tell other learners how this course went for you.')}
+                  </Text>
+                )}
+              </View>
+              <ArrowRight size={16} color={colors.accentText} strokeWidth={2} />
+            </Pressable>
+          </View>
+        ) : null}
+
         <DataList>
           {course.reviews.map((review) => (
             <ReviewCard key={review.id} review={review} />
@@ -437,6 +473,20 @@ const styles = createStyles(() => StyleSheet.create({
   /** Mirrors the player's own bottom-right control: glyph + label straight on the scrim. */
   /** Number, percent glyph, `OFF`: one mark, so the gaps stay at 2px rather than the block rhythm. */
   heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  padInset: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
+  rateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: layout.touchTarget + spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  rateStars: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 },
   playCircle: {
     width: 44,
     height: 44,

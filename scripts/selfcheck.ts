@@ -347,6 +347,35 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 });
 
+check('a bought course can be rated, and the rating stays on the device', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // The rating lives in the persisted state, so it survives a reload like progress and notes do.
+  const store = read('src/store.tsx');
+  assert.ok(/ratings: Record<Id, CourseRating>/.test(store), 'ratings are part of the stored state');
+  assert.ok(store.includes('ratingFor: (courseId) => state.ratings[courseId] ?? null'), 'the store can read one back');
+  assert.ok(store.includes('ratings: { ...prev.ratings, [rating.courseId]: rating }'), 'the store can write one');
+
+  const rate = read('src/app/rate/[courseId].tsx');
+  assert.ok(rate.includes('useLocalSearchParams<{ courseId: string }>'), 'the screen takes the course from the route');
+  assert.ok(rate.includes('if (!isEnrolled(course.id))'), 'only a course the learner owns can be rated');
+  assert.ok(rate.includes('setRating({'), 'submitting writes the rating');
+  assert.ok(
+    rate.includes("t('This prototype keeps your rating on this device. Nothing is sent anywhere.')"),
+    'the screen says the rating is local instead of implying a server took it',
+  );
+
+  // Two ways in: the course page it belongs to, and the finished course in My learning.
+  assert.ok(read('src/app/course/[id].tsx').includes("pathname: '/rate/[courseId]'"), 'the course page links to it');
+  assert.ok(read('src/app/(tabs)/learning.tsx').includes("pathname: '/rate/[courseId]'"), 'My learning links to it');
+
+  // The stars are a radio group for screen readers, and every star is its own target.
+  const input = read('src/components/rating-input.tsx');
+  assert.ok(input.includes('accessibilityRole="radiogroup"'), 'the star row is a group');
+  assert.ok(input.includes('accessibilityRole="radio"'), 'each star is a radio');
+  assert.ok(input.includes('minHeight: layout.touchTarget'), 'each star keeps the 44pt target');
+});
+
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
   const [catalog, payments, content, i18n, hindi] = await Promise.all([
     import('../src/data/catalog'),
@@ -389,6 +418,8 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     ...catalog.durationOptions.map((option) => option.label),
     ...payments.demoScenarios.flatMap((scenario) => [scenario.label, scenario.help]),
     ...content.purchaseTerms,
+    ...content.ratingWords,
+    ...content.ratingHighlights,
     // The one message the demo gateway returns (src/services/payments.ts).
     'The demo gateway declined this payment. No money moved.',
     // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).

@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
-import { BookOpen, Bookmark, CircleCheck, Clock, Play, Search } from 'lucide-react-native';
+import { ArrowRight, BookOpen, Bookmark, CircleCheck, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ContinueCard } from '@/components/course-cards';
+import { StarsDisplay } from '@/components/rating-input';
 import {
   AppText,
   Badge,
@@ -28,7 +29,7 @@ export default function MyLearningScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { state, courseProgressRatio, completedCount, resumeLesson } = useStore();
+  const { state, courseProgressRatio, completedCount, resumeLesson, ratingFor } = useStore();
   const [segment, setSegment] = useState<Segment>('progress');
 
   const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments]);
@@ -129,30 +130,53 @@ export default function MyLearningScreen() {
         </DataList>
       ) : (
         <DataList>
-          {list.map((course) => (
-            <Pressable
-              key={course.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${course.title}, completed. Review lessons.`}
-              onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
-              style={({ pressed }) => [styles.completedRow, pressed && { opacity: 0.7 }]}>
-              <View style={styles.flex}>
-                <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
-                  {course.title}
-                </Text>
-                <View style={styles.completedMeta}>
-                  <Badge label={t("All lessons done")} tone="success" icon={CircleCheck} />
-                  <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
-                    {completedCount(course)}/{course.lessonCount} · {formatDuration(course.hours * 60)}
+          {list.map((course) => {
+            const rating = ratingFor(course.id);
+            return (
+              /* Two stacked rows, not one nested one: the top row reopens the course, the bar under
+                 it rates it. A finished course is exactly where rating belongs, so the action lives
+                 on the card instead of behind another tap. */
+              <View key={course.id} style={styles.completedBlock}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${course.title}, completed. Review lessons.`}
+                  onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
+                  style={({ pressed }) => [styles.completedRow, pressed && { opacity: 0.7 }]}>
+                  <View style={styles.flex}>
+                    <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
+                      {course.title}
+                    </Text>
+                    <View style={styles.completedMeta}>
+                      <Badge label={t("All lessons done")} tone="success" icon={CircleCheck} />
+                      <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
+                        {completedCount(course)}/{course.lessonCount} · {formatDuration(course.hours * 60)}
+                      </Text>
+                    </View>
+                    <ProgressBar value={1} accessibilityLabel={`${course.title} complete`} />
+                  </View>
+                  <View style={styles.replay}>
+                    <Play size={16} color={colors.accentText} strokeWidth={2} fill={colors.accentText} />
+                  </View>
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    rating
+                      ? t('Your rating: {n} stars. Edit it.', { n: rating.stars })
+                      : t('Rate this course')
+                  }
+                  onPress={() => router.push({ pathname: '/rate/[courseId]', params: { courseId: course.id } })}
+                  style={({ pressed }) => [styles.rateBar, pressed && { opacity: 0.7 }]}>
+                  {rating ? <StarsDisplay value={rating.stars} /> : <Star size={15} color={colors.gold} strokeWidth={1.8} />}
+                  <Text style={[type.labelStrong, styles.flex, { color: colors.accentText }]}>
+                    {rating ? t('{n} stars · edit your rating', { n: rating.stars }) : t('Rate this course')}
                   </Text>
-                </View>
-                <ProgressBar value={1} accessibilityLabel={`${course.title} complete`} />
+                  <ArrowRight size={14} color={colors.accentText} strokeWidth={2.2} />
+                </Pressable>
               </View>
-              <View style={styles.replay}>
-                <Play size={16} color={colors.accentText} strokeWidth={2} fill={colors.accentText} />
-              </View>
-            </Pressable>
-          ))}
+            );
+          })}
         </DataList>
       )}
 
@@ -192,6 +216,15 @@ function Stat({
 
 const styles = createStyles(() => StyleSheet.create({
   content: { gap: layout.gap, paddingTop: spacing.sm, paddingBottom: spacing.xxl },
+  /* Completed course: the card, then the rate bar that belongs to it. */
+  completedBlock: { gap: spacing.xs },
+  rateBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: layout.touchTarget,
+    paddingHorizontal: spacing.sm,
+  },
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.screen },
   statsCard: {

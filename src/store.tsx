@@ -17,6 +17,7 @@ import type {
   Enrollment,
   Id,
   Lesson,
+  CourseRating,
   LessonProgress,
   NotificationPrefs,
   Session,
@@ -27,6 +28,8 @@ const STORAGE_KEY = 'ydu.state.v1';
 
 type PersistedState = {
   onboardingDone: boolean;
+  /** courseId -> the rating the learner gave it. Editable, and kept on this device. */
+  ratings: Record<Id, CourseRating>;
   interests: string[];
   savedCourseIds: Id[];
   savedRecipeIds: Id[];
@@ -56,6 +59,7 @@ type PersistedState = {
 function seedState(): PersistedState {
   return {
     onboardingDone: false,
+    ratings: {},
     interests: [],
     savedCourseIds: [],
     savedRecipeIds: [],
@@ -136,6 +140,10 @@ type StoreValue = {
 
   noteFor: (lessonId: Id) => string;
   setNote: (lessonId: Id, text: string) => void;
+
+  ratingFor: (courseId: Id) => CourseRating | null;
+  /** Writes (or overwrites) the learner's rating for a course. */
+  setRating: (rating: CourseRating) => void;
 
   setPreference: (key: keyof NotificationPrefs, value: boolean) => void;
   markNotificationsRead: () => void;
@@ -305,6 +313,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       noteFor: (lessonId) => state.notes[lessonId] ?? '',
       setNote: (lessonId, text) => setState((prev) => ({ ...prev, notes: { ...prev.notes, [lessonId]: text } })),
+
+      ratingFor: (courseId) => state.ratings[courseId] ?? null,
+      setRating: (rating) =>
+        setState((prev) => ({
+          ...prev,
+          ratings: { ...prev.ratings, [rating.courseId]: rating },
+        })),
 
       setPreference: (key, value) =>
         setState((prev) => ({ ...prev, preferences: { ...prev.preferences, [key]: value } })),

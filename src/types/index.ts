@@ -51,6 +51,24 @@ export interface Review {
   context: string;
 }
 
+/**
+ * A rating the learner gave a course they own.
+ *
+ * Prototype data: it is written to this device and never sent anywhere, which is what the screen says
+ * out loud rather than pretending a server collected it.
+ */
+export interface CourseRating {
+  courseId: Id;
+  /** 1 to 5. */
+  stars: number;
+  /** What stood out, from the fixed list of highlights. */
+  highlights: string[];
+  /** Optional written review. */
+  body: string;
+  /** ISO timestamp: the rating can be edited, so the screen shows when it was last saved. */
+  updatedAt: string;
+}
+
 export interface Course {
   id: Id;
   title: string;
