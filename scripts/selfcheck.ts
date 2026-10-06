@@ -350,20 +350,39 @@ check('screen scrollers are clipped and headers paint over them', () => {
 check('the app draws the same brand mark the icons are generated from', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
-  // One source of truth: the can body and the handle arcs exist twice (vector in the app, paths in the
-  // generator that rasterises the launcher icons), so the two copies are compared here. Without this
-  // the in-app logo could quietly stop matching the icon on the home screen of the phone.
+  // One source of truth: the churn's body and neck, its handles, the leaves and their veins, and the
+  // YDU letterforms exist twice (vector in the app, paths in the generator that rasterises the launcher
+  // icons), so the two copies are compared here. Without this the in-app logo could quietly stop
+  // matching the icon on the home screen of the phone.
   const marks = read('src/components/marks.tsx');
   const generator = read('scripts/generate-brand-icons.mjs');
   const needles = [
-    'M 356 274 L 644 274 L 660 322 L 634 552 Q 632 562 620 562 L 380 562 Q 368 562 366 552 L 340 322 Z',
-    'M 352 212 C 302 226 290 288 290 352 C 290 414 314 456 366 466',
-    'M 598 560 Q 802 476 836 226 Q 672 344 598 560 Z',
+    'M 424 244 C 392 274 372 312 366 352 L 358 558 Q 358 596 396 596 L 604 596 Q 642 596 642 558 L 634 352 C 628 312 608 274 576 244 Z',
+    'M 440 252 L 380 252 Q 332 252 332 300 L 332 382 Q 332 430 380 430 L 428 430',
+    'M 438 330 Q 232 366 106 646 Q 318 622 438 330 Z',
+    'M 196 584 Q 306 470 408 372',
+    'M 430 188 L 570 188 L 578 246 L 422 246 Z',
   ];
   for (const geometry of needles) {
     assert.ok(marks.includes(geometry), `marks.tsx draws ${geometry.slice(0, 22)}…`);
     assert.ok(generator.includes(geometry), `the icon generator draws ${geometry.slice(0, 22)}…`);
   }
+
+  // The letterforms live only in the generator: the app shows the rendered logo (brand-logo.png) rather
+  // than drawing a second copy of the name, so there is nothing to compare them against in marks.tsx.
+  for (const letter of [
+    'M 0 0 L 74 0 L 150 104 L 62 104 Z M 138 0 L 212 0 L 150 104 L 62 104 Z M 62 104 L 150 104 L 150 210 L 62 210 Z',
+    'M 0 0 L 116 0 Q 210 0 210 105 Q 210 210 116 210 L 0 210 Z M 70 56 L 70 154 L 116 154 Q 156 154 156 105 Q 156 56 116 56 Z',
+    'M 0 0 L 0 118 Q 0 210 105 210 Q 210 210 210 118 L 210 0 L 142 0 L 142 100 Q 142 150 105 150 Q 68 150 68 100 L 68 0 Z',
+  ]) {
+    assert.ok(generator.includes(letter), `the icon generator cuts ${letter.slice(0, 14)}… in the wordmark`);
+  }
+
+  // The app shows the rendered lockup rather than a second drawing of the name, which is what keeps
+  // the splash screen, the favicon and the launcher icon the same picture.
+  assert.ok(marks.includes('export function BrandLockup'), 'the app can show the full logo');
+  assert.ok(marks.includes('images.brandLogo'), 'and it shows the generated file, not a redraw');
+  assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
 
   // The icon set itself: every size the platforms ask for, written by the generator.
   for (const file of [

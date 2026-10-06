@@ -21,14 +21,18 @@
  *   assets/images/brand-mark.png           256, the mark for small, text-free spots
  *
  * Colours are fixed, not themed: a logo that changed with the app's theme would no longer be a logo.
- * The green is the one from the brand artwork (#0B5C1E), the leaf gradient runs to #5CC15E.
  *
- * Type is set in DM Sans — the app's own family — loaded from the installed font package, and the
+ * The drawing follows the brand artwork: a white disc filling the square, a tall milk churn with a
+ * wide lid, a white ring where the shoulder meets the body and two white-outlined handles, two big
+ * leaves with a white vein sweeping down and out from behind the can, and the name in a heavy
+ * geometric face. The letters YDU are drawn as paths rather than set in type — the reference weight is
+ * heavier than any font we ship, and paths mean the icon never depends on a font being installed.
+ * Only ACADEMY is set in DM Sans (the app's own family), loaded from the installed font package; the
  * script fails loudly if that font cannot be read, because a logo with the wordmark silently missing
  * is worse than no logo at all.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,87 +43,178 @@ const BRAND_DIR = resolve(ROOT, 'assets/brand');
 const IMAGE_DIR = resolve(ROOT, 'assets/images');
 
 /* ------------------------------------------------------------------ *
- * Palette and geometry
+ * Palette
  * ------------------------------------------------------------------ */
 
+/** The brand's field green — the same value the app uses in marks.tsx and app.json. */
 const GREEN = '#0B5C1E';
 const GREEN_DEEP = '#08430F';
-const LEAF_LIGHT = '#5CC15E';
+const GREEN_LIGHT = '#2E8B3A';
+/** The leaves run from a sunlit tip to a deep base, as in the artwork. */
+const LEAF_TIP = '#A7E97C';
+const LEAF_MID = '#4FB94A';
+const LEAF_BASE = '#26822F';
+/** The name is cut in a near-black green with a lighter top edge. */
+const INK_TOP = '#3A8C3D';
+const INK_BOTTOM = '#123F19';
+const INK_BEVEL = '#4CA64C';
+/** The ring, the handles' outline and the veins: the artwork's white detailing. */
+const WHITE = '#FFFFFF';
 
 /** One square unit for every drawing: the lockup, the mark and the icons all start from 1000. */
 const BOX = 1000;
 
-/**
- * The lockup is drawn in one square of 1000 units, top to bottom: lid, can, name, suffix.
- *
- * The numbers are not arbitrary — the disc is a circle, so every element has to stay inside it. The
- * wordmark is the tight one: at the bottom of the disc the circle is at its narrowest, so the name is
- * sized and placed to leave the same air on both sides at that height (see the comment on `DISC`).
- */
+/* ------------------------------------------------------------------ *
+ * Geometry — one drawing, reused by every output
+ * ------------------------------------------------------------------ */
 
-/** The disc the lockup sits on. Its 470 radius leaves a 30-unit green margin in the square field. */
-const DISC = 470;
+const DISC = { cx: 500, cy: 500, r: 500 };
 
 /**
- * Milk can: a wide lid, a neck, a tapering body, and two thin handles that arc out from under the lid
- * and clear of the body. The handles are drawn after the body on purpose — the reference artwork has
- * them sitting over the shoulder, which is what makes the silhouette read as a milk can rather than a
- * jar.
+ * Two leaves behind the can: slender blades whose bases hide behind the body and whose tips point
+ * down and out, as in the artwork. Each is a lens — one edge bulging up, the other down.
  */
-const CAN = `
-    <path d="M 352 212 C 302 226 290 288 290 352 C 290 414 314 456 366 466"
-          fill="none" stroke="url(#can)" stroke-width="24" stroke-linecap="round" />
-    <path d="M 648 212 C 698 226 710 288 710 352 C 710 414 686 456 634 466"
-          fill="none" stroke="url(#can)" stroke-width="24" stroke-linecap="round" />
-    <rect x="318" y="168" width="364" height="58" rx="20" fill="url(#can)" />
-    <rect x="350" y="226" width="300" height="48" fill="url(#can)" opacity="0.94" />
-    <path d="M 356 274 L 644 274 L 660 322 L 634 552 Q 632 562 620 562 L 380 562 Q 368 562 366 552 L 340 322 Z"
-          fill="url(#can)" />
-    <rect x="352" y="332" width="296" height="7" fill="#FFFFFF" opacity="0.26" />
-    <ellipse cx="420" cy="410" rx="19" ry="84" fill="#FFFFFF" opacity="0.15" />`;
+const LEAF_PATHS = [
+  'M 438 330 Q 232 366 106 646 Q 318 622 438 330 Z',
+  'M 562 330 Q 768 366 894 646 Q 682 622 562 330 Z',
+];
+/** One white vein per leaf, following the blade from just short of the tip back to the can. */
+const LEAF_VEINS = ['M 196 584 Q 306 470 408 372', 'M 804 584 Q 694 470 592 372'];
+const LEAF_GRADIENTS = [
+  { id: 'leafL', x1: 106, y1: 646, x2: 438, y2: 330 },
+  { id: 'leafR', x1: 894, y1: 646, x2: 562, y2: 330 },
+];
 
-/** Two leaves behind the can: lens-shaped, tips up and out, each with a vein. */
-/** Two leaves behind the can: lens-shaped, tips up and out, each with a vein. */
-const LEAVES = `
-    <path d="M 402 560 Q 198 476 164 226 Q 328 344 402 560 Z" fill="url(#leaf)" />
-    <path d="M 598 560 Q 802 476 836 226 Q 672 344 598 560 Z" fill="url(#leaf)" />
-    <path d="M 386 534 Q 246 424 196 262" fill="none" stroke="#EDF9EA" stroke-width="6"
-          stroke-linecap="round" opacity="0.45" />
-    <path d="M 614 534 Q 754 424 804 262" fill="none" stroke="#EDF9EA" stroke-width="6"
-          stroke-linecap="round" opacity="0.45" />`;
+/**
+ * The two handles: a squared bracket with rounded corners, drawn with a white outline and a green
+ * core — the detail that makes the silhouette read as a milk churn and not a jar. Both ends run past
+ * the can's edge and are hidden behind it.
+ */
+const HANDLE_PATHS = [
+  'M 440 252 L 380 252 Q 332 252 332 300 L 332 382 Q 332 430 380 430 L 428 430',
+  'M 560 252 L 620 252 Q 668 252 668 300 L 668 382 Q 668 430 620 430 L 572 430',
+];
 
-/** The wordmark, in the app's own family. The suffix is what the bottom of the disc has room for. */
-const WORDMARK = `
-    <text x="500" y="752" text-anchor="middle" font-family="DM Sans" font-size="222" font-weight="800"
-          letter-spacing="-6" fill="${GREEN}">YDU</text>
-    <text x="500" y="856" text-anchor="middle" font-family="DM Sans" font-size="84" font-weight="700"
-          letter-spacing="10" fill="${GREEN}">ACADEMY</text>`;
+/** The body: a curved shoulder off the neck, a tall near-cylinder, rounded base. */
+const BODY_PATH =
+  'M 424 244 C 392 274 372 312 366 352 L 358 558 Q 358 596 396 596 L 604 596 Q 642 596 642 558 L 634 352 C 628 312 608 274 576 244 Z';
+/** The lid, the white gap under it, the neck, and the ring where the shoulder meets the body. */
+const CAP = { x: 398, y: 112, width: 204, height: 64, rx: 24 };
+const CAP_GAP = { x: 432, y: 178, width: 136, height: 10 };
+const NECK_PATH = 'M 430 188 L 570 188 L 578 246 L 422 246 Z';
+const RING = { cx: 500, cy: 352, rx: 136, ry: 16 };
+
+/**
+ * YDU, drawn as paths: three letters of 212 units with a 16-unit gap, on a 210-unit cap height. The
+ * Y's arms have vertical outer edges that turn into the diagonal, the D's bowl is squared off, and
+ * the U's inner floor is a shallow curve — the reference letterforms, heavier than any font we ship.
+ */
+const NAME_TOP = 620;
+const NAME_BOXES = [
+  ['Y', 166],
+  ['D', 394],
+  ['U', 620],
+];
+const LETTER_PATHS = {
+  Y: 'M 0 0 L 74 0 L 150 104 L 62 104 Z M 138 0 L 212 0 L 150 104 L 62 104 Z M 62 104 L 150 104 L 150 210 L 62 210 Z',
+  D: 'M 0 0 L 116 0 Q 210 0 210 105 Q 210 210 116 210 L 0 210 Z M 70 56 L 70 154 L 116 154 Q 156 154 156 105 Q 156 56 116 56 Z',
+  U: 'M 0 0 L 0 118 Q 0 210 105 210 Q 210 210 210 118 L 210 0 L 142 0 L 142 100 Q 142 150 105 150 Q 68 150 68 100 L 68 0 Z',
+};
+/** The name is lifted 9 units in a lighter green first, which leaves a bevel along its top edges. */
+const NAME_BEVEL = 9;
+
+/** ACADEMY, tracked wide under the name. */
+const SUFFIX = { size: 90, letterSpacing: 11, baseline: 912 };
 
 const GRADIENTS = `
-    <linearGradient id="can" x1="0" y1="120" x2="0" y2="620" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#2E8B3A" />
-      <stop offset="0.45" stop-color="#12702A" />
+    <linearGradient id="canLid" x1="0" y1="112" x2="0" y2="322" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${GREEN_LIGHT}" />
+      <stop offset="0.5" stop-color="#1B7A2B" />
+      <stop offset="1" stop-color="#14672A" />
+    </linearGradient>
+    <linearGradient id="canBody" x1="356" y1="0" x2="646" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#17702A" />
+      <stop offset="0.18" stop-color="#3B9E45" />
+      <stop offset="0.45" stop-color="#26822F" />
+      <stop offset="0.78" stop-color="#14672A" />
       <stop offset="1" stop-color="${GREEN_DEEP}" />
     </linearGradient>
-    <linearGradient id="leaf" x1="0" y1="580" x2="0" y2="240" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#1B7A2B" />
-      <stop offset="1" stop-color="${LEAF_LIGHT}" />
+${LEAF_GRADIENTS.map(
+  (g) => `    <linearGradient id="${g.id}" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${LEAF_TIP}" />
+      <stop offset="0.55" stop-color="${LEAF_MID}" />
+      <stop offset="1" stop-color="${LEAF_BASE}" />
+    </linearGradient>`,
+).join('\n')}
+    <linearGradient id="ink" x1="0" y1="${NAME_TOP}" x2="0" y2="${NAME_TOP + 210}" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="${INK_TOP}" />
+      <stop offset="1" stop-color="${INK_BOTTOM}" />
     </linearGradient>`;
 
-const svg = (body) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}" width="${BOX}" height="${BOX}">
-  <defs>${GRADIENTS}</defs>${body}
-</svg>
-`;
+/** The letters, positioned and filled with whatever paints them. */
+const name = (paint) =>
+  NAME_BOXES.map(
+    ([letter, x]) =>
+      `    <path d="${LETTER_PATHS[letter]}"${paint ? ` fill="${paint}"` : ''} fill-rule="nonzero" transform="translate(${x} ${NAME_TOP})" />`,
+  ).join('\n');
 
-/** The full lockup: disc, leaves, can, name. */
-const LOGO_SVG = svg(`
-  <circle cx="500" cy="500" r="${DISC}" fill="#FFFFFF" />${LEAVES}${CAN}${WORDMARK}`);
+/** Leaves, then the handles over them, then the can — the reference artwork's stacking order. */
+const leaves = (fill) =>
+  LEAF_PATHS.map((d, index) => `    <path d="${d}" fill="${fill ?? `url(#${LEAF_GRADIENTS[index].id})`}" />`).join(
+    '\n',
+  );
+
+const MARK_LAYERS = (fill) => `
+${leaves(fill)}
+${HANDLE_PATHS.map(
+  (d) =>
+    `    <path d="${d}" fill="none" stroke="${fill}" stroke-width="46" stroke-linecap="round" stroke-linejoin="round" />`,
+).join('\n')}
+    <path d="${BODY_PATH}" fill="${fill}" />
+    <path d="${NECK_PATH}" fill="${fill}" />
+    <rect x="${CAP.x}" y="${CAP.y}" width="${CAP.width}" height="${CAP.height}" rx="${CAP.rx}" fill="${fill}" />`;
 
 /** The mark on its own: the same can and leaves, no disc and no name — for small, text-free spots. */
 const markSvg = (color) =>
-  svg(`
-  <g>${LEAVES}${CAN}</g>`).replace(/url\(#can\)/g, color).replace(/url\(#leaf\)/g, color);
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}" width="${BOX}" height="${BOX}">${MARK_LAYERS(
+    color,
+  )}\n</svg>\n`;
+
+/** The full lockup: disc, leaves, can, name. */
+const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}" width="${BOX}" height="${BOX}">
+  <defs>${GRADIENTS}
+  </defs>
+  <circle cx="${DISC.cx}" cy="${DISC.cy}" r="${DISC.r}" fill="${WHITE}" />
+${leaves()}
+  <g>
+${HANDLE_PATHS.map(
+  (d) =>
+    `    <path d="${d}" fill="none" stroke="${WHITE}" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" />`,
+).join('\n')}
+${HANDLE_PATHS.map(
+  (d) =>
+    `    <path d="${d}" fill="none" stroke="url(#canLid)" stroke-width="27" stroke-linecap="round" stroke-linejoin="round" />`,
+).join('\n')}
+  </g>
+${LEAF_VEINS.map(
+  (d) =>
+    `  <path d="${d}" fill="none" stroke="${WHITE}" stroke-width="14" stroke-linecap="round" opacity="0.9" />`,
+).join('\n')}
+  <path d="${BODY_PATH}" fill="url(#canBody)" />
+  <ellipse cx="${RING.cx}" cy="${RING.cy}" rx="${RING.rx}" ry="${RING.ry}" fill="none" stroke="${WHITE}" stroke-width="11" />
+  <rect x="384" y="352" width="26" height="188" rx="13" fill="${WHITE}" opacity="0.18" />
+  <rect x="400" y="336" width="12" height="150" rx="6" fill="${WHITE}" opacity="0.3" />
+  <path d="${NECK_PATH}" fill="url(#canLid)" />
+  <rect x="${CAP_GAP.x}" y="${CAP_GAP.y}" width="${CAP_GAP.width}" height="${CAP_GAP.height}" fill="${WHITE}" />
+  <rect x="${CAP.x}" y="${CAP.y}" width="${CAP.width}" height="${CAP.height}" rx="${CAP.rx}" fill="url(#canLid)" />
+  <g fill="${INK_BEVEL}" transform="translate(0 -${NAME_BEVEL})">
+${name(null)}
+  </g>
+${name('url(#ink)')}
+  <text x="500" y="${SUFFIX.baseline}" text-anchor="middle" font-family="DM Sans" font-size="${SUFFIX.size}"
+        font-weight="700" letter-spacing="${SUFFIX.letterSpacing}" fill="${INK_BOTTOM}">ACADEMY</text>
+</svg>
+`;
 
 /* ------------------------------------------------------------------ *
  * Rendering
@@ -179,8 +274,8 @@ const targets = [
   ],
   // Themed icons are tinted by the system, so this one is a flat silhouette of the mark: the wordmark
   // would be about five pixels tall inside a launcher and would read as dirt, not as a name.
-  ['assets/images/android-icon-monochrome.png', render(place(432, 0.56, null, markSvg('#FFFFFF')), 432)],
-  ['assets/images/favicon.png', render(place(196, 0.86, GREEN), 196)],
+  ['assets/images/android-icon-monochrome.png', render(place(432, 0.56, null, markSvg(WHITE)), 432)],
+  ['assets/images/favicon.png', render(place(196, 0.92, GREEN), 196)],
   // The splash screen paints its own white background, so this stays transparent.
   ['assets/images/splash-icon.png', render(LOGO_SVG, 512)],
   ['assets/images/brand-logo.png', render(LOGO_SVG, 512)],
@@ -206,6 +301,3 @@ process.stdout.write(
     .map(([relative]) => relative.replace('assets/images/', ''))
     .join('\n  ')}\n`,
 );
-
-// `readFileSync` is imported for the font check above; keep the reference explicit for linters.
-void readFileSync;

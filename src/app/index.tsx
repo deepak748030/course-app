@@ -1,9 +1,8 @@
-import { Image } from 'expo-image';
 import { Redirect } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 
+import { BrandLockup } from '@/components/marks';
 import { createStyles, colors } from '@/constants/theme';
-import { images } from '@/media';
 import { useStore } from '@/store';
 
 /**
@@ -20,12 +19,7 @@ export default function Index() {
     return (
       <View style={styles.splash}>
         {/* The lockup, disc and all: a splash screen is the one place with room for the whole logo. */}
-        <Image
-          source={images.brandLogo}
-          style={styles.logo}
-          contentFit="contain"
-          accessibilityLabel="YDU Academy"
-        />
+        <BrandLockup width={184} />
       </View>
     );
   }
@@ -37,5 +31,4 @@ export default function Index() {
 
 const styles = createStyles(() => StyleSheet.create({
   splash: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  logo: { width: 184, height: 184 },
 }));

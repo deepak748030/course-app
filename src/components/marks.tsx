@@ -1,52 +1,66 @@
 /**
  * Brand marks: the YDU Academy logo, drawn as vector geometry so it stays crisp at every size.
  *
- * The artwork is a milk can with two leaves behind it and the name under it — a white disc, the can
- * and its two leaves, then YDU and ACADEMY. It is the same drawing that
- * `scripts/generate-brand-icons.mjs` rasterises into the launcher icon, the splash icon, the favicon
- * and the PNGs in assets/images, and `scripts/selfcheck.ts` compares the two files so they cannot
+ * The artwork is a tall milk churn — wide lid, white gap, conical shoulder, a white ring where the
+ * shoulder meets the body, two white-outlined handles — over two leaves with a white vein each, above
+ * the name YDU and its wide-tracked ACADEMY. YDU is drawn as paths (the reference weight is heavier
+ * than any font we ship and paths never depend on a font being installed); ACADEMY is set in the app's
+ * own family.
+ *
+ * This is the same drawing that `scripts/generate-brand-icons.mjs` rasterises into the launcher icon,
+ * the splash icon and the favicon, and `scripts/selfcheck.ts` compares the two files so they cannot
  * drift apart: change the geometry here, run the generator, and every icon follows.
  *
- * Two shapes are on offer:
- *   - `BrandMark` — the mark on its own (can and leaves), for headers, tiles and footers. It carries
- *     the brand's green gradient; pass `color` to flatten it to one colour when it sits on something
- *     that is already brand-coloured (the poster's lock-up, a yellow tile).
- *   - `Wordmark` — the mark and the name together, for places wide enough to spell the brand out.
+ *   - `BrandMark`   — the churn and the leaves alone, for headers, tiles and footers. It carries the
+ *                     brand's greens; pass `color` to flatten it to one colour when it sits on
+ *                     something that is already brand-coloured (the poster's lock-up, a yellow tile).
+ *   - `BrandLockup` — the full logo (disc, mark, name), shown from the same PNG the icons are made
+ *                     from, so the app never draws a second version of the brand.
+ *   - `Wordmark`    — the mark next to the name in running text, for places that need a small label.
  */
 
+import { Image } from 'expo-image';
 import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Ellipse, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
 
 import { createStyles, colors, font, spacing } from '@/constants/theme';
+import { images } from '@/media';
 
 /** The brand's own green — fixed, not themed: a logo that changed with the app's theme is not a logo. */
 export const BRAND_GREEN = '#0B5C1E';
 const BRAND_GREEN_DEEP = '#08430F';
-const BRAND_LEAF = '#6FCB6A';
+const BRAND_GREEN_LIGHT = '#2E8B3A';
+const BRAND_LEAF_TIP = '#A7E97C';
+const BRAND_LEAF_MID = '#4FB94A';
+const BRAND_LEAF_BASE = '#26822F';
+const BRAND_WHITE = '#FFFFFF';
 
 /** The square everything is drawn in, matching the generator. */
 const BOX = 1000;
 
 /**
- * Two leaves behind the can: lens-shaped, tips up and out, each with a vein.
- * Kept in step with scripts/generate-brand-icons.mjs (asserted by scripts/selfcheck.ts).
+ * Two leaves behind the churn: slender blades whose bases hide behind the body and whose tips point
+ * down and out. Kept in step with scripts/generate-brand-icons.mjs (asserted by scripts/selfcheck.ts).
  */
 const LEAF_PATHS = [
-  'M 402 560 Q 198 476 164 226 Q 328 344 402 560 Z',
-  'M 598 560 Q 802 476 836 226 Q 672 344 598 560 Z',
+  'M 438 330 Q 232 366 106 646 Q 318 622 438 330 Z',
+  'M 562 330 Q 768 366 894 646 Q 682 622 562 330 Z',
 ];
-const LEAF_VEINS = ['M 386 534 Q 246 424 196 262', 'M 614 534 Q 754 424 804 262'];
+const LEAF_VEINS = ['M 196 584 Q 306 470 408 372', 'M 804 584 Q 694 470 592 372'];
 
-/** The two handles, drawn over the shoulders — the detail that makes it read as a milk can. */
+/** The two handles, drawn with a white outline over the leaves — the detail that reads as a churn. */
 const HANDLE_PATHS = [
-  'M 352 212 C 302 226 290 288 290 352 C 290 414 314 456 366 466',
-  'M 648 212 C 698 226 710 288 710 352 C 710 414 686 456 634 466',
+  'M 440 252 L 380 252 Q 332 252 332 300 L 332 382 Q 332 430 380 430 L 428 430',
+  'M 560 252 L 620 252 Q 668 252 668 300 L 668 382 Q 668 430 620 430 L 572 430',
 ];
 
-/** The can: two handles over the shoulders, a wide lid, a neck and a tapering body. */
-const CAN_PATHS = [
-  'M 356 274 L 644 274 L 660 322 L 634 552 Q 632 562 620 562 L 380 562 Q 368 562 366 552 L 340 322 Z',
-];
+/** The can: lid, white gap, neck, conical shoulder, body, and the white ring at the shoulder. */
+const BODY_PATH =
+  'M 424 244 C 392 274 372 312 366 352 L 358 558 Q 358 596 396 596 L 604 596 Q 642 596 642 558 L 634 352 C 628 312 608 274 576 244 Z';
+const NECK_PATH = 'M 430 188 L 570 188 L 578 246 L 422 246 Z';
+const CAP = { x: 398, y: 112, width: 204, height: 64, rx: 24 };
+const CAP_GAP = { x: 432, y: 178, width: 136, height: 10 };
+const RING = { cx: 500, cy: 352, rx: 136, ry: 16 };
 
 export function BrandMark({ size = 40, color }: { size?: number; color?: string }) {
   // A flat mark: one colour, for artwork that is already wearing the brand.
@@ -62,13 +76,19 @@ export function BrandMark({ size = 40, color }: { size?: number; color?: string 
           <Path key={d} d={d} fill={color} />
         ))}
         {HANDLE_PATHS.map((d) => (
-          <Path key={d} d={d} fill="none" stroke={color} strokeWidth={24} strokeLinecap="round" />
+          <Path
+            key={d}
+            d={d}
+            fill="none"
+            stroke={color}
+            strokeWidth={44}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
         ))}
-        <Rect x={318} y={168} width={364} height={58} rx={20} fill={color} />
-        <Rect x={350} y={226} width={300} height={48} fill={color} />
-        {CAN_PATHS.map((d) => (
-          <Path key={d} d={d} fill={color} />
-        ))}
+        <Path d={BODY_PATH} fill={color} />
+        <Path d={NECK_PATH} fill={color} />
+        <Rect x={CAP.x} y={CAP.y} width={CAP.width} height={CAP.height} rx={CAP.rx} fill={color} />
       </Svg>
     );
   }
@@ -81,64 +101,73 @@ export function BrandMark({ size = 40, color }: { size?: number; color?: string 
       accessibilityRole="image"
       accessibilityLabel="YDU Academy">
       <Defs>
-        <LinearGradient id="brandCan" x1="0" y1="120" x2="0" y2="620" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#2E8B3A" />
-          <Stop offset="0.45" stopColor="#12702A" />
+        <LinearGradient id="brandLid" x1="0" y1="112" x2="0" y2="322" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={BRAND_GREEN_LIGHT} />
+          <Stop offset="0.5" stopColor="#1B7A2B" />
+          <Stop offset="1" stopColor="#14672A" />
+        </LinearGradient>
+        <LinearGradient id="brandCan" x1="356" y1="0" x2="646" y2="0" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor="#17702A" />
+          <Stop offset="0.18" stopColor="#3B9E45" />
+          <Stop offset="0.45" stopColor="#26822F" />
+          <Stop offset="0.78" stopColor="#14672A" />
           <Stop offset="1" stopColor={BRAND_GREEN_DEEP} />
         </LinearGradient>
-        <LinearGradient id="brandLeaf" x1="0" y1="580" x2="0" y2="240" gradientUnits="userSpaceOnUse">
-          <Stop offset="0" stopColor="#2E9E3D" />
-          <Stop offset="1" stopColor={BRAND_LEAF} />
+        <LinearGradient id="brandLeafL" x1="106" y1="646" x2="438" y2="330" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={BRAND_LEAF_TIP} />
+          <Stop offset="0.55" stopColor={BRAND_LEAF_MID} />
+          <Stop offset="1" stopColor={BRAND_LEAF_BASE} />
+        </LinearGradient>
+        <LinearGradient id="brandLeafR" x1="894" y1="646" x2="562" y2="330" gradientUnits="userSpaceOnUse">
+          <Stop offset="0" stopColor={BRAND_LEAF_TIP} />
+          <Stop offset="0.55" stopColor={BRAND_LEAF_MID} />
+          <Stop offset="1" stopColor={BRAND_LEAF_BASE} />
         </LinearGradient>
       </Defs>
 
-      {LEAF_PATHS.map((d) => (
-        <Path key={d} d={d} fill="url(#brandLeaf)" />
-      ))}
+      <Path d={LEAF_PATHS[0]} fill="url(#brandLeafL)" />
+      <Path d={LEAF_PATHS[1]} fill="url(#brandLeafR)" />
+
+      <G>
+        <Path d={HANDLE_PATHS[0]} fill="none" stroke={BRAND_WHITE} strokeWidth={44} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d={HANDLE_PATHS[1]} fill="none" stroke={BRAND_WHITE} strokeWidth={44} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d={HANDLE_PATHS[0]} fill="none" stroke="url(#brandLid)" strokeWidth={27} strokeLinecap="round" strokeLinejoin="round" />
+        <Path d={HANDLE_PATHS[1]} fill="none" stroke="url(#brandLid)" strokeWidth={27} strokeLinecap="round" strokeLinejoin="round" />
+      </G>
+
       {LEAF_VEINS.map((d) => (
-        <Path key={d} d={d} fill="none" stroke="#EDF9EA" strokeWidth={6} strokeLinecap="round" opacity={0.45} />
+        <Path key={d} d={d} fill="none" stroke={BRAND_WHITE} strokeWidth={14} strokeLinecap="round" opacity={0.9} />
       ))}
-      {HANDLE_PATHS.map((d) => (
-        <Path key={d} d={d} fill="none" stroke="url(#brandCan)" strokeWidth={24} strokeLinecap="round" />
-      ))}
-      <Rect x={318} y={168} width={364} height={58} rx={20} fill="url(#brandCan)" />
-      <Rect x={350} y={226} width={300} height={48} fill="url(#brandCan)" opacity={0.94} />
-      {CAN_PATHS.map((d) => (
-        <Path key={d} d={d} fill="url(#brandCan)" />
-      ))}
-      <Rect x={352} y={332} width={296} height={7} fill="#FFFFFF" opacity={0.26} />
+
+      <Path d={BODY_PATH} fill="url(#brandCan)" />
+      <Ellipse cx={RING.cx} cy={RING.cy} rx={RING.rx} ry={RING.ry} fill="none" stroke={BRAND_WHITE} strokeWidth={11} />
+      <Rect x={384} y={352} width={26} height={188} rx={13} fill={BRAND_WHITE} opacity={0.18} />
+      <Rect x={400} y={336} width={12} height={150} rx={6} fill={BRAND_WHITE} opacity={0.3} />
+      <Path d={NECK_PATH} fill="url(#brandLid)" />
+      <Rect x={CAP_GAP.x} y={CAP_GAP.y} width={CAP_GAP.width} height={CAP_GAP.height} fill={BRAND_WHITE} />
+      <Rect x={CAP.x} y={CAP.y} width={CAP.width} height={CAP.height} rx={CAP.rx} fill="url(#brandLid)" />
     </Svg>
   );
 }
 
-/** The lockup: the mark above the name, with the accent rule the poster uses. */
-export function BrandLockup({
-  width = 200,
-  title = 'YDU',
-  subtitle = 'ACADEMY',
-}: {
-  width?: number;
-  title?: string;
-  subtitle?: string;
-}) {
+/**
+ * The full logo — disc, mark and name — shown from the PNG the launcher icon and the favicon are
+ * rendered from. Using the file rather than redrawing it here is what keeps the app, the splash screen
+ * and the icon on the home screen exactly the same picture.
+ */
+export function BrandLockup({ width = 200 }: { width?: number }) {
   return (
-    <View style={[styles.lockup, { width }]} accessible accessibilityRole="image" accessibilityLabel="YDU Academy">
-      <BrandMark size={width * 0.62} />
-      <Text style={[styles.name, { fontSize: width * 0.26, lineHeight: width * 0.3, color: BRAND_GREEN }]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.suffix,
-          { fontSize: width * 0.088, lineHeight: width * 0.12, color: BRAND_GREEN, letterSpacing: width * 0.012 },
-        ]}>
-        {subtitle}
-      </Text>
-    </View>
+    <Image
+      source={images.brandLogo}
+      style={{ width, height: width }}
+      contentFit="contain"
+      accessibilityRole="image"
+      accessibilityLabel="YDU Academy"
+    />
   );
 }
 
-/** Wordmark: semibold name, regular suffix — one family, two weights, nothing else. */
+/** Wordmark: the mark next to the name in running text, for places that need a small label. */
 export function Wordmark({ size = 22, color = colors.text }: { size?: number; color?: string }) {
   return (
     <View style={styles.wordmark} accessible accessibilityRole="image" accessibilityLabel="YDU Academy">
@@ -160,7 +189,4 @@ export function Wordmark({ size = 22, color = colors.text }: { size?: number; co
 
 const styles = createStyles(() => StyleSheet.create({
   wordmark: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
-  lockup: { alignItems: 'center', gap: spacing.xs },
-  name: { fontFamily: font.semibold, textAlign: 'center' },
-  suffix: { fontFamily: font.semibold, textAlign: 'center' },
 }));
