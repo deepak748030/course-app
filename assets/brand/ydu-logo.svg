@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+  <defs>
+    <linearGradient id="can" x1="0" y1="120" x2="0" y2="620" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2E8B3A" />
+      <stop offset="0.45" stop-color="#12702A" />
+      <stop offset="1" stop-color="#08430F" />
+    </linearGradient>
+    <linearGradient id="leaf" x1="0" y1="580" x2="0" y2="240" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1B7A2B" />
+      <stop offset="1" stop-color="#5CC15E" />
+    </linearGradient></defs>
+  <circle cx="500" cy="500" r="470" fill="#FFFFFF" />
+    <path d="M 402 560 Q 198 476 164 226 Q 328 344 402 560 Z" fill="url(#leaf)" />
+    <path d="M 598 560 Q 802 476 836 226 Q 672 344 598 560 Z" fill="url(#leaf)" />
+    <path d="M 386 534 Q 246 424 196 262" fill="none" stroke="#EDF9EA" stroke-width="6"
+          stroke-linecap="round" opacity="0.45" />
+    <path d="M 614 534 Q 754 424 804 262" fill="none" stroke="#EDF9EA" stroke-width="6"
+          stroke-linecap="round" opacity="0.45" />
+    <path d="M 352 212 C 302 226 290 288 290 352 C 290 414 314 456 366 466"
+          fill="none" stroke="url(#can)" stroke-width="24" stroke-linecap="round" />
+    <path d="M 648 212 C 698 226 710 288 710 352 C 710 414 686 456 634 466"
+          fill="none" stroke="url(#can)" stroke-width="24" stroke-linecap="round" />
+    <rect x="318" y="168" width="364" height="58" rx="20" fill="url(#can)" />
+    <rect x="350" y="226" width="300" height="48" fill="url(#can)" opacity="0.94" />
+    <path d="M 356 274 L 644 274 L 660 322 L 634 552 Q 632 562 620 562 L 380 562 Q 368 562 366 552 L 340 322 Z"
+          fill="url(#can)" />
+    <rect x="352" y="332" width="296" height="7" fill="#FFFFFF" opacity="0.26" />
+    <ellipse cx="420" cy="410" rx="19" ry="84" fill="#FFFFFF" opacity="0.15" />
+    <text x="500" y="752" text-anchor="middle" font-family="DM Sans" font-size="222" font-weight="800"
+          letter-spacing="-6" fill="#0B5C1E">YDU</text>
+    <text x="500" y="856" text-anchor="middle" font-family="DM Sans" font-size="84" font-weight="700"
+          letter-spacing="10" fill="#0B5C1E">ACADEMY</text>
+</svg>

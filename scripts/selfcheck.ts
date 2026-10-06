@@ -8,7 +8,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 declare const Bun: { plugin: (options: unknown) => void } | undefined;
@@ -345,6 +345,40 @@ check('screen scrollers are clipped and headers paint over them', () => {
     /export const scrollClip: ViewStyle = \{ flex: 1, overflow: 'hidden' \}/.test(ui),
     'scrollClip still hides the overflow',
   );
+});
+
+check('the app draws the same brand mark the icons are generated from', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // One source of truth: the can body and the handle arcs exist twice (vector in the app, paths in the
+  // generator that rasterises the launcher icons), so the two copies are compared here. Without this
+  // the in-app logo could quietly stop matching the icon on the home screen of the phone.
+  const marks = read('src/components/marks.tsx');
+  const generator = read('scripts/generate-brand-icons.mjs');
+  const needles = [
+    'M 356 274 L 644 274 L 660 322 L 634 552 Q 632 562 620 562 L 380 562 Q 368 562 366 552 L 340 322 Z',
+    'M 352 212 C 302 226 290 288 290 352 C 290 414 314 456 366 466',
+    'M 598 560 Q 802 476 836 226 Q 672 344 598 560 Z',
+  ];
+  for (const geometry of needles) {
+    assert.ok(marks.includes(geometry), `marks.tsx draws ${geometry.slice(0, 22)}…`);
+    assert.ok(generator.includes(geometry), `the icon generator draws ${geometry.slice(0, 22)}…`);
+  }
+
+  // The icon set itself: every size the platforms ask for, written by the generator.
+  for (const file of [
+    'assets/images/icon.png',
+    'assets/images/android-icon-foreground.png',
+    'assets/images/android-icon-background.png',
+    'assets/images/android-icon-monochrome.png',
+    'assets/images/favicon.png',
+    'assets/images/splash-icon.png',
+    'assets/images/brand-logo.png',
+    'assets/images/brand-mark.png',
+    'assets/brand/ydu-logo.svg',
+  ]) {
+    assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
+  }
 });
 
 check('onboarding opens on the YDU poster, shown whole', () => {
