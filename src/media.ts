@@ -12,6 +12,11 @@ import type { ImageSource } from 'expo-image';
 import type { VideoKey } from './types';
 
 export const images = {
+  /**
+   * Onboarding slide 1: the YDU Academy poster. It carries its own logo, headline and tagline, so the
+   * slide shows it whole (never cropped) and adds no copy of its own.
+   */
+  onboardingPoster: require('@/assets/images/onboarding-ydu-poster.jpg') as ImageSource,
   onboardingFreshMilk: require('@/assets/images/onboarding-fresh-milk.jpg') as ImageSource,
   onboardingTesting: require('@/assets/images/onboarding-testing.jpg') as ImageSource,
   onboardingRange: require('@/assets/images/course-artisan-cheese.jpg') as ImageSource,

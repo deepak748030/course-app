@@ -23,15 +23,48 @@ import { images } from '@/media';
 import { useStore } from '@/store';
 import type { ImageSource } from 'expo-image';
 
+/** The poster's own green, from the printed artwork — deliberately outside the two app palettes. */
+const POSTER_GREEN = '#14532D';
+
 type Slide = {
   key: string;
   image: ImageSource;
-  headline: string;
-  support: string;
+  /** Copy shown under the image. A poster slide leaves these empty — the artwork says it itself. */
+  headline?: string;
+  support?: string;
   cta: string;
+  /**
+   * A poster is artwork with its own logo, headline and tagline (the YDU Academy poster).
+   * It is shown whole — `contain`, never cropped — and the slide adds no copy of its own, because
+   * anything written over a poster fights the poster. Everything else stays the same: full-bleed
+   * width, the same footer, the same dots.
+   */
+  poster?: boolean;
+  /** Spoken description of a poster, since all of its text is inside the image. */
+  posterLabel?: string;
+  /**
+   * Brand lock-up drawn over a poster's empty top area: the YDU name in Hindi and its tagline, the
+   * way the printed poster sets them (logo, title, tagline, a short accent rule). It is left-aligned
+   * to nothing and simply centred on the artwork.
+   *
+   * This is brand artwork, not interface copy, so it is written as-is rather than through `t()` — the
+   * brand reads the same in both interface languages, which is exactly how the poster is printed.
+   * Drop these two fields when the artwork carries its own lettering.
+   */
+  posterTitle?: string;
+  posterTagline?: string;
 };
 
 const slides: Slide[] = [
+  {
+    key: 'poster',
+    image: images.onboardingPoster,
+    cta: 'Next',
+    poster: true,
+    posterLabel: 'YDU Academy — Yadav dairy production. Learn dairy, grow your business.',
+    posterTitle: 'यादव दूध उत्पादन',
+    posterTagline: 'डेरी सीखें, व्यवसाय बढ़ाएँ',
+  },
   {
     key: 'milk',
     image: images.onboardingFreshMilk,
@@ -187,6 +220,39 @@ function SlideView({
     };
   });
 
+  // A poster keeps its own margins: shown whole, on the paper background, with no copy under it.
+  if (slide.poster) {
+    return (
+      <View style={{ width, height }}>
+        <View style={styles.posterWrap}>
+          <Image
+            source={slide.image}
+            style={styles.poster}
+            contentFit="contain"
+            transition={200}
+            accessibilityLabel={slide.posterLabel}
+          />
+          {slide.posterTitle ? (
+            /* Sits in the artwork's own empty space at the top: the mark, the name, the tagline and
+               a short rule — the poster's lettering, in the poster's green. */
+            <View style={styles.posterLockup} pointerEvents="none">
+              <View style={styles.posterPlate}>
+                <BrandMark size={30} color={POSTER_GREEN} />
+              </View>
+              <Text style={[type.display, styles.posterTitle, { color: POSTER_GREEN }]}>
+                {slide.posterTitle}
+              </Text>
+              <Text style={[type.subheading, styles.posterTagline, { color: POSTER_GREEN }]}>
+                {slide.posterTagline}
+              </Text>
+              <View style={styles.posterRule} />
+            </View>
+          ) : null}
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={{ width, height }}>
       {/* Full-bleed: the image touches both screen edges, text sits below it on paper. */}
@@ -210,6 +276,37 @@ const styles = createStyles(() => StyleSheet.create({
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingLeft: spacing.sm },
   pager: { flex: 1 },
   imageWrap: { flex: 1, minHeight: 220, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
+  /* A poster shows whole — the two quiet bands around it are the page, not a crop. */
+  posterWrap: { flex: 1, paddingHorizontal: layout.screen, paddingVertical: spacing.sm },
+  poster: { width: '100%', height: '100%' },
+  posterLockup: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: layout.section,
+    right: layout.section,
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  posterPlate: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xs,
+  },
+  posterTitle: { textAlign: 'center' },
+  posterTagline: { textAlign: 'center' },
+  posterRule: {
+    width: 52,
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: POSTER_GREEN,
+    marginTop: spacing.xs,
+  },
   imageInner: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   image: { width: '100%', height: '100%' },
   copy: {

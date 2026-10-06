@@ -347,6 +347,20 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 });
 
+check('onboarding opens on the YDU poster, shown whole', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // The first introduction is the brand poster: it carries its own lettering, so it must be shown
+  // whole (contain, never cropped) and it must not grow a second copy of the app's headline.
+  const screen = read('src/app/onboarding.tsx');
+  assert.ok(screen.includes('poster: true'), 'the first slide is marked as a poster');
+  assert.ok(screen.includes("contentFit=\"contain\""), 'a poster is shown whole');
+  assert.ok(screen.includes('posterLockup'), 'the poster keeps its brand lock-up');
+  assert.ok(screen.includes('posterTitle'), 'and the lock-up is data, not a second headline');
+  assert.ok(/onboardingPoster: require\('@\/assets\/images\/onboarding-ydu-poster\.jpg'\)/.test(read('src/media.ts')),
+    'the poster asset is registered');
+});
+
 check('a bought course can be rated, and the rating stays on the device', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
