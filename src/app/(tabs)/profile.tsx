@@ -224,11 +224,15 @@ export default function ProfileScreen() {
       <View style={styles.group}>
         <Text style={[type.labelStrong, styles.groupTitle, { color: colors.textMuted }]}>{t("Appearance")}</Text>
         <View style={styles.card}>
-          <View style={styles.themeBlock}>
-            <Text style={[type.body, { color: colors.text }]}>{t("Theme")}</Text>
+          {/* One section head, then the two choices as rows: the same shape as the language list,
+              so the two appearance controls read as one family. */}
+          <View style={styles.appearanceHead}>
+            <Text style={[type.bodyStrong, { color: colors.text }]}>{t("Theme")}</Text>
             <Text style={[type.label, { color: colors.textMuted }]}>
               {t("Applies to every screen right away, and is remembered on this device.")}
             </Text>
+          </View>
+          <View style={styles.appearanceBody}>
             <ThemePicker value={state.theme} onChange={setTheme} />
           </View>
           <View style={styles.cardRule} />
@@ -384,7 +388,8 @@ const styles = createStyles(() => StyleSheet.create({
   group: { gap: spacing.sm },
   groupTitle: { paddingHorizontal: layout.section },
   card: { backgroundColor: colors.surface, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.border },
-  themeBlock: { gap: spacing.sm, paddingHorizontal: layout.section, paddingVertical: spacing.md },
+  appearanceHead: { gap: spacing.xs, paddingHorizontal: layout.section, paddingTop: spacing.md },
+  appearanceBody: { paddingHorizontal: layout.section, paddingBottom: spacing.xs },
   cardRule: { height: 1, backgroundColor: colors.border, marginHorizontal: layout.section },
   languageRow: { paddingHorizontal: layout.section, paddingVertical: spacing.xs },
   about: { gap: spacing.xs, paddingTop: spacing.md },

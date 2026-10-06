@@ -385,6 +385,7 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     import('../src/i18n/hi'),
   ]);
   const { hi } = hindi;
+  const { THEMES } = await import('../src/constants/theme');
 
   const root = fileURLToPath(new URL('../src', import.meta.url));
   const walk = (dir: string): string[] =>
@@ -420,6 +421,8 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     ...content.purchaseTerms,
     ...content.ratingWords,
     ...content.ratingHighlights,
+    // The two theme names and their descriptions, rendered through t() by the picker on Profile.
+    ...THEMES.flatMap((theme) => [theme.label, theme.description]),
     // The one message the demo gateway returns (src/services/payments.ts).
     'The demo gateway declined this payment. No money moved.',
     // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).

@@ -1,11 +1,16 @@
 /**
  * The theme switcher that lives on Profile.
  *
- * Two options, each one a live miniature of the theme it picks: the accent fill, the tinted block
- * and the two text tones. Selecting one applies it to the whole app immediately.
+ * A radio list, one row per theme — the same shape as the language picker on its own screen, so the
+ * two appearance controls read as one family. Each row carries a two-tone swatch of the theme it
+ * picks (the accent and its soft tint), the name, a one-line description, and the radio.
  *
- * Accessibility: the pair is a radio group, each option is a radio with a checked state, a label
- * and the description as its hint; both options clear the 44pt touch target by a wide margin.
+ * An earlier version drew a miniature screen per theme in a two-up tile. It looked busy at this size
+ * and the preview art competed with the copy, so the swatch carries the colour and the words carry
+ * the meaning.
+ *
+ * Accessibility: a radio group, each row a radio with a checked state, its label and its description
+ * as the hint, and a 56pt row — comfortably past the 44pt target.
  */
 import { useT } from '@/i18n';
 
@@ -36,16 +41,20 @@ export function ThemePicker({
   const t = useT();
 
   return (
-    <View style={styles.row} accessibilityRole="radiogroup" accessibilityLabel={t("App theme")}>
-      {THEMES.map((theme) => (
-        <ThemeOption
-          key={theme.id}
-          id={theme.id}
-          label={theme.label}
-          description={theme.description}
-          selected={value === theme.id}
-          onSelect={() => onChange(theme.id)}
-        />
+    <View accessibilityRole="radiogroup" accessibilityLabel={t('App theme')}>
+      {THEMES.map((theme, index) => (
+        <View key={theme.id}>
+          {/* Hairline between the rows, inset past the swatch — the same treatment as every other
+              list in the app. */}
+          {index > 0 ? <View style={styles.rule} /> : null}
+          <ThemeOption
+            id={theme.id}
+            label={t(theme.label)}
+            description={t(theme.description)}
+            selected={value === theme.id}
+            onSelect={() => onChange(theme.id)}
+          />
+        </View>
       ))}
     </View>
   );
@@ -64,10 +73,11 @@ function ThemeOption({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const press = usePressScale(0.97);
+  const press = usePressScale(0.985);
+  const palette = paletteFor(id);
 
   return (
-    <Animated.View style={[styles.optionWrap, press.style]}>
+    <Animated.View style={press.style}>
       <Pressable
         accessibilityRole="radio"
         accessibilityLabel={`${label} theme`}
@@ -82,84 +92,59 @@ function ThemeOption({
         }}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
-        style={({ pressed }) => [
-          styles.option,
-          selected && styles.optionSelected,
-          pressed && styles.optionPressed,
-        ]}>
-        <ThemePreview id={id} />
-
-        <View style={styles.labelRow}>
-          <Text style={[type.labelStrong, { color: colors.text }]} numberOfLines={1}>
-            {label}
-          </Text>
-          <View style={[styles.check, selected && styles.checkOn]}>
-            {selected ? <Check size={11} color={colors.onAccent} strokeWidth={3} /> : null}
-          </View>
+        style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+        {/* The swatch: this theme's accent, next to the tint that accents the surfaces. */}
+        <View style={styles.swatch} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <View style={[styles.swatchTop, { backgroundColor: palette.primary }]} />
+          <View style={[styles.swatchBottom, { backgroundColor: palette.surfaceAlt, borderColor: palette.divider }]} />
         </View>
 
-        <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
-          {description}
-        </Text>
+        <View style={styles.text}>
+          <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
+            {description}
+          </Text>
+        </View>
+
+        <View style={[styles.radio, selected && styles.radioOn]}>
+          {selected ? <Check size={12} color={colors.onAccent} strokeWidth={3} /> : null}
+        </View>
       </Pressable>
     </Animated.View>
   );
 }
 
-/**
- * A miniature of the theme: the tinted block (surfaceAlt) holds the accent fill and the two text
- * tones, so the difference between the two options is visible without applying either one.
- */
-function ThemePreview({ id }: { id: ThemeId }) {
-  const palette = paletteFor(id);
-
-  return (
-    <View style={[styles.preview, { backgroundColor: palette.surfaceAlt, borderColor: palette.divider }]}>
-      <View style={styles.previewTop}>
-        <View style={[styles.previewDot, { backgroundColor: palette.primary }]} />
-        <View style={[styles.previewPill, { backgroundColor: palette.primary }]} />
-      </View>
-      <View style={[styles.previewLine, { backgroundColor: palette.text, width: '76%' }]} />
-      <View style={[styles.previewLine, { backgroundColor: palette.textMuted, width: '52%', opacity: 0.55 }]} />
-    </View>
-  );
-}
-
 const styles = createStyles(() => StyleSheet.create({
-  row: { flexDirection: 'row', gap: spacing.sm },
-  optionWrap: { flex: 1 },
-  option: {
-    flex: 1,
-    gap: spacing.xs,
-    padding: spacing.sm,
-    borderRadius: radius.md,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    minHeight: 56,
+    paddingVertical: spacing.sm,
+  },
+  pressed: { opacity: 0.7 },
+  rule: { height: 1, backgroundColor: colors.divider, marginLeft: 52 },
+  swatch: {
+    width: 40,
+    height: 40,
+    borderRadius: radius.sm,
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
   },
-  optionSelected: { borderWidth: 1.5, borderColor: colors.accentText },
-  optionPressed: { opacity: 0.85 },
-  preview: {
-    height: 62,
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-  },
-  previewTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, marginBottom: spacing.xs },
-  previewDot: { width: 12, height: 12, borderRadius: radius.pill },
-  previewPill: { width: 30, height: 12, borderRadius: radius.pill },
-  previewLine: { height: 6, borderRadius: 3 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
-  check: {
-    width: 16,
-    height: 16,
+  swatchTop: { height: 22 },
+  swatchBottom: { flex: 1, borderTopWidth: 1 },
+  text: { flex: 1, gap: 2 },
+  radio: {
+    width: 20,
+    height: 20,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkOn: { backgroundColor: colors.accentText, borderColor: colors.accentText },
+  radioOn: { backgroundColor: colors.accentText, borderColor: colors.accentText },
 }));
