@@ -1,11 +1,15 @@
 /**
  * Generates `assets/lottie/offer.json` — the animated offer mark used by <OfferTag />.
  *
- * Why this file exists instead of a downloaded asset: the reference animation the design follows
- * is the LottieFiles "offer percentage" piece (JOEL J GEORGE). LottieFiles needs an account and its
- * CDN is not reachable from the build environment, and a Lottie JSON copied from a random mirror
- * carries unclear provenance. So the mark is authored here, in the Lottie (Bodymovin) format, and
- * rendered by the real Lottie runtime (lottie-react-native / dotLottie) — never by CSS.
+ * The mark is a price tag: a diamond tag with an eyelet punched out of it, inside a ring that pulses,
+ * with two twinkles. (It replaced the earlier percent mark: a discount is better said with a tag than
+ * with the same `%` the badge already spells out as "OFF".)
+ *
+ * Why this file exists instead of a downloaded asset: the reference animation the design follows is a
+ * LottieFiles offer piece. LottieFiles needs an account and its CDN is not reachable from the build
+ * environment, and a Lottie JSON copied from a random mirror carries unclear provenance. So the mark
+ * is authored here, in the Lottie (Bodymovin) format, and rendered by the real Lottie runtime
+ * (lottie-react-native / lottie-web) — never by CSS.
  *
  * To swap in a different animation, drop it at `assets/lottie/offer.json` and delete nothing else:
  * the component reads that path. Keep this script in sync or delete it with the swap.
@@ -13,10 +17,12 @@
  *   node scripts/generate-lottie-offer.mjs
  *
  * Motion (30fps, 90 frames = 3s loop):
- *   percent mark  always visible, breathes through a 4 degree sway — so a paused or reduced-motion
- *                 frame is still a complete glyph, never an empty square
- *   ring          two slow pulses outward, each fading before the next
- *   sparkles      two four-point stars twinkling at opposite phases
+ *   tag     always visible, tilted 45 degrees, rocking a few degrees either side of it — so a paused
+ *           or reduced-motion frame is still a complete glyph, never an empty square
+ *   eyelet  punched out of the tag with a Lottie mask (subtract), so the hole shows whatever is
+ *           behind the mark instead of guessing the badge's colour
+ *   ring    two slow pulses outward, each fading before the next
+ *   sparkles two four-point stars twinkling at opposite phases
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -35,11 +41,28 @@ const C = SIZE / 2;
  *
  * The player fits the whole composition into its box, so every empty pixel around the drawing turns
  * into layout space between the number, the glyph and "OFF" — which is what made the badge read
- * loose. The mark is drawn at this factor (it ends up just under 75% of the canvas) so the badge can
- * close up, while the ring and the twinkles are kept inside the square.
+ * loose. The mark is drawn at this factor (the ring ends up spanning ~96% of the canvas) so the badge
+ * can close up, while the ring and the twinkles are kept inside the square.
  */
 const FIT = 1.55;
 const fit = (value) => Math.round(value * FIT);
+
+/** The tag, in pre-FIT units: a square of half-size 96 with 36-unit corners, and an eyelet of 22. */
+const TAG_HALF = 96;
+const TAG_RADIUS = 34;
+const EYELET_RADIUS = 26;
+/**
+ * Where the eyelet sits *in the layer's own space*, before the -45 degree tilt.
+ *
+ * On screen the eyelet is `EYELET_OFFSET` units along the tag's long axis (the horizontal in the
+ * artwork); the layer is rotated, so the point that lands there is the offset rotated back by 45
+ * degrees: (64, 0) -> (45.25, 45.25).
+ */
+const EYELET_OFFSET = 68;
+const EYELET_LOCAL = EYELET_OFFSET / Math.SQRT2;
+/** The tilt the tag is drawn at, and how far the sway rocks it either side. */
+const TILT = -45;
+const SWAY = 3;
 
 /** Palette: ink for the mark, brand yellow for the twinkles. Values are 0-1, as Lottie expects. */
 const INK = [0.1216, 0.1059, 0.0549, 1];
@@ -113,6 +136,84 @@ const rect = (size, position, radius) => ({
   nm: 'Rect',
 });
 
+/** Magic number for a quarter circle as a cubic bezier. */
+const KAPPA = 0.5523;
+
+/**
+ * A mask takes a bezier path, not a shape item, so the two masks the tag needs are built here: a
+ * rounded square and a circle, both as eight/four vertex paths with the handles rounded off.
+ */
+function roundedRectPath(half, radius, position = [0, 0]) {
+  const straight = half - radius;
+  const handle = radius * KAPPA;
+  const [px, py] = position;
+  const v = [
+    [-straight, -half],
+    [straight, -half],
+    [half, -straight],
+    [half, straight],
+    [straight, half],
+    [-straight, half],
+    [-half, straight],
+    [-half, -straight],
+  ].map(([x, y]) => [x + px, y + py]);
+  const i = [
+    [-handle, 0],
+    [0, 0],
+    [0, -handle],
+    [0, 0],
+    [handle, 0],
+    [0, 0],
+    [0, handle],
+    [0, 0],
+  ];
+  const o = [
+    [0, 0],
+    [handle, 0],
+    [0, 0],
+    [0, handle],
+    [0, 0],
+    [-handle, 0],
+    [0, 0],
+    [0, -handle],
+  ];
+  return { i, o, v, c: true };
+}
+
+function circlePath(radius, position = [0, 0]) {
+  const handle = radius * KAPPA;
+  const [px, py] = position;
+  const v = [
+    [0, -radius],
+    [radius, 0],
+    [0, radius],
+    [-radius, 0],
+  ].map(([x, y]) => [x + px, y + py]);
+  const i = [
+    [-handle, 0],
+    [0, -handle],
+    [handle, 0],
+    [0, handle],
+  ];
+  const o = [
+    [handle, 0],
+    [0, handle],
+    [-handle, 0],
+    [0, -handle],
+  ];
+  return { i, o, v, c: true };
+}
+
+/** One mask entry. `mode` is 'a' (add to the mask) or 's' (subtract from it). */
+const mask = (name, mode, path) => ({
+  inv: false,
+  mode,
+  pt: still(path),
+  o: still(100),
+  x: still(0),
+  nm: name,
+});
+
 /** Four-point star: eight vertices alternating outer and inner radius, straight edges. */
 function star(outer, innerRatio = 0.3) {
   const v = [];
@@ -128,7 +229,7 @@ function star(outer, innerRatio = 0.3) {
   return { ty: 'sh', d: 1, ks: still({ i, o, v, c: true }), nm: 'Star' };
 }
 
-function shapeLayer({ ind, name, shapes, ks = {}, op = DUR }) {
+function shapeLayer({ ind, name, shapes, ks = {}, op = DUR, masksProperties, hasMask = false }) {
   return {
     ddd: 0,
     ind,
@@ -149,6 +250,7 @@ function shapeLayer({ ind, name, shapes, ks = {}, op = DUR }) {
     op,
     st: 0,
     bm: 0,
+    ...(hasMask ? { hasMask: true, masksProperties } : {}),
   };
 }
 
@@ -173,25 +275,13 @@ function sparkleLayer({ ind, position, size, phase }) {
   const pulses = [first, second].filter(Boolean);
   pulses.forEach(({ start, peak, end }, index) => {
     scaleKeys.push([start, [0, 0, 100]], [peak, [118, 118, 100]], [end, [0, 0, 100]]);
-    // Rotation accumulates a half turn per pulse, so the seam lands on a full turn: 0 -> 180 -> 360
-    // is 0 -> 180 -> 0 as far as the eye is concerned, and the loop still joins cleanly.
-    rotateKeys.push([start, [index * 180]], [end, [(index + 1) * 180]]);
-    opacityKeys.push([start, [0]], [start + 6, [100]], [end - 6, [100]], [end, [0]]);
+    rotateKeys.push([start, [index * 30]], [end, [index * 30 + 40]]);
+    opacityKeys.push([start, [0]], [peak, [100]], [end, [0]]);
   });
-
-  // The layer has to start and end on the same value or the loop jumps.
-  if (scaleKeys[0][0] !== 0) scaleKeys.unshift([0, [0, 0, 100]]);
-  if (rotateKeys[0][0] !== 0) rotateKeys.unshift([0, [0]]);
-  if (opacityKeys[0][0] !== 0) opacityKeys.unshift([0, [0]]);
-
-  const lastT = DUR;
-  for (const list of [scaleKeys, rotateKeys, opacityKeys]) {
-    if (list[list.length - 1][0] !== lastT) list.push([lastT, list[list.length - 1][1]]);
-  }
 
   return shapeLayer({
     ind,
-    name: 'Sparkle',
+    name: `Sparkle ${ind}`,
     ks: {
       p: still([position[0], position[1], 0]),
       s: anim(scaleKeys, OUT_EASE),
@@ -203,36 +293,37 @@ function sparkleLayer({ ind, position, size, phase }) {
 }
 
 const layers = [
-  // Twinkles sit just off the mark's two opposite corners: inside the canvas, outside the ink.
+  // Twinkles sit just off the tag's two opposite corners: inside the canvas, outside the ink.
   sparkleLayer({ ind: 1, position: [C - 158, C - 166], size: 62, phase: 0 }),
   sparkleLayer({ ind: 2, position: [C + 162, C + 142], size: 50, phase: 15 }),
 
-  // Percent mark: always on screen, swaying gently.
+  // The tag: always on screen, tilted, rocking gently. The eyelet is a subtract mask, so what shows
+  // through the hole is whatever sits behind the mark.
   shapeLayer({
     ind: 3,
-    name: 'Percent',
+    name: 'Tag',
+    hasMask: true,
+    masksProperties: [
+      mask('Tag', 'a', roundedRectPath(fit(TAG_HALF), fit(TAG_RADIUS))),
+      mask('Eyelet', 's', circlePath(fit(EYELET_RADIUS), [fit(EYELET_LOCAL), fit(EYELET_LOCAL)])),
+    ],
     ks: {
-      r: anim([[0, [-3]], [22, [3]], [45, [-3]], [67, [3]], [90, [-3]]]),
+      // The tilt is on the layer, so the masks tilt with the shape.
+      r: anim([
+        [0, [TILT - SWAY]],
+        [22, [TILT + SWAY]],
+        [45, [TILT - SWAY]],
+        [67, [TILT + SWAY]],
+        [90, [TILT - SWAY]],
+      ]),
       s: anim([[0, [98, 98, 100]], [45, [102, 102, 100]], [90, [98, 98, 100]]]),
     },
     shapes: [
       {
         ty: 'gr',
-        nm: 'Slash',
+        nm: 'TagBody',
         np: 3,
-        it: [rect([fit(212), fit(34)], [0, 0], fit(17)), fill(INK), groupTransform({ r: still(-45) })],
-      },
-      {
-        ty: 'gr',
-        nm: 'DotTopLeft',
-        np: 3,
-        it: [ellipse([fit(68), fit(68)], [-fit(88), -fit(88)]), fill(INK), groupTransform()],
-      },
-      {
-        ty: 'gr',
-        nm: 'DotBottomRight',
-        np: 3,
-        it: [ellipse([fit(68), fit(68)], [fit(88), fit(88)]), fill(INK), groupTransform()],
+        it: [rect([fit(TAG_HALF * 2), fit(TAG_HALF * 2)], [0, 0], fit(TAG_RADIUS)), fill(INK), groupTransform()],
       },
     ],
   }),
@@ -261,7 +352,7 @@ const layers = [
         ty: 'gr',
         nm: 'Ring',
         np: 3,
-        it: [ellipse([fit(300), fit(300)], [0, 0]), stroke(INK, fit(20), 100), groupTransform()],
+        it: [ellipse([fit(304), fit(304)], [0, 0]), stroke(INK, fit(15), 90), groupTransform()],
       },
     ],
   }),

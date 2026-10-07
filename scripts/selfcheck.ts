@@ -586,6 +586,42 @@ check('green is the default look, the number is read-only, and policy copy is sm
   assert.ok(/heading: 'What it does not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
 });
 
+check('the offer mark is a price tag, and it owns the card corner', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // The mark is a tag, not the `%` glyph the badge already spells out as OFF.
+  const tag = read('src/components/offer-tag.tsx');
+  assert.ok(/import \{ Tag \} from 'lucide-react-native'/.test(tag), 'the still mark is a tag');
+  assert.ok(!/lucide-react-native'\s*;?[\s\S]{0,40}Percent/.test(tag), 'no percent glyph is imported');
+  assert.ok(!/AnimatedPercent/.test(read('src/components/animated-icons.tsx')), 'the percent preset is gone');
+
+  // The composition draws the tag with an eyelet punched out of it, so a paused frame is still a tag.
+  const lottie = JSON.parse(read('assets/lottie/offer.json')) as {
+    layers: { nm: string; hasMask?: boolean; masksProperties?: { nm: string; mode: string }[] }[];
+  };
+  const tagLayer = lottie.layers.find((layer) => layer.nm === 'Tag');
+  assert.ok(tagLayer?.hasMask === true, 'the tag layer carries a mask');
+  assert.deepEqual(
+    tagLayer.masksProperties?.map((mask) => `${mask.nm}:${mask.mode}`),
+    ['Tag:a', 'Eyelet:s'],
+    'the tag adds its body and subtracts the eyelet',
+  );
+  assert.ok(
+    lottie.layers.some((layer) => layer.nm === 'Ring'),
+    'the pulse ring is still part of the mark',
+  );
+
+  // The rail card's corner: the offer mark at the top left, 8px in, with nothing else on the artwork.
+  const cards = read('src/components/course-cards.tsx');
+  assert.ok(
+    /cardOffer: \{ position: 'absolute', top: spacing\.sm, left: spacing\.sm \}/.test(cards),
+    "the badge is pinned to the card artwork's top-left corner at the 8px baseline",
+  );
+  assert.ok(!/cardImageBadge/.test(cards), 'the level badge no longer shares that artwork');
+  assert.ok(/<OfferBadge percent=\{offer\} size="md"/.test(cards), 'and the corner mark uses the larger tag');
+  assert.ok(/<OfferBadge percent=\{offer\} mark="side"/.test(cards), "the row's price line uses the label-free mark");
+});
+
 check('profile fields validate email and date of birth', () => {
   assert.equal(validateEmail(''), null);
   assert.equal(validateEmail('deepak@example.com'), null);

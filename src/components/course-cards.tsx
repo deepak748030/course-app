@@ -64,10 +64,8 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
         onPressOut={press.onPressOut}>
         <View style={styles.cardImageWrap}>
           <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
-          {offer ? <OfferBadge percent={offer} style={styles.cardOffer} /> : null}
-          <View style={styles.cardImageBadge}>
-            <Badge label={t(course.level)} tone="neutral" />
-          </View>
+          {/* The offer mark owns the top-left corner of the artwork; the level is in the body, once. */}
+          {offer ? <OfferBadge percent={offer} size="md" style={styles.cardOffer} /> : null}
         </View>
 
         <View style={styles.cardBody}>
@@ -144,7 +142,7 @@ export function CourseRow({ course }: { course: Course }) {
         </View>
         <View style={styles.rowPriceLine}>
           <Text style={[type.bodyStrong, tabularNums, { color: colors.accentText }]}>{priceLabel(course)}</Text>
-          {offer ? <OfferBadge percent={offer} /> : null}
+          {offer ? <OfferBadge percent={offer} mark="side" /> : null}
           {course.listPriceInr ? (
             <Text style={[type.label, styles.strike, tabularNums, { color: colors.textSubtle }]}>
               {formatInr(course.listPriceInr)}
@@ -452,9 +450,9 @@ const styles = createStyles(() => StyleSheet.create({
     overflow: 'hidden',
   },
   cardImageWrap: { backgroundColor: colors.surfaceAlt },
+  /* Corner mark on artwork: 8px in from both edges, level with the bookmark at the other end. */
   cardOffer: { position: 'absolute', top: spacing.sm, left: spacing.sm },
   cardImage: { width: '100%', aspectRatio: 4 / 3 },
-  cardImageBadge: { position: 'absolute', left: spacing.sm, bottom: spacing.sm },
   cardBody: { padding: spacing.sm, gap: spacing.xs },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   cardFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

@@ -18,7 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
-import { AnimatedCart, AnimatedCheck, AnimatedIcon, AnimatedPercent } from '@/components/animated-icons';
+import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
+import { OfferGlyph } from '@/components/offer-tag';
 import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { StarsDisplay } from '@/components/rating-input';
 import { RatingStar } from '@/components/rating-star';
@@ -130,11 +131,12 @@ export default function CourseDetailsScreen() {
               </Text>
             </Pressable>
             {/* The discount sits where the player puts its own secondary controls: bottom right,
-                white glyph and label straight on the scrim — not a badge pasted into the text. */}
+                the animated tag and the label straight on the scrim — not a badge pasted into the
+                text. The tag is the same composition the badges play, tinted for artwork. */}
             {offer ? (
               <View style={styles.heroOffer} accessible accessibilityLabel={`${offer} percent off this course`}>
                 <Text style={[type.bodyStrong, tabularNums, { color: colors.textInverse }]}>{offer}</Text>
-                <AnimatedPercent size={15} color={colors.textInverse} />
+                <OfferGlyph size={18} tone="onImage" />
                 <Text style={[type.overline, { color: colors.textInverse }]}>{t("OFF")}</Text>
               </View>
             ) : null}
@@ -472,7 +474,7 @@ const styles = createStyles(() => StyleSheet.create({
   heroPlay: { position: 'absolute', left: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   /** Mirrors the player's own bottom-right control: glyph + label straight on the scrim. */
   /** Number, percent glyph, `OFF`: one mark, so the gaps stay at 2px rather than the block rhythm. */
-  heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 2 },
+  heroOffer: { position: 'absolute', right: layout.screen, bottom: spacing.lg, flexDirection: 'row', alignItems: 'center', gap: 3 },
   padInset: { paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
   rateCard: {
     flexDirection: 'row',

@@ -9,17 +9,20 @@
  *     WASM player is avoided — it loads its runtime from a public CDN).
  *   - either way the composition is bundled with the app, so the badge animates offline.
  *
- * The file is authored in-repo by `scripts/generate-lottie-offer.mjs`, following the LottieFiles
- * "offer percentage" piece the design references: a percent mark breathing inside a slowly pulsing
- * ring, with two twinkles. See that script for why it is authored rather than downloaded.
+ * The file is authored in-repo by `scripts/generate-lottie-offer.mjs`, in the LottieFiles style the
+ * design references: a tag tilted inside a slowly pulsing ring, with two twinkles. See that script for
+ * why it is authored rather than downloaded.
+ *
+ * The mark is a price tag with an eyelet punched out of it: a discount is better said with a tag than
+ * with the same `%` the badge already spells out as "OFF".
  *
  * If the animation cannot run — reduced motion is on, the renderer fails to start — the same mark
- * falls back to a static percent glyph, so the badge always reads correctly. A render error is
- * caught by a boundary here rather than being allowed to take the screen down.
+ * falls back to a static tag glyph from the icon set, so the badge always reads correctly. A render
+ * error is caught by a boundary here rather than being allowed to take the screen down.
  */
 import { useT } from '@/i18n';
 
-import { Percent } from 'lucide-react-native';
+import { Tag } from 'lucide-react-native';
 import { Component, useCallback, useState, type ReactNode } from 'react';
 import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -30,7 +33,7 @@ import { createStyles, colors, radius, spacing, tabularNums, type } from '@/cons
 // Metro inlines the composition, so there is no file to fetch at run time.
 const OFFER_ANIMATION = require('@/assets/lottie/offer.json');
 
-type Tone = 'onYellow' | 'onSurface';
+type Tone = 'onYellow' | 'onSurface' | 'onImage';
 
 /**
  * Brand yellow, fixed in both themes.
@@ -45,19 +48,21 @@ const BRAND_YELLOW_SOFT = '#FFF4CC';
 /**
  * Optical spacing inside the mark.
  *
- * The percent mark is a drawing, not a font glyph, and its ink now reaches the edge of its box — so
- * the gaps beside it are set by eye (2px), not by the 4px block rhythm, and the yellow ground hugs
- * the mark instead of framing it. This is why the pill is narrower than the 8px-padding baseline:
- * every pixel here is inside one small mark, not between two blocks of content.
+ * The tag is a drawing, not a font glyph, and its ink reaches the edge of its box — so the gaps
+ * beside it are set by eye (4px), not by the 4px block rhythm, and the yellow ground hugs the mark
+ * instead of framing it. This is why the pill is narrower than the 8px-padding baseline: every pixel
+ * here is inside one small mark, not between two blocks of content.
  */
-const MARK_GAP = 2;
-const BADGE_SIDE = 6;
+const MARK_GAP = 4;
+const BADGE_SIDE = 7;
 
 const TONES: Record<Tone, string> = {
   /** Ink mark on the brand yellow pill: the combination used on course artwork. */
   onYellow: '#1F1B0E',
   /** Dark amber mark on the warm surface tone, for pills that sit on white. */
   onSurface: '#8A6200',
+  /** Straight on artwork (the course hero), where the badge itself would be a pasted-on box. */
+  onImage: '#FFFFFF',
 };
 
 /** Keeps one broken animation from taking a screen down with it. */
@@ -92,7 +97,7 @@ export function OfferGlyph({ size = 20, tone = 'onYellow' }: { size?: number; to
   if (still) {
     return (
       <View style={styles.glyphBox} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <Percent size={Math.round(size * 0.62)} color={tint} strokeWidth={2.6} />
+        <Tag size={Math.round(size * 0.78)} color={tint} strokeWidth={2.7} />
       </View>
     );
   }
@@ -141,26 +146,41 @@ export function OfferMark({
   );
 }
 
-/** Yellow pill with the animation and the percentage: used on course artwork and buy bars. */
+/** Yellow pill with the animated tag and the percentage: course artwork, price lines, buy bars. */
 export function OfferBadge({
   percent,
   tone = 'onYellow',
   size = 'sm',
+  mark = 'badge',
   style,
 }: {
   percent: number;
   tone?: Tone;
   /** `sm` for artwork corners, `md` for a decision point like the buy bar. */
   size?: 'sm' | 'md';
+  /**
+   * `badge` is the full mark — number, animated tag, `OFF` — for artwork and buy bars.
+   * `side` drops the label for the one place a badge sits inside a line of text (a list row's price
+   * line), where the row already says what the number is.
+   */
+  mark?: 'badge' | 'side';
   style?: StyleProp<ViewStyle>;
 }) {
-  const glyph = size === 'md' ? 28 : 20;
+  const tags = { badge: 20, side: 18, md: 24 } as const;
+  const glyph = size === 'md' ? tags.md : mark === 'side' ? tags.side : tags.badge;
   return (
     <View
       accessibilityRole="text"
       accessibilityLabel={`${percent} percent off`}
       style={[styles.badge, size === 'md' && styles.badgeMd, tone === 'onSurface' && styles.badgeSurface, style]}>
-      <OfferMark percent={percent} glyph={glyph} tone={tone} />
+      {mark === 'side' ? (
+        <View style={styles.mark}>
+          <Text style={[type.bodyStrong, tabularNums, { color: TONES[tone] }]}>{percent}</Text>
+          <OfferGlyph size={glyph} tone={tone} />
+        </View>
+      ) : (
+        <OfferMark percent={percent} glyph={glyph} tone={tone} />
+      )}
     </View>
   );
 }
@@ -175,8 +195,8 @@ const styles = createStyles(() => StyleSheet.create({
     backgroundColor: BRAND_YELLOW,
     borderRadius: radius.pill,
     paddingHorizontal: BADGE_SIDE,
-    paddingVertical: 2,
+    paddingVertical: 3,
   },
-  badgeMd: { paddingVertical: spacing.xs },
+  badgeMd: { paddingVertical: spacing.xs, paddingHorizontal: spacing.sm },
   badgeSurface: { backgroundColor: BRAND_YELLOW_SOFT },
 }));

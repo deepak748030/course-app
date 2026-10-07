@@ -14,7 +14,7 @@
  */
 
 import type { LucideIcon } from 'lucide-react-native';
-import { Bell, BellRing, CircleCheck, Flame, Percent, ShoppingCart, Sparkles } from 'lucide-react-native';
+import { Bell, BellRing, CircleCheck, Flame, ShoppingCart, Sparkles } from 'lucide-react-native';
 import { useEffect } from 'react';
 import type { StyleProp, ViewStyle } from 'react-native';
 import Animated, {
@@ -158,5 +158,3 @@ export const AnimatedCheck = (props: PresetProps) => <AnimatedIcon icon={CircleC
 /** Flame: used for discount / launch markers. */
 export const AnimatedFlame = (props: PresetProps) => <AnimatedIcon icon={Flame} motion="flicker" {...props} />;
 
-/** Percent mark: pairs with the flame on price-cut badges. */
-export const AnimatedPercent = (props: PresetProps) => <AnimatedIcon icon={Percent} motion="pop" {...props} />;
