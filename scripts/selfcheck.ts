@@ -527,6 +527,58 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
   assert.equal(i18n.translate('hi', '{n} lessons', { n: 3 }), hi['{n} lessons'].replace('{n}', '3'));
 });
 
+check('green is the default look, the number is read-only, and policy copy is small print', () => {
+  const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+
+  // The app opens on the green-and-white look; yellow is still one tap away on Profile.
+  const theme = read('src/constants/theme.ts');
+  assert.ok(/export const DEFAULT_THEME: ThemeId = 'green'/.test(theme), 'green is the default theme');
+  assert.ok(
+    /THEMES[\s\S]{0,200}?\{ id: 'green'/.test(theme),
+    'the picker lists the default first, so the selected row is the top one',
+  );
+  // Changing the default has to reach an install that already stored the old one: a stored theme only
+  // wins when the learner picked it themselves.
+  const store = read('src/store.tsx');
+  assert.ok(store.includes('themeChosen'), 'the store records whether a theme was chosen by hand');
+  assert.ok(
+    /themeChosen === true && isThemeId\(merged\.theme\) \? merged\.theme : DEFAULT_THEME/.test(store),
+    'an unchosen stored theme falls back to the current default',
+  );
+
+  // The mobile number is the sign-in identity: not on Profile, and not an input in the editor.
+  const profile = read('src/app/(tabs)/profile.tsx');
+  assert.ok(!/Mobile number/.test(profile), 'Profile does not show the number');
+  assert.ok(!/maskPhone/.test(profile), 'and it does not mask one either');
+  assert.ok(profile.includes('Add your details'), 'an empty profile invites the details instead of showing a blank card');
+
+  const editor = read('src/components/profile-editor.tsx');
+  assert.ok(
+    editor.includes('formatIndianMobile(normalizePhone(profile.phone))'),
+    'the editor shows the number, country code normalised',
+  );
+  assert.ok(!/value=\{profile\.phone\}/.test(editor), 'but never as an editable field');
+  assert.ok(editor.includes('cannot be changed here'), 'and it says why');
+
+  // The policy documents are set as documents: the 12pt step of the scale for body copy, opened up,
+  // with clause headings at 15 and the document title at 19 — and the text sits on 8pt side padding.
+  for (const screen of ['src/app/legal.tsx', 'src/app/help.tsx']) {
+    const source = read(screen);
+    assert.ok(
+      /fontSize: type\.label\.fontSize/.test(source),
+      `${screen} sets its body copy on the small-print step`,
+    );
+    assert.ok(/lineHeight: 19/.test(source), `${screen} opens that step up for reading`);
+    assert.ok(!/paddingHorizontal: layout\.section/.test(source), `${screen} uses the 8pt side padding`);
+  }
+  const legal = read('src/app/legal.tsx');
+  assert.ok(legal.includes('type.subheading'), 'the document title is one step below the app bar');
+  assert.ok(legal.includes('type.bodyStrong'), 'clause headings are the 15pt step');
+  const content = read('src/data/content.ts');
+  assert.ok(content.includes('points?: readonly string[]'), 'clauses can carry bullet points');
+  assert.ok(/heading: 'What it does not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
+});
+
 check('profile fields validate email and date of birth', () => {
   assert.equal(validateEmail(''), null);
   assert.equal(validateEmail('deepak@example.com'), null);

@@ -13,8 +13,8 @@
  *
  * THEMES
  * Two palettes ship in the app and the user picks between them on Profile:
- *   `yellow` — white surfaces, warm yellow accent (the original look),
- *   `green`  — white surfaces, deep green accent.
+ *   `green`  — white surfaces, deep green accent — the default the app opens with,
+ *   `yellow` — white surfaces, warm yellow accent (the original look).
  * Both are white-first: only the accent, the warm neutrals and the tinted surface change, so the
  * layout, type scale and 8px rhythm are identical in both.
  *
@@ -156,11 +156,13 @@ export const THEME_PALETTES: Record<ThemeId, Palette> = {
 
 /** Everything the theme picker needs to show a preview, without importing a palette twice. */
 export const THEMES: { id: ThemeId; label: string; description: string }[] = [
-  { id: 'yellow', label: 'Yellow', description: 'Warm yellow accent' },
+  /** Green first: it is the default the app opens with, and the list shows the default on top. */
   { id: 'green', label: 'Green', description: 'Deep green accent' },
+  { id: 'yellow', label: 'Yellow', description: 'Warm yellow accent' },
 ];
 
-export const DEFAULT_THEME: ThemeId = 'yellow';
+/** Green + white is the look the app ships with; the picker on Profile can still switch to yellow. */
+export const DEFAULT_THEME: ThemeId = 'green';
 
 export function isThemeId(value: unknown): value is ThemeId {
   return value === 'yellow' || value === 'green';

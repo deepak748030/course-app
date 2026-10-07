@@ -92,85 +92,147 @@ export const demoCoupons: { code: string; percentOff: number; label: string }[] 
 ];
 
 /** Sample legal copy. Replace with reviewed documents before shipping. */
-export const legalDocs = {
+/**
+ * The three policy documents, shaped like the documents they stand in for: a heading per clause, a
+ * paragraph or two, and bullet points where the copy lists things. `SampleDocument` in the screen
+ * renders `points` as a bulleted list.
+ *
+ * The copy is deliberately plain-English and short — it is placeholder material that has to be
+ * replaced wholesale, so the honest thing is to say what the prototype does rather than to imitate
+ * legal language it cannot back up.
+ */
+/** One clause of a policy document: a heading, then paragraphs and/or bullet points. */
+export type LegalSection = {
+  heading: string;
+  body?: readonly string[];
+  /** Points the clause lists. Rendered as a bullet list, in order. */
+  points?: readonly string[];
+};
+
+export type LegalDoc = {
+  /** Screen name: the app bar, the Profile row and the document's own heading all come from these. */
+  title: string;
+  /** The document's own heading, spelled out the way the document itself would be titled. */
+  heading: string;
+  summary: string;
+  sections: readonly LegalSection[];
+};
+
+export const legalDocs: Record<'terms' | 'refund' | 'privacy', LegalDoc> = {
   terms: {
     title: 'Terms of use',
+    heading: 'YDU Academy terms of use',
     summary: 'The terms this prototype runs on',
     sections: [
       {
         heading: 'What this document is',
         body: [
-          'This is placeholder copy for a prototype. It is not a legal agreement and must be replaced with reviewed terms before YDU Academy is distributed.',
+          'YDU Academy is a prototype. This page is placeholder text, not a legal agreement, and it has to be replaced with reviewed terms before the app is distributed.',
         ],
       },
       {
         heading: 'Courses, prices and reviews',
-        body: [
-          'In this build, courses, prices and reviews are fictional sample content. Purchases are simulated and no payment is processed.',
+        body: ['Everything in the catalog is sample material, written to show how the app works.'],
+        points: [
+          'Courses, prices and ratings are fictional.',
+          'Purchases are simulated end to end: no payment is processed and no money moves.',
+          'Lesson videos are demo clips, not the training material they describe.',
         ],
       },
       {
         heading: 'Applying what you learn',
+        body: ['You decide how to apply the methods shown in a lesson.'],
+        points: [
+          'Batch sheets are teaching samples, not certified production records.',
+          'Nothing here is food-safety, veterinary, licensing or regulatory advice.',
+          'Check the rules that apply to your own dairy before you change how it works.',
+        ],
+      },
+      {
+        heading: 'Your device, your data',
         body: [
-          'You are responsible for how you apply the methods shown. Batch sheets are educational sample material, not food-safety, veterinary, licensing or regulatory advice.',
+          'Progress, notes and saved items live on this device only. Clearing the app data removes them, and there is no backup yet.',
         ],
       },
     ],
   },
   refund: {
     title: 'Refund policy',
+    heading: 'YDU Academy refund policy',
     summary: 'When a course can be refunded',
     sections: [
       {
         heading: 'In this build',
         body: [
-          'This is placeholder copy for a prototype and is not a refund policy. No money moves in this build: checkout is a demo flow that only unlocks a course on this device, so there is nothing to refund yet.',
+          'Checkout is a demo. It unlocks a course on this device and takes no money, so there is nothing to refund yet.',
+        ],
+        points: [
+          'No card, UPI or bank details are collected.',
+          'Nothing is sent to a payment provider.',
+          'A demo purchase can be cleared from Transactions on this device.',
         ],
       },
       {
         heading: 'The window a shipped app would run on',
-        body: [
-          'A seven-day window from the date of purchase, a full refund on a course where no lesson has been started, and no refund once a quarter or more of the lessons have been completed.',
+        body: ['A released app would refund on these terms:'],
+        points: [
+          'Seven days from the date of purchase.',
+          'Full refund while no lesson has been started.',
+          'No refund once a quarter or more of the lessons are done.',
         ],
       },
       {
         heading: 'What the refund is calculated on',
         body: [
-          'Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price.',
-          'Batch sheets, notes and downloaded material are part of the course and follow the same rule as the lessons.',
+          'Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price. Batch sheets, notes and downloaded material follow the same rule as the lessons.',
         ],
       },
       {
         heading: 'How the money reaches you',
         body: [
-          'Approved refunds go back to the original payment method within five to seven working days, and the course locks again when the refund is processed.',
+          'An approved refund goes back to the original payment method within five to seven working days, and the course locks again once the refund is processed.',
         ],
       },
     ],
   },
   privacy: {
     title: 'Privacy policy',
+    heading: 'YDU Academy privacy policy',
     summary: 'What is stored, and where',
     sections: [
       {
         heading: 'What this prototype stores',
-        body: [
-          'Your mobile number, session token, saved courses, lesson progress and notes — all on this device only. The token is kept in the platform secure store; everything else uses local app storage.',
+        body: ['Everything below is kept in this app on this device.'],
+        points: [
+          'Your mobile number, used to sign in.',
+          'The session token, in the platform secure store.',
+          'Saved courses, batch sheets, lesson progress and your notes.',
+          'The profile details you type in yourself.',
         ],
       },
       {
         heading: 'What it does not do',
+        points: [
+          'No analytics, advertising or third-party tracking.',
+          'No data leaves the device — there is no server to send it to.',
+          'No contact list, camera roll or location access.',
+        ],
+      },
+      {
+        heading: 'Removing your data',
         body: [
-          'No analytics, advertising or third-party tracking is included in this build, and no data leaves the device.',
+          'Logging out clears the session, progress and notes stored for it. Reset demo data on the Settings screen puts the app back to a clean slate.',
         ],
       },
       {
         heading: 'What this document is',
-        body: ['This is placeholder copy for a prototype and is not a privacy policy.'],
+        body: [
+          'Placeholder copy for a prototype. It is not a privacy policy, and it has to be replaced with a reviewed document before YDU Academy is distributed.',
+        ],
       },
     ],
   },
-} as const;
+};
 
 /** What a purchase includes in this prototype. Deliberately conservative — nothing is promised
  *  that the product does not actually do. */

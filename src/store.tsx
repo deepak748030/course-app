@@ -46,8 +46,13 @@ type PersistedState = {
   profileAvatarUri: string | null;
   /**
    * Chosen look. A device preference rather than account data, so it survives sign-out.
+   *
+   * `themeChosen` records that the learner picked a theme themselves. Without it a stored `theme`
+   * cannot be told apart from the default of an older build, and changing the default would never
+   * reach an install that already has the old one written down.
    */
   theme: ThemeId;
+  themeChosen: boolean;
   /**
    * Chosen interface language. Also a device preference: a learner who switched to Hindi should not be
    * flipped back to English by signing out.
@@ -84,6 +89,7 @@ function seedState(): PersistedState {
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
     profileAvatarUri: null,
     theme: DEFAULT_THEME,
+    themeChosen: false,
     language: DEFAULT_LANGUAGE,
   };
 }
@@ -96,7 +102,10 @@ function restoreState(raw: string): PersistedState | null {
   try {
     const parsed = JSON.parse(raw) as Partial<PersistedState>;
     const merged: PersistedState = { ...seedState(), ...parsed };
-    merged.theme = isThemeId(merged.theme) ? merged.theme : DEFAULT_THEME;
+    // A theme the learner picked is kept; anything else (including the old default) becomes today's
+    // default, which is how a change of default reaches an existing install.
+    merged.theme = merged.themeChosen === true && isThemeId(merged.theme) ? merged.theme : DEFAULT_THEME;
+    merged.themeChosen = merged.themeChosen === true;
     merged.language = isLanguage(merged.language) ? merged.language : DEFAULT_LANGUAGE;
     return merged;
   } catch {
@@ -234,7 +243,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setTheme: (id) => {
         setActiveTheme(id);
-        setState((prev) => ({ ...prev, theme: id }));
+        setState((prev) => ({ ...prev, theme: id, themeChosen: true }));
       },
 
       setLanguage: (id) => {

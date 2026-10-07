@@ -18,7 +18,6 @@ import {
   RotateCcw,
   Settings,
   ShieldCheck,
-  Smartphone,
   SquarePen,
   Target,
   UtensilsCrossed,
@@ -44,7 +43,7 @@ import {
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courses } from '@/data/catalog';
 import { LANGUAGES, useT } from '@/i18n';
-import { ageFromDateOfBirth, formatDateOfBirth, formatDuration, maskPhone } from '@/lib/format';
+import { ageFromDateOfBirth, formatDateOfBirth, formatDuration } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
 import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
@@ -90,6 +89,8 @@ export default function ProfileScreen() {
     : null;
   const birthDate = formatDateOfBirth(profile?.dateOfBirth);
   const age = ageFromDateOfBirth(profile?.dateOfBirth);
+  /** True once at least one field filled in from the Edit sheet exists — otherwise the card invites it. */
+  const hasDetails = Boolean(profile?.email || profile?.city || profile?.goal || birthDate);
 
   async function changePhoto() {
     if (photoBusy) return;
@@ -149,9 +150,19 @@ export default function ProfileScreen() {
       }>
       {profile ? (
         <View style={styles.summaryCard}>
-          {/* Shown, never asked for: the editable fields live behind the Edit icon. */}
+          {/* Shown, never asked for: the editable fields live behind the Edit icon. The mobile number
+              is deliberately not on this page — it is the sign-in identity, and it is shown once,
+              read-only, inside the Edit sheet. With nothing filled in yet the card carries one row
+              that opens that sheet, so the block under the header is never an empty box. */}
           <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            <ListRow icon={Smartphone} label={t("Mobile number")} subtitle={maskPhone(profile.phone)} chevron={false} />
+            {!hasDetails ? (
+              <ListRow
+                icon={SquarePen}
+                label={t("Add your details")}
+                subtitle={t("Email, birthday and city stay on this device")}
+                onPress={() => setEditorOpen(true)}
+              />
+            ) : null}
             {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
             {birthDate ? (
               <ListRow

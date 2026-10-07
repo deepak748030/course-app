@@ -23,8 +23,10 @@ export default function HelpScreen() {
   return (
     <Screen header={<AppBar title={t("Help and support")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       <View style={styles.intro}>
-        <Text style={[type.title, { color: colors.text }]}>{t('How can we help?')}</Text>
-        <Text style={[type.body, { color: colors.textMuted }]}>{t("Answers to the questions this prototype raises most often.")}</Text>
+        <Text style={[type.subheading, { color: colors.text }]}>{t('How can we help?')}</Text>
+        <Text style={[docText, { color: colors.textMuted }]}>
+          {t('Answers to the questions this prototype raises most often.')}
+        </Text>
       </View>
 
       <View style={styles.section}>
@@ -33,7 +35,7 @@ export default function HelpScreen() {
           {faqs.map((faq, index) => (
             <Accordion key={faq.id} title={faq.question} defaultOpen={index === 0}>
               <View style={styles.answer}>
-                <Text style={[type.body, { color: colors.textMuted }]}>{faq.answer}</Text>
+                <Text style={[docText, { color: colors.textMuted }]}>{faq.answer}</Text>
               </View>
             </Accordion>
           ))}
@@ -68,7 +70,7 @@ export default function HelpScreen() {
         <View style={styles.supportCard}>
           <View style={styles.supportRow}>
             <Mail size={18} color={colors.textMuted} strokeWidth={1.9} />
-            <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>
+            <Text style={[docText, styles.supportText, { color: colors.textMuted }]}>
               {t('This prototype has no support inbox, so there is no contact form that pretends to send a message. Use the share button to pass feedback to your team, along with the screen you were on.')}
             </Text>
           </View>
@@ -81,30 +83,41 @@ export default function HelpScreen() {
         <View style={styles.supportCard}>
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
-            <Text style={[type.body, { color: colors.textMuted, flex: 1 }]}>
+            <Text style={[docText, styles.supportText, { color: colors.textMuted }]}>
               {t('Courses, prices and reviews are sample content. Authentication and payments are demo implementations. Anything that is not implemented in the app is said so plainly rather than shown as a working control.')}
             </Text>
           </View>
-          <Text style={[type.label, { color: colors.textSubtle }]}>{t("Offline downloads, captions, casting and certificates are not part of this build.")}</Text>
+          <Text style={[docText, { color: colors.textSubtle }]}>
+            {t('Offline downloads, captions, casting and certificates are not part of this build.')}
+          </Text>
         </View>
       </View>
     </Screen>
   );
 }
 
+/** Small print: the same 12pt step, opened up to 1.6, that the policy documents use. */
+const docText = {
+  fontFamily: type.body.fontFamily,
+  fontSize: type.label.fontSize,
+  lineHeight: 19,
+  letterSpacing: 0,
+} as const;
+
 const styles = createStyles(() => StyleSheet.create({
-  intro: { gap: spacing.sm, paddingHorizontal: layout.section, paddingTop: spacing.sm },
+  intro: { gap: spacing.xs, paddingHorizontal: layout.screen, paddingTop: spacing.sm },
   section: { gap: layout.gap },
   sectionHead: { gap: spacing.xs },
-  badgePad: { paddingHorizontal: layout.section },
+  badgePad: { paddingHorizontal: layout.screen },
   card: { backgroundColor: colors.surface, paddingHorizontal: layout.screen, paddingVertical: spacing.xs },
   answer: { paddingHorizontal: 0, paddingBottom: spacing.md, paddingTop: 0 },
   supportCard: {
-    marginHorizontal: layout.section,
+    marginHorizontal: layout.screen,
     backgroundColor: colors.surfaceAlt,
     borderRadius: radius.sm,
     padding: spacing.md,
     gap: spacing.md,
   },
   supportRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
+  supportText: { flex: 1 },
 }));

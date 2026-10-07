@@ -1,21 +1,25 @@
 /**
  * Profile editor.
  *
- * Name, email, date of birth, city and a cooking goal in one sheet — no wizard, no extra
- * screens. Save stays disabled until something changed and every field passes validation.
- * Date of birth is three plain fields on purpose: no picker dependency, and DD / MM / YYYY is
- * how the date is written on paper in India.
+ * Name, email, date of birth, city and a dairy goal in one sheet — no wizard, no extra screens. Save
+ * stays disabled until something changed and every field passes validation. Date of birth is three
+ * plain fields on purpose: no picker dependency, and DD / MM / YYYY is how the date is written on
+ * paper in India.
+ *
+ * The mobile number is the one thing on this sheet that is *shown* rather than asked for: it is the
+ * identity the session was created with, so it sits at the top as a read-only value with the reason
+ * under it — not an input box that quietly does nothing when you type in it.
  */
 import { useT } from '@/i18n';
 
-import { Camera, Trash2 } from 'lucide-react-native';
+import { Camera, Info, Smartphone, Trash2 } from 'lucide-react-native';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Avatar, Button, Chip, FormField } from '@/components/ui';
-import { createStyles, colors, spacing, type } from '@/constants/theme';
-import { buildDateOfBirth, DOB_FORMAT_HINT, validateEmail } from '@/lib/format';
+import { createStyles, colors, radius, spacing, type } from '@/constants/theme';
+import { buildDateOfBirth, DOB_FORMAT_HINT, formatIndianMobile, normalizePhone, validateEmail } from '@/lib/format';
 import type { UserProfile } from '@/types';
 
 export const DAIRY_GOALS = [
@@ -151,6 +155,23 @@ export function ProfileEditorSheet({
         <Text style={[type.label, styles.notice, { color: colors.error }]}>{photoNotice}</Text>
       ) : null}
 
+      {/* Shown, not editable: the number the session was created with. */}
+      <View style={styles.fieldWrap}>
+        <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t('Mobile number')}</Text>
+        <View style={styles.readOnly} accessibilityRole="text" accessibilityLabel={t('Mobile number')}>
+          <Smartphone size={18} color={colors.textSubtle} strokeWidth={1.75} />
+          <Text style={[type.body, styles.readOnlyValue, { color: colors.textMuted }]}>
+            {formatIndianMobile(normalizePhone(profile.phone))}
+          </Text>
+        </View>
+        <View style={styles.readOnlyNote}>
+          <Info size={13} color={colors.textSubtle} strokeWidth={2} />
+          <Text style={[type.label, styles.readOnlyNoteText, { color: colors.textSubtle }]}>
+            {t('The number you signed in with cannot be changed here.')}
+          </Text>
+        </View>
+      </View>
+
       <FormField
         label={t("Full name")}
         value={draft.name}
@@ -250,4 +271,17 @@ const styles = createStyles(() => StyleSheet.create({
   dobField: { flex: 1 },
   dobFieldWide: { flex: 1.4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  /** Read-only value: a soft block, not a field — nothing about it invites a tap. */
+  readOnly: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surfaceAlt,
+  },
+  readOnlyValue: { flex: 1 },
+  readOnlyNote: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  readOnlyNoteText: { flex: 1 },
 }));
