@@ -1,4 +1,26 @@
+/**
+ * Introduction: four slides, each one drawn edge to edge on the screen.
+ *
+ * The artwork is the screen. Every slide's image fills the whole window — under the status bar, under
+ * the brand row and under the footer — with `cover`, so it is never letterboxed and never leaves a
+ * band of page around it. The interface sits on top of it:
+ *
+ *   - a white fade down from the top, so the brand row and the status bar stay legible on any photo;
+ *   - the copy on the app's own scrim (`colors.scrim`, the wash the Home hero uses), in white ink;
+ *   - the dots, Skip and the one action over the same scrim.
+ *
+ * Every block a slide positions against is measured rather than guessed: the pager is the window, the
+ * top bar reports its own height, the footer reports its own, and the slides pad their contents by
+ * those numbers. That is what keeps the copy clear of the button on a short phone and on a tablet.
+ *
+ * The first slide is the brand poster. Its artwork carries the whole message, so the slide adds none
+ * of its own — no headline over a poster — and draws only the lock-up, and only when the artwork has
+ * an empty top for it (`posterTitle` / `posterTagline`). The lock-up sits over the poster's pale top
+ * band, so it is written in the poster's own green rather than in white.
+ */
+
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { ArrowRight } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
@@ -26,26 +48,28 @@ import type { ImageSource } from 'expo-image';
 /** The poster's own green, from the printed artwork — deliberately outside the two app palettes. */
 const POSTER_GREEN = '#14532D';
 
+/** How much of the height each fade covers: the top rail's content is small, the scrim's is not. */
+const TOP_FADE = 132;
+const SCRIM_HEIGHT = '62%';
+
 type Slide = {
   key: string;
   image: ImageSource;
-  /** Copy shown under the image. A poster slide leaves these empty — the artwork says it itself. */
+  /** Copy shown over the artwork. A poster slide leaves these empty — the artwork says it itself. */
   headline?: string;
   support?: string;
   cta: string;
   /**
-   * A poster is artwork with its own logo, headline and tagline (the YDU Academy poster).
-   * It is shown whole — `contain`, never cropped — and the slide adds no copy of its own, because
-   * anything written over a poster fights the poster. Everything else stays the same: full-bleed
-   * width, the same footer, the same dots.
+   * A poster is artwork carrying its own lettering (the YDU Academy poster). It is shown whole in
+   * spirit — the drawing fills the screen — and the slide adds no copy of its own, because anything
+   * written over a poster fights the poster.
    */
   poster?: boolean;
   /** Spoken description of a poster, since all of its text is inside the image. */
   posterLabel?: string;
   /**
    * Brand lock-up drawn over a poster's empty top area: the YDU name in Hindi and its tagline, the
-   * way the printed poster sets them (logo, title, tagline, a short accent rule). It is left-aligned
-   * to nothing and simply centred on the artwork.
+   * way the printed poster sets them (logo, title, tagline, a short accent rule).
    *
    * This is brand artwork, not interface copy, so it is written as-is rather than through `t()` — the
    * brand reads the same in both interface languages, which is exactly how the poster is printed.
@@ -93,11 +117,15 @@ export default function OnboardingScreen() {
 
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const scrollX = useSharedValue(0);
   const listRef = useRef<Animated.FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
-  const [pagerHeight, setPagerHeight] = useState(0);
+  // Both blocks measure themselves, but a measurement only arrives after the first paint — so they
+  // start from a close estimate (the brand row, and the footer at its real height on this inset) and
+  // the copy never flashes in the wrong place on the first frame.
+  const [topBarHeight, setTopBarHeight] = useState(() => insets.top + 44);
+  const [footerHeight, setFooterHeight] = useState(() => insets.bottom + 132);
   const { completeOnboarding } = useStore();
 
   const finish = useCallback(() => {
@@ -117,41 +145,61 @@ export default function OnboardingScreen() {
     listRef.current?.scrollToOffset({ offset: (index + 1) * width, animated: true });
   }, [finish, index, width]);
 
-  const onPagerLayout = (event: LayoutChangeEvent) => setPagerHeight(event.nativeEvent.layout.height);
-
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
+    <View style={styles.root}>
       <AppStatusBar />
 
-      {/* Brand only — nothing competes with the artwork. Skip lives over the image. */}
-      <View style={styles.topBar}>
+      {/* The artwork layer: one full-window image per slide, paged by hand. It sits behind everything,
+          including the status bar, which is what makes the picture cover the whole screen. */}
+      <View style={styles.canvas}>
+        <Animated.FlatList
+          ref={listRef}
+          data={slides}
+          keyExtractor={(item) => item.key}
+          horizontal
+          pagingEnabled
+          bounces={false}
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))}
+          renderItem={({ item, index: itemIndex }) => (
+            <SlideView
+              slide={item}
+              index={itemIndex}
+              width={width}
+              height={height}
+              scrollX={scrollX}
+              topInset={topBarHeight}
+              footerInset={footerHeight}
+            />
+          )}
+        />
+      </View>
+
+      {/* A white fade under the brand row, so the lockup and the status bar read on any photo. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={[colors.background, 'rgba(255,255,255,0.82)', 'transparent']}
+        locations={[0, 0.55, 1]}
+        style={[styles.topFade, { height: insets.top + TOP_FADE }]}
+      />
+
+      <View
+        style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}
+        onLayout={(event: LayoutChangeEvent) => setTopBarHeight(event.nativeEvent.layout.height)}>
         <View style={styles.brand}>
           <BrandMark size={26} />
           <Text style={[type.bodyStrong, { color: colors.text }]}>YDU Academy</Text>
         </View>
       </View>
 
-      <View style={styles.pager} onLayout={onPagerLayout}>
-        {pagerHeight > 0 ? (
-          <Animated.FlatList
-            ref={listRef}
-            data={slides}
-            keyExtractor={(item) => item.key}
-            horizontal
-            pagingEnabled
-            bounces={false}
-            showsHorizontalScrollIndicator={false}
-            onScroll={onScroll}
-            scrollEventThrottle={16}
-            onMomentumScrollEnd={(event) => setIndex(Math.round(event.nativeEvent.contentOffset.x / Math.max(1, width)))}
-            renderItem={({ item, index: itemIndex }) => (
-              <SlideView slide={item} index={itemIndex} width={width} height={pagerHeight} scrollX={scrollX} />
-            )}
-          />
-        ) : null}
-      </View>
+      <View style={styles.spacer} />
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+      {/* Dots and the single action. Skip lives here, over the artwork, not on a page of its own. */}
+      <View
+        style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}
+        onLayout={(event: LayoutChangeEvent) => setFooterHeight(event.nativeEvent.layout.height)}>
         <View style={styles.footerRow}>
           <View
             style={styles.dots}
@@ -162,18 +210,20 @@ export default function OnboardingScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={t("Skip introduction")}
+            accessibilityLabel={t('Skip introduction')}
             hitSlop={12}
             onPress={finish}
             style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
-            <Text style={[type.label, { color: colors.textMuted }]}>{t("Skip")}</Text>
+            <Text style={[type.label, { color: colors.onPlayer }]}>{t('Skip')}</Text>
           </Pressable>
         </View>
         <Button
           label={slides[index].cta}
           onPress={goNext}
           icon={ArrowRight}
-          accessibilityHint={index === slides.length - 1 ? 'Opens the sign-in screen' : 'Shows the next introduction screen'}
+          accessibilityHint={
+            index === slides.length - 1 ? 'Opens the sign-in screen' : 'Shows the next introduction screen'
+          }
         />
       </View>
     </View>
@@ -190,25 +240,31 @@ function SlideView({
   width,
   height,
   scrollX,
+  topInset,
+  footerInset,
 }: {
   slide: Slide;
   index: number;
   width: number;
   height: number;
   scrollX: SharedValue<number>;
+  /** Height of the brand row, measured by the screen: a poster's lock-up starts below it. */
+  topInset: number;
+  /** Height of the dots-and-action block: the copy ends above it. */
+  footerInset: number;
 }) {
   const reduced = useReducedMotion();
 
-  // Gentle image translation as the page moves; text fades with distance.
+  // Gentle image translation as the page moves, so the artwork drifts under the interface.
   const imageStyle = useAnimatedStyle(() => {
     if (reduced) return { transform: [{ translateX: 0 }] };
     const offset = interpolate(
       scrollX.value,
       [index - 1, index, index + 1],
-      [width * 0.12, 0, -width * 0.12],
+      [width * 0.1, 0, -width * 0.1],
       Extrapolation.CLAMP,
     );
-    return { transform: [{ translateX: offset }, { scale: 1.06 }] };
+    return { transform: [{ translateX: offset }, { scale: 1.05 }] };
   });
 
   const textStyle = useAnimatedStyle(() => {
@@ -220,80 +276,94 @@ function SlideView({
     };
   });
 
-  // A poster keeps its own margins: shown whole, on the paper background, with no copy under it.
-  if (slide.poster) {
-    return (
-      <View style={{ width, height }}>
-        <View style={styles.posterWrap}>
-          <Image
-            source={slide.image}
-            style={styles.poster}
-            contentFit="contain"
-            transition={200}
-            accessibilityLabel={slide.posterLabel}
-          />
-          {slide.posterTitle ? (
-            /* Sits in the artwork's own empty space at the top: the mark, the name, the tagline and
-               a short rule — the poster's lettering, in the poster's green. */
-            <View style={styles.posterLockup} pointerEvents="none">
-              <View style={styles.posterPlate}>
-                <BrandMark size={30} color={POSTER_GREEN} />
-              </View>
-              <Text style={[type.display, styles.posterTitle, { color: POSTER_GREEN }]}>
-                {slide.posterTitle}
-              </Text>
-              <Text style={[type.subheading, styles.posterTagline, { color: POSTER_GREEN }]}>
-                {slide.posterTagline}
-              </Text>
-              <View style={styles.posterRule} />
-            </View>
-          ) : null}
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={{ width, height }}>
-      {/* Full-bleed: the image touches both screen edges, text sits below it on paper. */}
-      <View style={styles.imageWrap}>
-        <Animated.View style={[styles.imageInner, imageStyle]}>
-          <Image source={slide.image} style={styles.image} contentFit="cover" transition={200} />
-        </Animated.View>
-      </View>
-
-      <Animated.View style={[styles.copy, textStyle]}>
-        <Text style={[type.title, { color: colors.text }]}>{slide.headline}</Text>
-        <Text style={[type.body, { color: colors.textMuted, maxWidth: 420 }]}>{slide.support}</Text>
+      {/* The artwork: `cover` on a full-window box, so it fills the height and the width at once. */}
+      <Animated.View style={[styles.imageLayer, imageStyle]}>
+        <Image
+          source={slide.image}
+          style={styles.image}
+          contentFit="cover"
+          transition={200}
+          accessibilityLabel={slide.poster ? slide.posterLabel : undefined}
+        />
       </Animated.View>
+
+      {/* The scrim the copy and the footer sit on — the same wash the Home hero uses, inside the
+          slide so it travels with the artwork. */}
+      <LinearGradient
+        pointerEvents="none"
+        colors={['transparent', colors.scrim]}
+        locations={[0.28, 1]}
+        style={styles.bottomScrim}
+      />
+
+      {slide.poster ? (
+        slide.posterTitle ? (
+          /* The artwork's own empty space at the top: the mark, the name, the tagline and a short
+             rule — the poster's lettering, in the poster's green. */
+          <View style={[styles.posterLockup, { top: topInset + spacing.sm }]} pointerEvents="none">
+            <View style={styles.posterPlate}>
+              <BrandMark size={30} color={POSTER_GREEN} />
+            </View>
+            <Text style={[type.display, styles.posterTitle, { color: POSTER_GREEN }]}>{slide.posterTitle}</Text>
+            <Text style={[type.subheading, styles.posterTagline, { color: POSTER_GREEN }]}>
+              {slide.posterTagline}
+            </Text>
+            <View style={styles.posterRule} />
+          </View>
+        ) : null
+      ) : (
+        /* The copy, on the foot of the artwork and clear of the dots and the button. */
+        <Animated.View style={[styles.copy, { bottom: footerInset + spacing.sm }, textStyle]}>
+          <Text style={[type.title, { color: colors.textInverse }]}>{slide.headline}</Text>
+          <Text style={[type.body, styles.support, { color: colors.onPlayerMuted }]}>{slide.support}</Text>
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
-  topBar: { paddingHorizontal: layout.screen, paddingVertical: spacing.sm, width: '100%', maxWidth: layout.maxWidth, alignSelf: 'center' },
+  /* The pager is the window, edge to edge — the image covers what the status bar sits on too. */
+  canvas: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  imageLayer: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
+  image: { width: '100%', height: '100%' },
+  topFade: { position: 'absolute', top: 0, left: 0, right: 0 },
+  bottomScrim: { position: 'absolute', left: 0, right: 0, bottom: 0, height: SCRIM_HEIGHT },
+  topBar: {
+    paddingHorizontal: layout.screen,
+    paddingBottom: spacing.sm,
+    width: '100%',
+    maxWidth: layout.maxWidth,
+    alignSelf: 'center',
+  },
   brand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingLeft: spacing.sm },
-  pager: { flex: 1 },
-  imageWrap: { flex: 1, minHeight: 220, overflow: 'hidden', backgroundColor: colors.surfaceAlt },
-  /* A poster shows whole — the two quiet bands around it are the page, not a crop. */
-  posterWrap: { flex: 1, paddingHorizontal: layout.screen, paddingVertical: spacing.sm },
-  poster: { width: '100%', height: '100%' },
+  spacer: { flex: 1 },
+  copy: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    paddingHorizontal: layout.section,
+    gap: spacing.sm,
+  },
+  support: { maxWidth: 420 },
   posterLockup: {
     position: 'absolute',
-    top: spacing.lg,
     left: layout.section,
     right: layout.section,
     alignItems: 'center',
     gap: spacing.xs,
   },
   posterPlate: {
+    /* The lock-up sits on the poster's pale top band, so the plate is white against the artwork. */
     width: 48,
     height: 48,
     borderRadius: radius.md,
-    backgroundColor: colors.surface,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(20, 83, 45, 0.16)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.xs,
@@ -307,16 +377,6 @@ const styles = createStyles(() => StyleSheet.create({
     backgroundColor: POSTER_GREEN,
     marginTop: spacing.xs,
   },
-  imageInner: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-  image: { width: '100%', height: '100%' },
-  copy: {
-    paddingHorizontal: layout.screen,
-    paddingTop: spacing.lg,
-    gap: spacing.sm,
-    width: '100%',
-    maxWidth: layout.maxWidth,
-    alignSelf: 'center',
-  },
   footer: {
     paddingHorizontal: layout.screen,
     paddingTop: spacing.md,
@@ -325,9 +385,15 @@ const styles = createStyles(() => StyleSheet.create({
     maxWidth: layout.maxWidth,
     alignSelf: 'center',
   },
-  footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.sm },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+  },
   dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { height: 6, borderRadius: radius.pill },
-  dotActive: { width: 22, backgroundColor: colors.primary },
-  dotIdle: { width: 6, backgroundColor: colors.border },
+  /* On the scrim: the brand gold marks the step, white at 62% marks the others — both palettes read. */
+  dotActive: { width: 22, backgroundColor: colors.gold },
+  dotIdle: { width: 6, backgroundColor: colors.onPlayerMuted },
 }));

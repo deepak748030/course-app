@@ -400,18 +400,37 @@ check('the app draws the same brand mark the icons are generated from', () => {
   }
 });
 
-check('onboarding opens on the YDU poster, shown whole', () => {
+check('every onboarding slide fills the window, and the poster leads it', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
-  // The first introduction is the brand poster: it carries its own lettering, so it must be shown
-  // whole (contain, never cropped) and it must not grow a second copy of the app's headline.
   const screen = read('src/app/onboarding.tsx');
+
+  // The artwork is the screen: `cover` on a full-window box, in a pager that is absolute-filled, so
+  // no slide can end up letterboxed (which is what a `contain` image with page padding did).
+  assert.ok(screen.includes('contentFit="cover"'), 'the artwork is cropped to fill, never letterboxed');
+  assert.ok(!/contentFit="contain"/.test(screen), 'no slide falls back to a letterboxed image');
+  assert.ok(
+    /canvas: \{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 \}/.test(screen),
+    'the pager covers the whole window, status bar included',
+  );
+  assert.ok(screen.includes('styles.topFade'), 'a fade keeps the brand row legible over any photo');
+  assert.ok(screen.includes('styles.bottomScrim'), 'and a scrim keeps the white copy legible at the foot');
+
+  // Positions come from measurements, not from magic numbers.
+  assert.ok(screen.includes('setTopBarHeight('), 'the brand row reports its height');
+  assert.ok(screen.includes('setFooterHeight('), 'the footer reports its height');
+  assert.ok(screen.includes('bottom: footerInset + spacing.sm'), 'the copy clears the measured footer');
+  assert.ok(screen.includes('top: topInset + spacing.sm'), "a poster's lock-up clears the measured brand row");
+
+  // The poster still leads the flow, keeps its lock-up, and adds no headline of its own.
   assert.ok(screen.includes('poster: true'), 'the first slide is marked as a poster');
-  assert.ok(screen.includes("contentFit=\"contain\""), 'a poster is shown whole');
+  assert.ok(screen.indexOf("key: 'poster'") < screen.indexOf("key: 'milk'"), 'and it is the first one');
   assert.ok(screen.includes('posterLockup'), 'the poster keeps its brand lock-up');
   assert.ok(screen.includes('posterTitle'), 'and the lock-up is data, not a second headline');
-  assert.ok(/onboardingPoster: require\('@\/assets\/images\/onboarding-ydu-poster\.jpg'\)/.test(read('src/media.ts')),
-    'the poster asset is registered');
+  assert.ok(
+    /onboardingPoster: require\('@\/assets\/images\/onboarding-ydu-poster\.jpg'\)/.test(read('src/media.ts')),
+    'the poster asset is registered',
+  );
 });
 
 check('a bought course can be rated, and the rating stays on the device', () => {
@@ -586,29 +605,30 @@ check('green is the default look, the number is read-only, and policy copy is sm
   assert.ok(/heading: 'What it does not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
 });
 
-check('the offer mark is a price tag, and it owns the card corner', () => {
+check('the offer mark is plain text, and it owns the card corner', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
-  // The mark is a tag, not the `%` glyph the badge already spells out as OFF.
+  // The mark is three pieces of type — number, `%`, `OFF` — and nothing else: no animation, no glyph
+  // drawing, no player, and no asset to load.
   const tag = read('src/components/offer-tag.tsx');
-  assert.ok(/import \{ Tag \} from 'lucide-react-native'/.test(tag), 'the still mark is a tag');
-  assert.ok(!/lucide-react-native'\s*;?[\s\S]{0,40}Percent/.test(tag), 'no percent glyph is imported');
-  assert.ok(!/AnimatedPercent/.test(read('src/components/animated-icons.tsx')), 'the percent preset is gone');
+  assert.ok(tag.includes(">%</Text>"), 'the mark writes a plain % character');
+  // The file's own doc comment mentions the player that used to be here, so this looks for a real
+  // import rather than for the word.
+  assert.ok(!/from 'lottie|require\([^)]*lottie/.test(tag), 'the mark plays nothing');
+  assert.ok(!/import .*react-native-svg/.test(tag), 'and draws nothing');
+  assert.ok(tag.includes('tabularNums'), 'the percentage uses tabular figures so rows do not wobble');
 
-  // The composition draws the tag with an eyelet punched out of it, so a paused frame is still a tag.
-  const lottie = JSON.parse(read('assets/lottie/offer.json')) as {
-    layers: { nm: string; hasMask?: boolean; masksProperties?: { nm: string; mode: string }[] }[];
-  };
-  const tagLayer = lottie.layers.find((layer) => layer.nm === 'Tag');
-  assert.ok(tagLayer?.hasMask === true, 'the tag layer carries a mask');
-  assert.deepEqual(
-    tagLayer.masksProperties?.map((mask) => `${mask.nm}:${mask.mode}`),
-    ['Tag:a', 'Eyelet:s'],
-    'the tag adds its body and subtracts the eyelet',
+  const pkg = JSON.parse(read('package.json')) as { dependencies: Record<string, string> };
+  for (const name of ['lottie-react-native', 'lottie-web']) {
+    assert.ok(!(name in pkg.dependencies), `${name} is not a dependency any more`);
+  }
+  assert.ok(
+    !existsSync(fileURLToPath(new URL('../assets/lottie', import.meta.url))),
+    'the animation asset is gone',
   );
   assert.ok(
-    lottie.layers.some((layer) => layer.nm === 'Ring'),
-    'the pulse ring is still part of the mark',
+    !existsSync(fileURLToPath(new URL('../scripts/generate-lottie-offer.mjs', import.meta.url))),
+    'and so is its generator',
   );
 
   // The rail card's corner: the offer mark at the top left, 8px in, with nothing else on the artwork.
@@ -618,8 +638,12 @@ check('the offer mark is a price tag, and it owns the card corner', () => {
     "the badge is pinned to the card artwork's top-left corner at the 8px baseline",
   );
   assert.ok(!/cardImageBadge/.test(cards), 'the level badge no longer shares that artwork');
-  assert.ok(/<OfferBadge percent=\{offer\} size="md"/.test(cards), 'and the corner mark uses the larger tag');
+  assert.ok(/<OfferBadge percent=\{offer\} size="md"/.test(cards), 'and the corner mark uses the larger pill');
   assert.ok(/<OfferBadge percent=\{offer\} mark="side"/.test(cards), "the row's price line uses the label-free mark");
+
+  // The course hero shows the same mark, in the on-image colour, with no pill.
+  const course = read('src/app/course/[id].tsx');
+  assert.ok(/<OfferMark percent=\{offer\} color=\{colors\.textInverse\} \/>/.test(course), 'the course hero uses it too');
 });
 
 check('profile fields validate email and date of birth', () => {

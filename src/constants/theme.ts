@@ -27,8 +27,9 @@
  *   - The root remounts the tree when the theme changes (see `_layout.tsx`), which is what makes
  *     every screen re-render and read the new values. Nothing else about a screen changes.
  *
- * The offer badge stays brand yellow in both themes on purpose: the Lottie mark inside it is drawn
- * in ink and needs the yellow ground to stay legible (see components/offer-tag.tsx).
+ * The offer badge stays brand yellow in both themes on purpose: it sits on course artwork, and the
+ * ink inside it needs that ground to stay legible whichever accent the app is wearing (see
+ * components/offer-tag.tsx).
  */
 
 import '@/global.css';

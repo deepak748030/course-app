@@ -258,18 +258,14 @@ The UI follows the project's design rules document and is generated from one tok
   palette read through a module-level proxy. The choice is written with the rest of the local state
   (`state.theme`) and survives a restart; it is kept across sign-out, because it belongs to the device
   and not to the account. One deliberate exception: **the offer mark keeps the brand yellow ground in
-  both themes**, because the Lottie mark inside it is drawn in ink and would vanish on the deep green.
-- **The offer mark is a real Lottie animation.** `assets/lottie/offer.json` is played by a Lottie
-  runtime — `lottie-react-native` on Android/iOS (native cores, no WASM), `lottie-web`'s SVG renderer
-  on web (`src/components/offer-lottie.web.tsx`). The composition is bundled with the app, so the
-  badge animates offline; the WASM player was rejected because it fetches its runtime from a public
-  CDN at start-up. The file is authored in-repo by `scripts/generate-lottie-offer.mjs` — the design
-  follows the LottieFiles "offer percentage" piece (JOEL J GEORGE), which cannot be downloaded
-  without an account and whose CDN the build environment cannot reach, so the mark is drawn to match
-  it instead of shipping someone else's file with unclear provenance. To use a different animation
-  later, drop it at `assets/lottie/offer.json`: no code changes. The badge degrades safely — reduced
-  motion, a renderer that fails to start or an environment without a 2D canvas all fall back to a
-  static percent glyph, and a boundary keeps a broken animation from taking the screen down.
+  both themes**, because the mark's ink would vanish on the deep green accent.
+- **The offer mark is text, not an animation.** `src/components/offer-tag.tsx` draws the discount as
+  three pieces of type — the number, a `%`, and `OFF` — inside a brand-yellow pill: `25 % OFF`. Earlier
+  builds played a Lottie composition here; that was more machinery than a discount needs, and it is
+  gone (no Lottie runtime, no animation asset, nothing to fail at runtime). The pill keeps the gaps
+  tight (2px) because every pixel in it is inside one small mark, and the mark appears wherever the
+  price decision happens: on course artwork, in list rows, above the course title, in the sticky buy
+  bar and on the checkout total.
 - **Animated icons** (`src/components/animated-icons.tsx`): the glyphs that carry meaning are animated —
   the notification bell swings and rests, the offer sparkle pops, the check marks and course facts pulse,
   the cart hops. Each one is a lucide glyph inside a Reanimated wrapper driven by one looping shared
@@ -277,12 +273,11 @@ The UI follows the project's design rules document and is generated from one tok
   into a static icon under reduced motion. `Button` also accepts `sheen` for a slow light sweep across a
   primary fill (used by Buy now and Pay), held under reduced motion.
 - **Offers are derived, never typed twice**: a course seed may carry `listPriceInr`, and
-  `discountPercent()` computes the percentage from the two prices. The mark appears wherever the
-  decision is: top-left of course artwork, top-left of the featured hero, above the course title, in
-  list rows, in the sticky buy bar and on the checkout total — so a price change can never disagree
-  with the badge that advertises it.
+  `discountPercent()` computes the percentage from the two prices, so a price change can never
+  disagree with the badge that advertises it.
 
-A UI reference board of 100 course-app screens used for this redesign is kept in `image-search/`.
+A UI reference board of 100 course-app screens was used for this redesign; it is not part of the
+repository.
 
 ### Tabs, headers and search
 

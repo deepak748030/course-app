@@ -19,7 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
-import { OfferGlyph } from '@/components/offer-tag';
+import { OfferMark } from '@/components/offer-tag';
 import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { StarsDisplay } from '@/components/rating-input';
 import { RatingStar } from '@/components/rating-star';
@@ -135,9 +135,7 @@ export default function CourseDetailsScreen() {
                 text. The tag is the same composition the badges play, tinted for artwork. */}
             {offer ? (
               <View style={styles.heroOffer} accessible accessibilityLabel={`${offer} percent off this course`}>
-                <Text style={[type.bodyStrong, tabularNums, { color: colors.textInverse }]}>{offer}</Text>
-                <OfferGlyph size={18} tone="onImage" />
-                <Text style={[type.overline, { color: colors.textInverse }]}>{t("OFF")}</Text>
+                <OfferMark percent={offer} color={colors.textInverse} />
               </View>
             ) : null}
           </View>

@@ -21,13 +21,18 @@ export const images = {
   brandMark: require('@/assets/images/brand-mark.png') as ImageSource,
 
   /**
-   * Onboarding slide 1: the YDU Academy poster. It carries its own logo, headline and tagline, so the
-   * slide shows it whole (never cropped) and adds no copy of its own.
+   * Onboarding slide 1: the YDU Academy poster. It carries its own lettering, so the slide adds no
+   * headline of its own over it — only the brand lock-up in the artwork's empty top area.
+   */
+  /**
+   * Onboarding art is portrait (768×1376) on purpose: each slide's image fills the whole screen with
+   * `cover`, so a landscape frame would be cropped to a narrow vertical slice. Keep new art portrait.
    */
   onboardingPoster: require('@/assets/images/onboarding-ydu-poster.jpg') as ImageSource,
   onboardingFreshMilk: require('@/assets/images/onboarding-fresh-milk.jpg') as ImageSource,
   onboardingTesting: require('@/assets/images/onboarding-testing.jpg') as ImageSource,
-  onboardingRange: require('@/assets/images/course-artisan-cheese.jpg') as ImageSource,
+  /** Slide 4 is the range of things milk becomes, so it uses the pot of dahi — also portrait. */
+  onboardingRange: require('@/assets/images/course-curd-ferments.jpg') as ImageSource,
   /** Home hero: the reception bench, which is where every dairy story starts. */
   heroHome: require('@/assets/images/course-milk-foundations.jpg') as ImageSource,
 
