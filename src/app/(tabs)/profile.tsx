@@ -149,33 +149,27 @@ export default function ProfileScreen() {
         />
       }>
       {profile ? (
-        <View style={styles.summaryCard}>
-          {/* Shown, never asked for: the editable fields live behind the Edit icon. The mobile number
-              is deliberately not on this page — it is the sign-in identity, and it is shown once,
-              read-only, inside the Edit sheet. With nothing filled in yet the card carries one row
-              that opens that sheet, so the block under the header is never an empty box. */}
-          <DataList dividerInset={layout.screen + 32 + spacing.md}>
-            {!hasDetails ? (
-              <ListRow
-                icon={SquarePen}
-                label={t("Add your details")}
-                subtitle={t("Email, birthday and city stay on this device")}
-                onPress={() => setEditorOpen(true)}
-              />
-            ) : null}
-            {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
-            {birthDate ? (
-              <ListRow
-                icon={CalendarDays}
-                label={t("Date of birth")}
-                subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
-                chevron={false}
-              />
-            ) : null}
-            {profile.city ? <ListRow icon={MapPin} label={t("City")} subtitle={profile.city} chevron={false} /> : null}
-            {profile.goal ? <ListRow icon={Target} label={t("Dairy goal")} subtitle={profile.goal} chevron={false} /> : null}
-          </DataList>
-        </View>
+        hasDetails ? (
+          <View style={styles.summaryCard}>
+            {/* Shown, never asked for: the editable fields live behind the Edit icon in the header, and
+                the mobile number is not on this page at all — it is the sign-in identity, shown once,
+                read-only, inside the Edit sheet. With nothing filled in yet there is no card here
+                rather than an empty one; the pencil in the header is the way in. */}
+            <DataList dividerInset={layout.screen + 32 + spacing.md}>
+              {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
+              {birthDate ? (
+                <ListRow
+                  icon={CalendarDays}
+                  label={t("Date of birth")}
+                  subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
+                  chevron={false}
+                />
+              ) : null}
+              {profile.city ? <ListRow icon={MapPin} label={t("City")} subtitle={profile.city} chevron={false} /> : null}
+              {profile.goal ? <ListRow icon={Target} label={t("Dairy goal")} subtitle={profile.goal} chevron={false} /> : null}
+            </DataList>
+          </View>
+        ) : null
       ) : (
         <View style={styles.pad}>
           <View style={styles.signInCard}>

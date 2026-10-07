@@ -383,8 +383,6 @@ export const hi: Record<string, string> = {
   'A line from the interface, in the language you pick': 'चुनी हुई भाषा में इंटरफ़ेस की एक पंक्ति',
   'Sample document · not legally binding': 'नमूना दस्तावेज़ · कानूनी रूप से मान्य नहीं',
   'The number you signed in with cannot be changed here.': 'जिस नंबर से साइन इन किया है, उसे यहाँ बदला नहीं जा सकता।',
-  'Add your details': 'अपनी जानकारी जोड़ें',
-  'Email, birthday and city stay on this device': 'ईमेल, जन्मदिन और शहर इसी डिवाइस पर रहते हैं',
   'Course titles, lesson copy and the policy documents are sample content and stay in English.': 'कोर्स के नाम, लेसन की सामग्री और नीति दस्तावेज़ नमूना सामग्री हैं और अंग्रेज़ी में ही रहते हैं।',
   'Buttons, headings and messages in English. Course and policy content stays in English too.': 'बटन, हेडिंग और मैसेज अंग्रेज़ी में। कोर्स और नीति की सामग्री भी अंग्रेज़ी में रहती है।',
   'The whole interface in Hindi. Course titles and the policy documents stay in English.': 'पूरा इंटरफ़ेस हिंदी में। कोर्स के नाम और नीति दस्तावेज़ अंग्रेज़ी में रहते हैं।',

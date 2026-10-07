@@ -550,7 +550,14 @@ check('green is the default look, the number is read-only, and policy copy is sm
   const profile = read('src/app/(tabs)/profile.tsx');
   assert.ok(!/Mobile number/.test(profile), 'Profile does not show the number');
   assert.ok(!/maskPhone/.test(profile), 'and it does not mask one either');
-  assert.ok(profile.includes('Add your details'), 'an empty profile invites the details instead of showing a blank card');
+  assert.ok(
+    !/Add your details/.test(profile),
+    'Profile has no details card to fill in: the pencil in the header opens the sheet',
+  );
+  assert.ok(
+    /hasDetails \?/.test(profile),
+    'and the details card is skipped entirely while there is nothing to show',
+  );
 
   const editor = read('src/components/profile-editor.tsx');
   assert.ok(
