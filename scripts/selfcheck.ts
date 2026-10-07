@@ -368,8 +368,7 @@ check('the app draws the same brand mark the icons are generated from', () => {
     assert.ok(generator.includes(geometry), `the icon generator draws ${geometry.slice(0, 22)}…`);
   }
 
-  // The letterforms live only in the generator: the app shows the rendered logo (brand-logo.png) rather
-  // than drawing a second copy of the name, so there is nothing to compare them against in marks.tsx.
+  // The full logo stays as the supplied artwork rather than a second hand-drawn copy in the app.
   for (const letter of [
     'M 0 0 L 74 0 L 150 104 L 62 104 Z M 138 0 L 212 0 L 150 104 L 62 104 Z M 62 104 L 150 104 L 150 210 L 62 210 Z',
     'M 0 0 L 116 0 Q 210 0 210 105 Q 210 210 116 210 L 0 210 Z M 70 56 L 70 154 L 116 154 Q 156 154 156 105 Q 156 56 116 56 Z',
@@ -378,10 +377,14 @@ check('the app draws the same brand mark the icons are generated from', () => {
     assert.ok(generator.includes(letter), `the icon generator cuts ${letter.slice(0, 14)}… in the wordmark`);
   }
 
-  // The app shows the rendered lockup rather than a second drawing of the name, which is what keeps
-  // the splash screen, the favicon and the launcher icon the same picture.
+  // The in-app lockup uses the supplied logo asset rather than a second drawing of the name.
   assert.ok(marks.includes('export function BrandLockup'), 'the app can show the full logo');
-  assert.ok(marks.includes('images.brandLogo'), 'and it shows the generated file, not a redraw');
+  assert.ok(marks.includes('images.brandLogo'), 'the lockup reads the registered logo asset');
+  assert.ok(
+    /brandLogo: require\('@\/assets\/images\/logo\.png'\)/.test(read('src/media.ts')),
+    'the supplied logo.png is registered for the in-app lockup',
+  );
+  assert.ok(read('app.json').includes('"icon": "./assets/images/logo.png"'), 'the app icon uses logo.png');
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
 
   // The icon set itself: every size the platforms ask for, written by the generator.
@@ -392,6 +395,7 @@ check('the app draws the same brand mark the icons are generated from', () => {
     'assets/images/android-icon-monochrome.png',
     'assets/images/favicon.png',
     'assets/images/splash-icon.png',
+    'assets/images/logo.png',
     'assets/images/brand-logo.png',
     'assets/images/brand-mark.png',
     'assets/brand/ydu-logo.svg',
@@ -404,6 +408,9 @@ check('every onboarding slide fills the window, and the poster leads it', () => 
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
   const screen = read('src/app/onboarding.tsx');
+  const slideKeys = [...screen.matchAll(/^\s{4}key: '([^']+)'/gm)].map((match) => match[1]);
+  assert.deepEqual(slideKeys, ['poster', 'milk', 'bench'], 'onboarding contains exactly three slides');
+  assert.ok(/key: 'bench'[\s\S]*?cta: 'Start learning'/.test(screen), 'the final slide has its finishing action');
 
   // The artwork is the screen: `cover` on a full-window box, in a pager that is absolute-filled, so
   // no slide can end up letterboxed (which is what a `contain` image with page padding did).

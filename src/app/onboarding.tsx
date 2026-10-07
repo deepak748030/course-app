@@ -1,5 +1,5 @@
 /**
- * Introduction: four slides, each one drawn edge to edge on the screen.
+ * Introduction: three slides, each one drawn edge to edge on the screen.
  *
  * The artwork is the screen. Every slide's image fills the whole window — under the status bar, under
  * the brand row and under the footer — with `cover`, so it is never letterboxed and never leaves a
@@ -101,13 +101,6 @@ const slides: Slide[] = [
     image: images.onboardingTesting,
     headline: 'Learn the numbers,\nnot the guesswork.',
     support: 'Fat, SNF, lactometer readings and adulteration tests — shown at the bench, step by step.',
-    cta: 'Next',
-  },
-  {
-    key: 'range',
-    image: images.onboardingRange,
-    headline: 'From milk\nto a finished product.',
-    support: 'Paneer, ghee, curd, cheese and frozen desserts: pick a track, follow the make-sheet, sell it.',
     cta: 'Start learning',
   },
 ];

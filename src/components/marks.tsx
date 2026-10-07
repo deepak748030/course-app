@@ -14,8 +14,7 @@
  *   - `BrandMark`   — the churn and the leaves alone, for headers, tiles and footers. It carries the
  *                     brand's greens; pass `color` to flatten it to one colour when it sits on
  *                     something that is already brand-coloured (the poster's lock-up, a yellow tile).
- *   - `BrandLockup` — the full logo (disc, mark, name), shown from the same PNG the icons are made
- *                     from, so the app never draws a second version of the brand.
+ *   - `BrandLockup` — the full logo, shown directly from the supplied `assets/images/logo.png` file.
  *   - `Wordmark`    — the mark next to the name in running text, for places that need a small label.
  */
 
@@ -151,9 +150,8 @@ export function BrandMark({ size = 40, color }: { size?: number; color?: string 
 }
 
 /**
- * The full logo — disc, mark and name — shown from the PNG the launcher icon and the favicon are
- * rendered from. Using the file rather than redrawing it here is what keeps the app, the splash screen
- * and the icon on the home screen exactly the same picture.
+ * The full logo from the supplied PNG asset. Using the file rather than redrawing it keeps the
+ * original artwork intact everywhere this lock-up is shown.
  */
 export function BrandLockup({ width = 200 }: { width?: number }) {
   return (
