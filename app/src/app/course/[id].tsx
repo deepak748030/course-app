@@ -12,7 +12,7 @@ import {
   Play,
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -26,11 +26,13 @@ import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courseById, courseLessonGroups, discountPercent } from '@/data/catalog';
+import { courseLessonGroups, discountPercent } from '@/lib/catalog';
+import { api, type ServerReview } from '@/services/api';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
-import type { Course, Lesson } from '@/types';
+import type { Course, Lesson, Review } from '@/types';
 
 /** `3 sections · 8 lessons`, or `2 sections + 2 standalone · 10 lessons` for a mixed course. */
 function curriculumSummary(course: Course): string {
@@ -49,26 +51,62 @@ export default function CourseDetailsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isEnrolled, isCourseSaved, toggleSavedCourse, completedCount, courseProgressRatio, lessonProgress, ratingFor } = useStore();
+  const { byId, categories, status, refresh } = useCatalog();
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
-  const course = useMemo(() => courseById(id), [id]);
+  const course = useMemo(() => byId(id), [byId, id]);
+
+  // Reviews live on the server — fetched per course page, not bundled.
+  const [reviews, setReviews] = useState<Review[]>([]);
+  useEffect(() => {
+    if (!course) return;
+    let cancelled = false;
+    setReviews([]);
+    api
+      .courseReviews(course.remoteId)
+      .then(({ reviews: next }) => {
+        if (!cancelled) {
+          setReviews(next.map((review) => ({ id: review._id, author: review.author, rating: review.rating, body: review.body, context: '' })));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
   const rating = course ? ratingFor(course.id) : null;
   const offer = course ? discountPercent(course) : null;
   const categoryLabel = useMemo(
     () => categories.find((category) => category.id === course?.categoryId)?.label ?? 'Course',
-    [course?.categoryId],
+    [course?.categoryId, categories],
   );
 
   if (!course) {
     return (
       <Screen header={<CourseAppBar />}>
-        <EmptyState
-          icon={Clapperboard}
-          title={t("We could not find that course")}
-          body={t("This link may be out of date. Browse the catalog to find a course to learn.")}
-          actionLabel={t("Browse courses")}
-          onAction={() => router.replace('/explore')}
-        />
+        {status === 'error' ? (
+          <EmptyState
+            icon={Clapperboard}
+            title={t("Can't reach the academy")}
+            body={t("The course server is not responding. Check your connection and try again.")}
+            actionLabel={t("Try again")}
+            onAction={() => void refresh()}
+          />
+        ) : status === 'loading' ? (
+          <EmptyState
+            icon={Clapperboard}
+            title={t("Loading the catalog…")}
+            body={t("Fetching the latest courses from the academy.")}
+          />
+        ) : (
+          <EmptyState
+            icon={Clapperboard}
+            title={t("We could not find that course")}
+            body={t("This link may be out of date. Browse the catalog to find a course to learn.")}
+            actionLabel={t("Browse courses")}
+            onAction={() => router.replace('/explore')}
+          />
+        )}
       </Screen>
     );
   }
@@ -268,11 +306,11 @@ export default function CourseDetailsScreen() {
         ) : null}
 
         <DataList>
-          {course.reviews.map((review) => (
+          {reviews.map((review) => (
             <ReviewCard key={review.id} review={review} />
           ))}
         </DataList>
-        <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>{t("Ratings and reviews in this prototype are authored sample content, not verified facts.")}</Text>
+        <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>{t("Reviews from learners who own this course, synced from the academy.")}</Text>
 
       </Screen>
 

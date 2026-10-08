@@ -1,6 +1,7 @@
 import { IndianRupee, ShoppingBag, Tag } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useRealtimeRefresh } from '../api/realtime';
 import type { Order, OrderStatus } from '../api/types';
 import {
   Badge,
@@ -49,6 +50,9 @@ export default function Orders() {
     const t = setTimeout(load, search ? 250 : 0);
     return () => clearTimeout(t);
   }, [load, search]);
+
+  useRealtimeRefresh(['order.created'], load);
+
 
   async function changeStatus(order: Order, status: OrderStatus) {
     if (order.status === status) return;

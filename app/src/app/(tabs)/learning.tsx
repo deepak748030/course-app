@@ -18,7 +18,7 @@ import {
   TabHeader,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courses } from '@/data/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
@@ -26,13 +26,14 @@ import { useStore } from '@/store';
 type Segment = 'progress' | 'completed';
 
 export default function MyLearningScreen() {
+  const { courses } = useCatalog();
   const t = useT();
 
   const router = useRouter();
   const { state, courseProgressRatio, completedCount, resumeLesson, ratingFor } = useStore();
   const [segment, setSegment] = useState<Segment>('progress');
 
-  const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments]);
+  const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments, courses]);
   const inProgress = enrolled.filter((course) => courseProgressRatio(course) < 1);
   const completed = enrolled.filter((course) => courseProgressRatio(course) === 1);
 

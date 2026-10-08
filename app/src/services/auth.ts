@@ -1,40 +1,31 @@
 /**
- * Authentication service boundary.
+ * Authentication service — talks to the YDU Academy server (email + password).
  *
- * There is no SMS provider configured, so the shipped implementation is the DEMO adapter:
- * - no message is sent anywhere, and the UI says so on both auth screens;
- * - the demo code is documented in the development README only, never in the app;
- * - a session token is stored in expo-secure-store (AsyncStorage on web, which has no
- *   secure store — noted in the README as a limitation).
- *
- * To go live: implement `AuthService` against your provider and swap the export at the
- * bottom of this file. Nothing else in the app needs to change.
+ * The session token is stored in expo-secure-store (AsyncStorage on web, which has no
+ * secure store — noted in the README as a limitation). The same token is injected into
+ * the API client and the realtime socket, so one sign-in covers REST and socket.io.
  */
 
 import * as SecureStore from 'expo-secure-store';
-import { storage } from '@/lib/storage';
 import { Platform } from 'react-native';
 
-import type { Session } from '@/types';
+import { storage } from '@/lib/storage';
+import { api, setApiToken, type ServerUser } from '@/services/api';
+
+import type { Session, UserProfile } from '@/types';
 
 const SESSION_KEY = 'ydu.session';
 
-export type OtpFailure = 'incorrect' | 'expired' | 'network';
+export type AuthFailure = { message: string; offline?: boolean };
 
 export interface AuthService {
-  requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
-  verifyOtp(phone: string, code: string): Promise<{ ok: true; session: Session } | { ok: false; error: OtpFailure }>;
+  signIn(email: string, password: string): Promise<Session>;
+  signUp(name: string, email: string, password: string): Promise<Session>;
   getSession(): Promise<Session | null>;
   /** Persists profile edits made in the app. Same storage as the session token. */
   saveSession(session: Session): Promise<void>;
   clearSession(): Promise<void>;
 }
-
-/** Demo constants. Documented in README; never logged. */
-export const DEMO_OTP = '246810';
-/** Requesting a code for this number simulates a provider/network failure, for state testing. */
-export const DEMO_OFFLINE_PHONE = '9000000000';
-const MAX_ATTEMPTS = 3;
 
 async function readStored(key: string): Promise<string | null> {
   if (Platform.OS === 'web') return storage.get(key);
@@ -57,59 +48,64 @@ async function deleteStored(key: string): Promise<void> {
   await SecureStore.deleteItemAsync(key);
 }
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** Maps a server user to the profile shape the app screens render. */
+export function sessionFromUser(token: string, user: ServerUser): Session {
+  return {
+    token,
+    profile: {
+      id: user._id,
+      name: user.name,
+      phone: user.phone ?? '',
+      joinedAt: user.createdAt,
+      email: user.email,
+      dateOfBirth: user.dateOfBirth || undefined,
+      city: user.city || undefined,
+      goal: user.goal || undefined,
+      avatarUrl: user.avatarUrl || undefined,
+    },
+  };
+}
 
-const attempts = new Map<string, number>();
+function persistAndApply(session: Session): Session {
+  setApiToken(session.token);
+  return session;
+}
 
-/** ponytail: one process-local adapter, no SMS, no rate limiting — the backend owns both. */
 export const authService: AuthService = {
-  async requestOtp(phone) {
-    await delay(900);
-    attempts.set(phone, 0);
-    if (phone === DEMO_OFFLINE_PHONE) {
-      return { ok: false, error: 'network' };
-    }
-    return { ok: true };
+  async signIn(email, password) {
+    const { token, user } = await api.login(email, password);
+    const session = persistAndApply(sessionFromUser(token, user));
+    await writeStored(SESSION_KEY, JSON.stringify(session));
+    return session;
   },
 
-  async verifyOtp(phone, code) {
-    await delay(1100);
-    const tried = (attempts.get(phone) ?? 0) + 1;
-    attempts.set(phone, tried);
-
-    if (tried > MAX_ATTEMPTS) return { ok: false, error: 'expired' };
-    if (code !== DEMO_OTP) return { ok: false, error: 'incorrect' };
-
-    attempts.delete(phone);
-    const session: Session = {
-      // Not a credential: a locally minted demo token so the session flow is exercised end to end.
-      token: `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
-      profile: {
-        id: `demo-${phone.slice(-4)}`,
-        name: 'Deepak',
-        phone,
-        joinedAt: new Date().toISOString(),
-      },
-    };
+  async signUp(name, email, password) {
+    const { token, user } = await api.register(name, email, password);
+    const session = persistAndApply(sessionFromUser(token, user));
     await writeStored(SESSION_KEY, JSON.stringify(session));
-    return { ok: true, session };
+    return session;
   },
 
   async getSession() {
     const raw = await readStored(SESSION_KEY);
     if (!raw) return null;
     try {
-      return JSON.parse(raw) as Session;
+      const session = JSON.parse(raw) as Session;
+      if (!session?.token || !session?.profile) return null;
+      setApiToken(session.token);
+      return session;
     } catch {
       return null;
     }
   },
 
   async saveSession(session) {
+    setApiToken(session.token);
     await writeStored(SESSION_KEY, JSON.stringify(session));
   },
 
   async clearSession() {
+    setApiToken(null);
     await deleteStored(SESSION_KEY);
   },
 };

@@ -22,14 +22,13 @@ import { createStyles, colors, layout, radius, spacing, type } from '@/constants
 import { useT } from '@/i18n';
 import {
   browseCourses,
-  categories,
-  courses,
   durationOptions,
   emptyFilters,
   levelOptions,
   priceBandOptions,
   type BrowseFilters,
-} from '@/data/catalog';
+} from '@/lib/catalog';
+import { CatalogGate, useCatalog } from '@/services/catalog-context';
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
 
@@ -39,6 +38,7 @@ export default function ExploreScreen() {
 
   const params = useLocalSearchParams<{ category?: string }>();
   const { state } = useStore();
+  const { courses, categories } = useCatalog();
 
   const [filters, setFilters] = useState<BrowseFilters>(emptyFilters);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -49,7 +49,7 @@ export default function ExploreScreen() {
     if (params.category) setFilters((prev) => ({ ...prev, categoryIds: [String(params.category)] }));
   }, [params.category]);
 
-  const results = useMemo(() => browseCourses(filters), [filters]);
+  const results = useMemo(() => browseCourses(courses, filters), [filters, courses]);
 
   // Focus shows what to search instead of an empty field (search rule: recents, then suggestions).
   const searchPanelOpen = searchFocused && filters.query.trim().length === 0;
@@ -84,10 +84,10 @@ export default function ExploreScreen() {
         const key = seed.term.toLowerCase();
         if (seen.has(key)) return false;
         seen.add(key);
-        return browseCourses({ ...emptyFilters, query: seed.term }).length > 0;
+        return browseCourses(courses, { ...emptyFilters, query: seed.term }).length > 0;
       })
       .slice(0, 6);
-  }, []);
+  }, [courses, categories]);
 
   const applySearch = useCallback((term: string) => {
     setFilters((prev) => ({ ...prev, query: term }));
@@ -148,6 +148,7 @@ export default function ExploreScreen() {
         </View>
       }>
 
+      <CatalogGate>
       {searchPanelOpen ? (
         <View style={styles.panel}>
           {recent.length > 0 ? (
@@ -334,6 +335,7 @@ export default function ExploreScreen() {
           ))}
         </FilterGroup>
       </BottomSheet>
+      </CatalogGate>
     </Screen>
   );
 }

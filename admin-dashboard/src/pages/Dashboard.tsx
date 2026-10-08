@@ -1,5 +1,5 @@
 import { BookOpen, IndianRupee, ShoppingBag, Star, TrendingDown, TrendingUp, UserPlus, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -15,6 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import { api } from '../api/client';
+import { useRealtimeRefresh } from '../api/realtime';
 import type { Overview } from '../api/types';
 import {
   Badge,
@@ -87,12 +88,19 @@ export default function Dashboard() {
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api
       .overview()
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load overview'));
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // New orders, signups and reviews move the KPIs — the server tells us when they land.
+  useRealtimeRefresh(['order.created', 'user.registered', 'review.created'], load);
 
   if (error) return <Card className="p-6 text-sm text-error">{error}</Card>;
   if (!data) return <Card><LoadingBlock label="Crunching the numbers…" /></Card>;

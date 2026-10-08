@@ -28,7 +28,7 @@ import { OfferBadge } from '@/components/offer-tag';
 import { SaveButton } from '@/components/save-button';
 import { Badge, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { discountPercent } from '@/data/catalog';
+import { discountPercent } from '@/lib/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
@@ -317,15 +317,18 @@ export function PriceSummary({
   course,
   couponPercent = 0,
   couponCode,
+  couponValueInr,
 }: {
   course: Course;
   couponPercent?: number;
   couponCode?: string;
+  /** Exact coupon value computed by the server (flat or percent) — wins over `couponPercent`. */
+  couponValueInr?: number;
 }) {
   const t = useT();
 
   const discountFromList = course.listPriceInr ? course.listPriceInr - course.priceInr : 0;
-  const couponValue = Math.round((course.priceInr * couponPercent) / 100);
+  const couponValue = couponValueInr ?? Math.round((course.priceInr * couponPercent) / 100);
   const total = course.priceInr - couponValue;
 
   return (

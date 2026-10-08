@@ -1,6 +1,6 @@
 /**
- * Editorial sample content: notifications, FAQs, demo coupons and legal copy.
- * All of it is clearly-labelled sample material for the prototype.
+ * Editorial content: notifications, FAQs and legal copy — curated in-app material that is
+ * deliberately not part of the server catalog.
  */
 
 import type { FaqItem, NotificationItem } from '@/types';
@@ -84,11 +84,6 @@ export const faqs: FaqItem[] = [
     answer:
       'The make-sheets in the app are sample educational content, not food-safety, veterinary or licensing guidance. Batch outcomes depend on your milk, your equipment and your local rules — check with your dairy officer or a qualified advisor before you change a commercial process.',
   },
-];
-
-export const demoCoupons: { code: string; percentOff: number; label: string }[] = [
-  { code: 'YDU10', percentOff: 10, label: '10% OFF any course' },
-  { code: 'DAIRY20', percentOff: 20, label: '20% OFF dairy essentials tracks' },
 ];
 
 /** Sample legal copy. Replace with reviewed documents before shipping. */

@@ -29,5 +29,9 @@ const orderSchema = new Schema(
 );
 
 orderSchema.index({ createdAt: -1 });
+// "You already own this course" lookups + the learner's transaction list.
+orderSchema.index({ user: 1, status: 1 });
+// Admin order book filtered by status, newest first.
+orderSchema.index({ status: 1, createdAt: -1 });
 
 export const Order = mongoose.model('Order', orderSchema);

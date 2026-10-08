@@ -17,5 +17,7 @@ const reviewSchema = new Schema(
 
 // One review per learner per course — updates upsert instead of duplicating.
 reviewSchema.index({ course: 1, user: 1 }, { unique: true });
+// The course page lists visible reviews newest-first.
+reviewSchema.index({ course: 1, visible: 1, createdAt: -1 });
 
 export const Review = mongoose.model('Review', reviewSchema);

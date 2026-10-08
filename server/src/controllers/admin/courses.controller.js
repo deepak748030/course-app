@@ -2,7 +2,10 @@ import { Course } from '../../models/Course.js';
 import { Enrollment } from '../../models/Enrollment.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
+import { emitToApp } from '../../realtime/socket.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
+
+const catalogChanged = (reason, courseId) => emitToApp('catalog.changed', { reason, courseId });
 
 /** GET /api/admin/courses — includes enrollment counts for the table. */
 export const listCourses = asyncHandler(async (req, res) => {
@@ -51,6 +54,7 @@ export const createCourse = asyncHandler(async (req, res) => {
       .replace(/(^-|-$)/g, '');
   }
   const course = await Course.create(body);
+  catalogChanged('created', String(course._id));
   res.status(201).json({ course });
 });
 
@@ -61,6 +65,7 @@ export const updateCourse = asyncHandler(async (req, res) => {
     runValidators: true,
   });
   if (!course) throw new HttpError(404, 'Course not found');
+  catalogChanged('updated', String(course._id));
   res.json({ course });
 });
 
@@ -72,6 +77,7 @@ export const setPublished = asyncHandler(async (req, res) => {
     { new: true }
   );
   if (!course) throw new HttpError(404, 'Course not found');
+  catalogChanged(req.body.published ? 'published' : 'unpublished', String(course._id));
   res.json({ course });
 });
 
@@ -84,5 +90,6 @@ export const deleteCourse = asyncHandler(async (req, res) => {
     Enrollment.deleteMany({ course: course._id }),
     Order.updateMany({ course: course._id }, { $set: { course: null } }),
   ]);
+  catalogChanged('deleted', String(course._id));
   res.json({ ok: true, deleted: course.title });
 });

@@ -1,6 +1,7 @@
-import { BookOpen, Eye, EyeOff, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client';
+import { api, uploadImage } from '../api/client';
+import { useRealtimeRefresh } from '../api/realtime';
 import type { Category, Course, Section } from '../api/types';
 import {
   Badge,
@@ -119,6 +120,7 @@ export default function Courses() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Course | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -137,6 +139,9 @@ export default function Courses() {
     const t = setTimeout(load, search ? 250 : 0);
     return () => clearTimeout(t);
   }, [load, search]);
+
+  useRealtimeRefresh(['catalog.changed'], load);
+
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -391,8 +396,54 @@ export default function Courses() {
                 <option>English + Hindi</option>
               </Select>
             </Field>
-            <Field label="Cover image URL" hint="Optional — a brand placeholder is shown otherwise.">
-              <Input value={form.coverUrl} onChange={(e) => set('coverUrl', e.target.value)} placeholder="https://…" />
+            <Field label="Cover image" hint="Upload an image (stored on Cloudinary when configured) or paste a URL.">
+              <div className="flex items-center gap-3">
+                <CourseCover title={form.title || 'Cover'} coverUrl={form.coverUrl} className="h-14 w-20" />
+                <div className="flex-1 space-y-2">
+                  <Input value={form.coverUrl} onChange={(e) => set('coverUrl', e.target.value)} placeholder="https://…" />
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="cover-upload"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = '';
+                        if (!file) return;
+                        setCoverUploading(true);
+                        try {
+                          const { url } = await uploadImage(file, 'covers');
+                          set('coverUrl', url);
+                          toast('success', 'Cover image uploaded');
+                        } catch (err) {
+                          toast('error', err instanceof Error ? err.message : 'Upload failed');
+                        } finally {
+                          setCoverUploading(false);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      disabled={coverUploading}
+                      onClick={() => document.getElementById('cover-upload')?.click()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-ink/4 disabled:opacity-50"
+                    >
+                      {coverUploading ? <Loader2 size={13} className="animate-spin" /> : <ImagePlus size={13} />}
+                      {coverUploading ? 'Uploading…' : 'Upload image'}
+                    </button>
+                    {form.coverUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => set('coverUrl', '')}
+                        className="rounded-lg px-2 py-1.5 text-xs font-semibold text-subtle hover:text-error"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
             </Field>
           </div>
 

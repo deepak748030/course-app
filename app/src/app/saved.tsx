@@ -7,7 +7,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SaveButton } from '@/components/save-button';
 import { AppBar, Badge, DataList, EmptyState, MetaItem, Screen, Segmented } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
-import { courseById, courses } from '@/data/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
@@ -21,11 +21,12 @@ export default function SavedScreen() {
 
   const router = useRouter();
   const { state, toggleSavedRecipe } = useStore();
+  const { courses, byId } = useCatalog();
   const [segment, setSegment] = useState<Segment>('courses');
 
   const savedCourses = useMemo(
-    () => state.savedCourseIds.map((id) => courseById(id)).filter((course): course is Course => Boolean(course)),
-    [state.savedCourseIds],
+    () => state.savedCourseIds.map((id) => byId(id)).filter((course): course is Course => Boolean(course)),
+    [state.savedCourseIds, byId],
   );
 
   const savedRecipes = useMemo(
@@ -33,7 +34,7 @@ export default function SavedScreen() {
       courses
         .flatMap((course) => course.lessons.map((lesson) => ({ course, lesson })))
         .filter(({ lesson }) => lesson.recipe && state.savedRecipeIds.includes(lesson.recipe.id)),
-    [state.savedRecipeIds],
+    [state.savedRecipeIds, courses],
   );
 
   return (

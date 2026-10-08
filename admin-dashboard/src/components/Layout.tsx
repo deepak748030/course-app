@@ -8,12 +8,15 @@ import {
   ShoppingBag,
   Star,
   TicketPercent,
+  UserPlus,
   Users,
   Wrench,
+  type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { isDemoMode, onDemoModeChange } from '../api/client';
+import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus } from '../api/realtime';
 import { resetDemoDb } from '../api/demo';
 import { useAuth } from '../auth/AuthContext';
 import { initials } from './ui';
@@ -50,10 +53,56 @@ function BrandMark() {
   );
 }
 
+interface Toast {
+  id: number;
+  icon: LucideIcon;
+  title: string;
+  detail: string;
+}
+
+let toastSeq = 0;
+
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [demo, setDemo] = useState(isDemoMode());
+  const [live, setLive] = useState(isRealtimeConnected());
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  // Live status dot follows the realtime connection.
+  useEffect(() => {
+    const off = onRealtimeStatus(setLive);
+    return () => {
+      off();
+    };
+  }, []);
+
+  // Activity pushed from the server becomes a toast; pages refresh on the same events.
+  useEffect(() => {
+    const push = (icon: LucideIcon, title: string, detail: string) => {
+      const id = ++toastSeq;
+      setToasts((current) => [...current.slice(-3), { id, icon, title, detail }]);
+      window.setTimeout(() => setToasts((current) => current.filter((toast) => toast.id !== id)), 6000);
+    };
+    const offs = [
+      onRealtimeEvent('order.created', (p) =>
+        push(ShoppingBag, 'New order', `${p.courseTitle ?? 'Course'} — paid`)
+      ),
+      onRealtimeEvent('user.registered', (p) =>
+        push(UserPlus, 'New learner', String(p.name || p.email || 'A learner just signed up'))
+      ),
+      onRealtimeEvent('review.created', (p) =>
+        push(Star, 'New review', `${p.courseTitle ?? 'Course'} — ${p.rating ?? ''}★`)
+      ),
+      onRealtimeEvent('catalog.changed', (p) =>
+        push(BookOpen, 'Catalog updated', String(p.courseTitle || p.reason || 'The catalog changed'))
+      ),
+      onRealtimeEvent('settings.updated', () => push(Settings, 'App settings updated', 'Learners see the change immediately')),
+    ];
+    return () => {
+      offs.forEach((off) => off());
+    };
+  }, []);
 
   useEffect(() => {
     const off = onDemoModeChange(setDemo);
@@ -127,6 +176,19 @@ export default function Layout() {
             <p className="text-[13px] text-muted">{current.subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
+            {!demo && (
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  live ? 'bg-success-soft text-success' : 'bg-ink/5 text-subtle'
+                }`}
+                title={live ? 'Realtime channel connected' : 'Realtime channel connecting…'}
+              >
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-success' : 'bg-subtle'}`}
+                />
+                {live ? 'Live' : 'Connecting…'}
+              </span>
+            )}
             {demo && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-brand-ink">
                 <Wrench size={12} /> Demo data
@@ -156,6 +218,24 @@ export default function Layout() {
         <main className="min-h-0 flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
+      </div>
+
+      {/* Live activity toasts */}
+      <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2">
+        {toasts.map((toast) => (
+          <div
+            key={toast.id}
+            className="pointer-events-auto flex items-start gap-2.5 rounded-xl border border-line bg-surface p-3 shadow-lg"
+          >
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-ink">
+              <toast.icon size={14} />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[13px] font-semibold leading-tight text-ink">{toast.title}</p>
+              <p className="truncate text-xs text-muted">{toast.detail}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

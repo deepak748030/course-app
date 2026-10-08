@@ -1,6 +1,7 @@
 import { Pencil, Plus, Shapes, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useRealtimeRefresh } from '../api/realtime';
 import type { Category } from '../api/types';
 import { CATEGORY_ICON_NAMES, CategoryIcon } from '../components/icons';
 import {
@@ -39,6 +40,9 @@ export default function Categories() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeRefresh(['catalog.changed'], load);
+
 
   function openCreate() {
     setEditing(null);

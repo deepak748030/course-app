@@ -1,6 +1,7 @@
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { Review } from '../models/Review.js';
+import { emitToAdmins } from '../realtime/socket.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { recomputeCourseRating } from './shared.js';
 
@@ -22,6 +23,7 @@ export const createOrUpdateReview = asyncHandler(async (req, res) => {
   );
 
   await recomputeCourseRating(course._id);
+  emitToAdmins('review.created', { courseTitle: course.title, author: req.user.name, rating });
   res.status(201).json({ review });
 });
 

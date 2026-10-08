@@ -65,7 +65,8 @@ import {
   scrollClip,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, courseLessonGroups, nextLesson } from '@/data/catalog';
+import { courseLessonGroups, nextLesson } from '@/lib/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
@@ -97,7 +98,8 @@ export default function LessonPlayerScreen() {
     courseProgressRatio,
   } = useStore();
 
-  const course = useMemo(() => courseById(params.courseId), [params.courseId]);
+  const { byId } = useCatalog();
+  const course = useMemo(() => byId(params.courseId), [byId, params.courseId]);
   const lesson = useMemo(
     () => course?.lessons.find((entry) => entry.id === params.lessonId) ?? course?.lessons[0],
     [course, params.lessonId],
@@ -180,7 +182,7 @@ export default function LessonPlayerScreen() {
     if (player.duration) setDuration(player.duration);
     if (course && lesson && Math.abs(currentTime - lastSavedRef.current) >= SAVE_INTERVAL_SEC) {
       lastSavedRef.current = currentTime;
-      setLessonPosition(course.id, lesson.id, currentTime);
+      setLessonPosition(course, lesson.id, currentTime);
     }
   });
 
@@ -201,7 +203,7 @@ export default function LessonPlayerScreen() {
   useEffect(() => {
     if (!course || !lesson) return;
     return () => {
-      if (unlocked) setLessonPosition(course.id, lesson.id, position);
+      if (unlocked) setLessonPosition(course, lesson.id, position);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [course?.id, lesson?.id, unlocked]);
@@ -241,7 +243,7 @@ export default function LessonPlayerScreen() {
 
   useEventListener(player, 'playToEnd', () => {
     showControls();
-    if (course && lesson) setLessonPosition(course.id, lesson.id, 0);
+    if (course && lesson) setLessonPosition(course, lesson.id, 0);
   });
 
   if (!course || !lesson) {
@@ -303,8 +305,8 @@ export default function LessonPlayerScreen() {
   };
 
   const markComplete = (value: boolean) => {
-    setLessonComplete(course.id, lesson.id, value);
-    setLessonPosition(course.id, lesson.id, value ? 0 : position);
+    setLessonComplete(course, lesson.id, value);
+    setLessonPosition(course, lesson.id, value ? 0 : position);
     if (value) feedback.success();
   };
 

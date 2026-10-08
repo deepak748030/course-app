@@ -1,5 +1,6 @@
 import { Category } from '../../models/Category.js';
 import { Course } from '../../models/Course.js';
+import { emitToApp } from '../../realtime/socket.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 
 /** GET /api/admin/categories — with per-category course counts. */
@@ -27,6 +28,7 @@ export const createCategory = asyncHandler(async (req, res) => {
       .replace(/(^-|-$)/g, '');
   }
   const category = await Category.create(body);
+  emitToApp('catalog.changed', { reason: 'category-created' });
   res.status(201).json({ category });
 });
 
@@ -37,6 +39,7 @@ export const updateCategory = asyncHandler(async (req, res) => {
     runValidators: true,
   });
   if (!category) throw new HttpError(404, 'Category not found');
+  emitToApp('catalog.changed', { reason: 'category-updated' });
   res.json({ category });
 });
 
@@ -48,5 +51,6 @@ export const deleteCategory = asyncHandler(async (req, res) => {
   }
   const category = await Category.findByIdAndDelete(req.params.id);
   if (!category) throw new HttpError(404, 'Category not found');
+  emitToApp('catalog.changed', { reason: 'category-deleted' });
   res.json({ ok: true, deleted: category.label });
 });

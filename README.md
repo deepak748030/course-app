@@ -19,19 +19,28 @@ course-app/
 
 ```
 app/ ──────────────► server/ ◄────────────── admin-dashboard/
-  (public catalog,      (Express + Mongoose,      (proxies /api to the
-   auth, checkout,       MongoDB, JWT auth)        server in dev)
-   reviews)
+  REST + socket.io      (Express + Mongoose,      REST (/api proxy)
+  (catalog, auth,        MongoDB, JWT auth,       + socket.io live feed
+   orders, progress,      socket.io realtime,      (orders, signups,
+   reviews)               Cloudinary uploads)       reviews, catalog)
 ```
 
-- The **server** exposes a public/app API under `/api` (catalog, auth, orders, reviews,
-  coupons, settings) and an admin API under `/api/admin` guarded by JWT + `role: admin`.
+- The **server** exposes a public/app API under `/api` (catalog, auth, enrollments,
+  orders, reviews, coupons, settings, uploads) and an admin API under `/api/admin`
+  guarded by JWT + `role: admin`. It also runs a socket.io realtime layer: catalog and
+  settings changes broadcast to everyone, and activity (orders, signups, reviews) is
+  pushed live to connected admins.
+- The **app** is fully server-driven: the catalog, accounts (email + password), purchases,
+  lesson progress and reviews all live on the server — there is no bundled catalog. Set
+  `EXPO_PUBLIC_API_URL` in `app/.env` to point at the server (Android emulators can use
+  `http://localhost:5000`). Lesson videos stay bundled as demo media.
 - The **admin dashboard** signs in with an admin account (`admin@yduacademy.com /
-  Admin@123` after seeding) and controls everything the app shows. When the server or its
-  database is unreachable, the dashboard switches to a clearly-labelled built-in demo
-  dataset so it stays usable.
-- The **app** currently ships with local prototype data; its service boundaries
-  (`app/src/services/`) are the intended wiring points for this API.
+  Admin@123` after seeding) and controls everything the app shows, with a live activity
+  feed. When the server or its database is unreachable, the dashboard switches to a
+  clearly-labelled built-in demo dataset so it stays usable.
+- Images (course covers in the dashboard, learner avatars in the app) upload through
+  `POST /api/uploads`: Cloudinary when `CLOUDINARY_URL` is configured, with a local
+  disk fallback served from `/uploads`.
 
 ## Quickstart
 
@@ -47,6 +56,12 @@ npm run dev                 # API on http://localhost:5000
 cd admin-dashboard
 npm install
 npm run dev                 # http://localhost:5173 → sign in as admin
+
+# 3. In another terminal (the app):
+cd app
+echo "EXPO_PUBLIC_API_URL=http://localhost:5000" > .env   # or the LAN IP for devices
+bun install
+bun run start               # Expo dev server → press w for web, a for Android
 ```
 
 Each workspace has its own README with the full details.

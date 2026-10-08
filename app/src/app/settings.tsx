@@ -95,7 +95,7 @@ export default function SettingsScreen() {
         onConfirm={async () => {
           setLogoutOpen(false);
           await signOut();
-          router.replace('/auth/phone');
+          router.replace('/auth/signin');
         }}
         onCancel={() => setLogoutOpen(false)}
       />

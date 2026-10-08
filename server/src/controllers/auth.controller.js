@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.js';
+import { emitToAdmins } from '../realtime/socket.js';
 import { signToken } from '../utils/token.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
@@ -13,6 +14,7 @@ export const register = asyncHandler(async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await User.create({ name, email, passwordHash, phone: phone || '' });
 
+  emitToAdmins('user.registered', { name: user.name, email: user.email });
   res.status(201).json({ token: signToken(user), user });
 });
 

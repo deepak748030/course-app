@@ -23,7 +23,8 @@ import { StickyBar } from '@/components/course-cards';
 import { RatingInput, StarsDisplay } from '@/components/rating-input';
 import { AppBar, Button, Chip, ErrorState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById } from '@/data/catalog';
+import { api } from '@/services/api';
+import { useCatalog } from '@/services/catalog-context';
 import { ratingHighlights, ratingWords } from '@/data/content';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
@@ -39,8 +40,9 @@ export default function RateCourseScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isEnrolled, ratingFor, setRating, courseProgressRatio, completedCount } = useStore();
+  const { byId } = useCatalog();
 
-  const course = useMemo(() => courseById(courseId), [courseId]);
+  const course = useMemo(() => byId(courseId), [byId, courseId]);
   const existing = course ? ratingFor(course.id) : null;
 
   const [stars, setStars] = useState(0);
@@ -105,6 +107,8 @@ export default function RateCourseScreen() {
       body: body.trim(),
       updatedAt: new Date().toISOString(),
     });
+    // Post the review to the academy server (best effort — the local copy is kept either way).
+    api.submitReview(course.remoteId, stars, body.trim()).catch(() => {});
     feedback.success();
     setSaved(true);
   };

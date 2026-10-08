@@ -1,6 +1,7 @@
 import { Coupon } from '../models/Coupon.js';
 import { Course } from '../models/Course.js';
 import { Order } from '../models/Order.js';
+import { emitToAdmins, emitToUser } from '../realtime/socket.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { grantEnrollment } from './shared.js';
 
@@ -46,7 +47,16 @@ export const createOrder = asyncHandler(async (req, res) => {
   if (order.status === 'paid') {
     await grantEnrollment(req.user._id, course._id);
     if (coupon) await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
+    emitToUser(String(req.user._id), 'enrollment.granted', { courseId: String(course._id), title: course.title });
   }
+
+  emitToAdmins('order.created', {
+    orderId: String(order._id),
+    courseTitle: course.title,
+    learner: req.user.name,
+    amountInr: order.amountInr,
+    status: order.status,
+  });
 
   res.status(201).json({ order });
 });
@@ -55,6 +65,8 @@ export const createOrder = asyncHandler(async (req, res) => {
 export const myOrders = asyncHandler(async (req, res) => {
   const orders = await Order.find({ user: req.user._id })
     .sort({ createdAt: -1 })
-    .select('-__v');
+    .populate('course', 'slug title')
+    .select('-__v')
+    .lean();
   res.json({ orders });
 });

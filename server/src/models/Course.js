@@ -2,6 +2,28 @@ import mongoose from 'mongoose';
 
 const { Schema } = mongoose;
 
+const ingredientSchema = new Schema(
+  {
+    item: { type: String, required: true, trim: true, maxlength: 140 },
+    quantity: { type: String, required: true, trim: true, maxlength: 80 },
+  },
+  { _id: false }
+);
+
+/** Standardised make-sheet a dairy worker follows along with the lesson. */
+const recipeSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 140 },
+    servings: { type: Number, required: true, min: 1, max: 500 },
+    prepMinutes: { type: Number, default: 0, min: 0 },
+    cookMinutes: { type: Number, default: 0, min: 0 },
+    ingredients: { type: [ingredientSchema], default: [] },
+    steps: { type: [String], default: [] },
+    tips: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
 const lessonSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 140 },
@@ -9,6 +31,7 @@ const lessonSchema = new Schema(
     minutes: { type: Number, required: true, min: 1, max: 600 },
     /** Free preview lesson — playable without purchase. */
     isPreview: { type: Boolean, default: false },
+    recipe: { type: recipeSchema },
   },
   { _id: true, timestamps: false }
 );
@@ -63,5 +86,18 @@ courseSchema.virtual('totalMinutes').get(function totalMinutes() {
     0
   );
 });
+
+/*
+ * Index strategy — the catalog is read-heavy, so every hot query should hit an index:
+ *   - the public catalog filters on `published` and sorts by popularity/rating
+ *   - admin filters by category and publish state
+ *   - free-text search runs over title/promise/description ($text, weighted)
+ */
+courseSchema.index({ published: 1, isPopular: -1, rating: -1 });
+courseSchema.index({ category: 1, published: 1 });
+courseSchema.index(
+  { title: 'text', promise: 'text', description: 'text' },
+  { weights: { title: 5, promise: 2, description: 1 }, name: 'courseSearch' }
+);
 
 export const Course = mongoose.model('Course', courseSchema);

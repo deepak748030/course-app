@@ -1,6 +1,7 @@
 import { Save, Smartphone, Wrench } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
+import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings } from '../api/types';
 import { Button, Card, CardHeader, Field, Input, LoadingBlock, Textarea, Toggle, useToast } from '../components/ui';
 
@@ -10,7 +11,7 @@ export default function Settings() {
   const [form, setForm] = useState<AppSettings | null>(null);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api
       .getSettings()
       .then((s) => {
@@ -20,9 +21,25 @@ export default function Settings() {
       .catch((e) => toast('error', e instanceof Error ? e.message : 'Failed to load settings'));
   }, [toast]);
 
-  if (!settings || !form) return <Card><LoadingBlock label="Loading settings…" /></Card>;
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const dirty = JSON.stringify(settings) !== JSON.stringify(form);
+  const dirty = settings && form ? JSON.stringify(settings) !== JSON.stringify(form) : false;
+
+  // Another admin's save lands here live — refresh unless this form has unsaved edits.
+  const dirtyRef = useRef(false);
+  dirtyRef.current = dirty || saving;
+  useEffect(() => {
+    const off = onRealtimeEvent('settings.updated', () => {
+      if (!dirtyRef.current) load();
+    });
+    return () => {
+      off();
+    };
+  }, [load]);
+
+  if (!settings || !form) return <Card><LoadingBlock label="Loading settings…" /></Card>;
 
   async function save() {
     if (!form) return;

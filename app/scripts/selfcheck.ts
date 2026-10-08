@@ -13,13 +13,20 @@ import { fileURLToPath } from 'node:url';
 
 declare const Bun: { plugin: (options: unknown) => void } | undefined;
 
-// Bundled images/videos are Metro assets, not runtime files: stub them so the catalog can be
-// loaded (and its derived lesson ids/counts verified) outside the app runtime.
+// Bundled images/videos are Metro assets, not runtime files: stub them so the catalog-mapping
+// layer can be loaded outside the app runtime. react-native itself is stubbed too — the mapping
+// code only touches Platform.OS.
 if (typeof Bun !== 'undefined') {
   Bun.plugin({
-    name: 'asset-stub',
-    setup(build: { onLoad: (options: unknown, handler: () => unknown) => void }) {
+    name: 'app-runtime-stubs',
+    setup(build: {
+      onLoad: (options: unknown, handler: () => unknown) => void;
+      onResolve: (options: unknown, handler: () => { path: string } | undefined) => void;
+    }) {
       build.onLoad({ filter: /\.(jpg|jpeg|png|mp4)$/ }, () => ({ exports: { default: '__asset__' }, loader: 'object' }));
+      build.onResolve({ filter: /^react-native$/ }, () => ({
+        path: new URL('./selfcheck-stubs/react-native.ts', import.meta.url).pathname,
+      }));
     },
   });
 }
@@ -102,78 +109,96 @@ check('timeOfDayGreeting covers the day', () => {
   assert.equal(timeOfDayGreeting(new Date('2026-01-01T21:00:00')), 'Good evening');
 });
 
-check('catalog derivation produces unique ids and coherent counts', async () => {
-  const catalog = await import('../src/data/catalog');
-  const { courseLessonGroups } = catalog;
-  const allLessons = catalog.courses.flatMap((course) => course.lessons);
-  const uniqueIds = new Set(allLessons.map((lesson) => lesson.id));
+check('the server catalog maps onto the app types coherently', async () => {
+  const { mapCourse } = await import('../src/services/catalogService');
+  const { courseLessonGroups, discountPercent, firstPlayableLesson, nextLesson } = await import('../src/lib/catalog');
 
-  assert.equal(catalog.courses.length, 8, 'eight sample courses');
-  assert.ok(
-    catalog.courses.every((course) => catalog.categories.some((category) => category.id === course.categoryId)),
-    'every course belongs to one of the dairy tracks',
-  );
-  const offDomain = /biryani|thali|roti|knife skills|baking basics/i;
-  assert.ok(
-    catalog.courses.every((course) => !offDomain.test(`${course.title} ${course.promise} ${course.description}`)),
-    'no cooking-course content is left in the dairy catalog',
-  );
-  assert.equal(uniqueIds.size, allLessons.length, 'lesson ids must be unique across the catalog');
-  assert.ok(
-    allLessons.every(
-      (lesson) =>
-        lesson.sectionId === null ||
-        catalog.courses.some((course) => course.sections.some((section) => section.id === lesson.sectionId)),
-    ),
-    'every lesson is either inside a section of its course or a standalone lesson',
-  );
-  assert.ok(
-    catalog.courses.some(
-      (course) => course.sections.length > 0 && course.lessons.some((lesson) => lesson.sectionId === null),
-    ),
-    'a course mixes sections with standalone lessons, so both authoring options are in use',
-  );
-  assert.ok(
-    catalog.courses.every((course) => courseLessonGroups(course).flatMap((group) => group.lessons).length === course.lessonCount),
-    'the grouped curriculum covers every lesson exactly once',
-  );
-  assert.ok(
-    catalog.courses.every((course) => course.lessonCount === course.lessons.length && course.hours > 0),
-    'lesson counts and durations are derived from the authored lessons',
-  );
-  assert.ok(
-    catalog.courses.some((course) => course.lessons.some((lesson) => lesson.isPreview)),
-    'at least one free preview lesson exists',
-  );
+  const fixture = {
+    _id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
+    slug: 'milk-foundations',
+    title: 'Milk Foundations',
+    promise: 'Buy, chill, test and store milk.',
+    description: 'The course every other track assumes.',
+    coverUrl: 'https://example.com/cover.jpg',
+    category: { _id: 'bbbbbbbbbbbbbbbbbbbbbbbb', slug: 'milk', label: 'Milk handling', icon: 'Milk', sortOrder: 1 },
+    level: 'Beginner',
+    language: 'English + Hindi',
+    priceInr: 1999,
+    listPriceInr: 2999,
+    published: true,
+    isPopular: true,
+    isBeginnerPick: true,
+    rating: 4.8,
+    reviewCount: 10,
+    outcomes: ['Judge milk quality'],
+    equipment: ['Lactometer'],
+    audience: 'Dairy owners',
+    sections: [
+      { _id: 's1', title: 'Milk on arrival', summary: 'Reception.', lessons: [
+        { _id: 'l1', title: 'The reception check', description: '', minutes: 14, isPreview: true, recipe: null },
+        { _id: 'l2', title: 'Fat and SNF', description: '', minutes: 16, isPreview: false, recipe: null },
+      ]},
+      { _id: 's2', title: 'Cold chain', summary: 'Chilling.', lessons: [
+        { _id: 'l3', title: 'The chilling curve', description: '', minutes: 18, isPreview: false, recipe: {
+          title: 'Bulk chill batch', servings: 2, prepMinutes: 5, cookMinutes: 0,
+          ingredients: [{ item: 'Milk', quantity: '10 L' }], steps: ['Chill fast.'], tips: ['Watch the curve.'],
+        }},
+      ]},
+    ],
+    lessonCount: 3,
+    totalMinutes: 48,
+  } as never;
+
+  const course = mapCourse(fixture);
+  assert.equal(course.id, 'milk-foundations', 'the slug stays the app-side id');
+  assert.equal(course.remoteId, 'aaaaaaaaaaaaaaaaaaaaaaaa', 'the Mongo id rides along for API calls');
+  assert.equal(course.categoryId, 'milk', 'the category comes through by slug');
+  assert.equal(course.hours, 0.8, 'hours derive from the server minutes');
+  assert.equal(discountPercent(course), 33, 'the offer badge math survives the mapping');
+  assert.equal(firstPlayableLesson(course).id, 'l1', 'the preview lesson leads');
+  assert.equal(nextLesson(course, 'l1')?.id, 'l2', 'next-lesson navigation works on mapped lessons');
+
+  const groups = courseLessonGroups(course);
+  assert.equal(groups.flatMap((group) => group.lessons).length, course.lessons.length, 'groups cover every lesson');
+  const ids = course.lessons.map((lesson) => lesson.id);
+  assert.equal(new Set(ids).size, ids.length, 'lesson ids stay unique through the mapping');
+  assert.ok(course.lessons.every((lesson) => lesson.recipe === undefined || lesson.recipe.steps.length > 0),
+    'recipes map through with their steps');
 });
 
-check('search, filters and sorting act on the catalog', async () => {
-  const catalog = await import('../src/data/catalog');
+check('search, filters and sorting act on any catalog', async () => {
+  const { browseCourses, emptyFilters } = await import('../src/lib/catalog');
+  const { mapCourse } = await import('../src/services/catalogService');
 
-  assert.deepEqual(
-    catalog.browseCourses({ ...catalog.emptyFilters, query: 'paneer' }).map((course) => course.id),
-    ['paneer-craft'],
-  );
-  assert.deepEqual(
-    catalog.browseCourses({ ...catalog.emptyFilters, query: 'armchair' }),
-    [],
-    'a query with no match returns no results, so the empty state is reachable',
-  );
-  assert.deepEqual(
-    catalog.browseCourses({ ...catalog.emptyFilters, categoryIds: ['cheese'] }).map((course) => course.id),
-    ['artisan-cheese'],
-  );
+  const make = (slug: string, priceInr: number, minutes: number, extra: Record<string, unknown> = {}) =>
+    mapCourse({
+      _id: slug.padEnd(24, 'a'), slug, title: slug.replace(/-/g, ' '), promise: '', description: '',
+      coverUrl: '', category: { _id: 'x'.padEnd(24, 'b'), slug: 'milk', label: 'Milk handling', icon: 'Milk', sortOrder: 1 },
+      level: 'Beginner', language: 'English', priceInr, listPriceInr: null, published: true,
+      isPopular: false, isBeginnerPick: false, rating: 4.5, reviewCount: 10,
+      outcomes: [], equipment: [], audience: '',
+      sections: [{ _id: 's', title: 'One', summary: '', lessons: [{ _id: `${slug}-l1`, title: 'A lesson', description: '', minutes, isPreview: false, recipe: null }] }],
+      lessonCount: 1, totalMinutes: minutes,
+      ...extra,
+    } as never);
 
-  const cheap = catalog.browseCourses({ ...catalog.emptyFilters, priceBands: ['under-1000'], sort: 'price-asc' });
-  assert.ok(cheap.length > 0 && cheap.every((course) => course.priceInr < 1000));
-  assert.deepEqual(
-    cheap.map((course) => course.priceInr),
-    [...cheap.map((course) => course.priceInr)].sort((a, b) => a - b),
-    'price ascending is respected',
-  );
+  const courses = [
+    make('paneer-craft', 2999, 60, { isPopular: true, rating: 4.9 }),
+    make('milk-foundations', 1999, 45),
+    make('artisan-cheese', 3999, 120),
+  ];
 
-  const shortest = catalog.browseCourses({ ...catalog.emptyFilters, sort: 'shortest' });
-  assert.equal(shortest[0].hours, Math.min(...catalog.courses.map((course) => course.hours)));
+  assert.deepEqual(browseCourses(courses, { ...emptyFilters, query: 'paneer' }).map((course) => course.id), ['paneer-craft']);
+  assert.deepEqual(browseCourses(courses, { ...emptyFilters, query: 'armchair' }), [], 'no match is an empty list');
+
+  const cheap = browseCourses(courses, { ...emptyFilters, priceBands: ['1000-2500'], sort: 'price-asc' });
+  assert.deepEqual(cheap.map((course) => course.id), ['milk-foundations']);
+
+  const shortest = browseCourses(courses, { ...emptyFilters, sort: 'shortest' });
+  assert.equal(shortest[0].id, 'milk-foundations', 'shortest first reads the mapped hours');
+
+  const recommended = browseCourses(courses, { ...emptyFilters });
+  assert.equal(recommended[0].id, 'paneer-craft', 'popular and top-rated lead the recommended sort');
 });
 
 // --- Worklet safety -------------------------------------------------------------------------
@@ -338,8 +363,8 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 
   // The screens that own a scroller put the same overflow on it themselves.
-  for (const screen of ['src/app/auth/phone.tsx', 'src/app/auth/otp.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
-    assert.ok(read(screen).includes('style={scrollClip}'), `${screen} keeps its scroller clipped`);
+  for (const screen of ['src/app/auth/signin.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
+    assert.ok(read(screen).includes('scrollClip'), `${screen} keeps its scroller clipped`);
   }
   assert.ok(
     /export const scrollClip: ViewStyle = \{ flex: 1, overflow: 'hidden' \}/.test(ui),
@@ -433,7 +458,7 @@ check('every onboarding slide fills the window, and the poster leads it', () => 
   );
 });
 
-check('a bought course can be rated, and the rating stays on the device', () => {
+check('a bought course can be rated locally and posted to the server', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
   // The rating lives in the persisted state, so it survives a reload like progress and notes do.
@@ -446,10 +471,7 @@ check('a bought course can be rated, and the rating stays on the device', () => 
   assert.ok(rate.includes('useLocalSearchParams<{ courseId: string }>'), 'the screen takes the course from the route');
   assert.ok(rate.includes('if (!isEnrolled(course.id))'), 'only a course the learner owns can be rated');
   assert.ok(rate.includes('setRating({'), 'submitting writes the rating');
-  assert.ok(
-    rate.includes("t('This prototype keeps your rating on this device. Nothing is sent anywhere.')"),
-    'the screen says the rating is local instead of implying a server took it',
-  );
+  assert.ok(rate.includes('api.submitReview('), 'and it posts the review to the academy server');
 
   // Two ways in: the course page it belongs to, and the finished course in My learning.
   assert.ok(read('src/app/course/[id].tsx').includes("pathname: '/rate/[courseId]'"), 'the course page links to it');
@@ -463,8 +485,8 @@ check('a bought course can be rated, and the rating stays on the device', () => 
 });
 
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
-  const [catalog, payments, content, i18n, hindi] = await Promise.all([
-    import('../src/data/catalog'),
+  const [helpers, payments, content, i18n, hindi] = await Promise.all([
+    import('../src/lib/catalog'),
     import('../src/services/payments'),
     import('../src/data/content'),
     import('../src/i18n'),
@@ -497,12 +519,24 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
   // Labels that live in data and are translated where they are rendered — t(option.label) — rather than
   // as literals in a screen. The catalog's own content (titles, lessons, batch sheets) stays English.
   const today = new Date(2026, 9, 5);
+  // Category labels live on the server now; the seeded set is listed here so the dictionary
+  // stays complete for what the academy actually ships.
+  const categoryLabels = [
+    'Milk handling',
+    'Paneer & chhana',
+    'Ghee & butter',
+    'Curd & ferments',
+    'Cheese',
+    'Frozen desserts',
+    'Farm & animals',
+    'Dairy business',
+  ];
   const dataKeys = [
-    ...catalog.categories.map((category) => category.label),
-    ...catalog.levelOptions,
-    ...catalog.sortOptions.map((option) => option.label),
-    ...catalog.priceBandOptions.map((option) => option.label),
-    ...catalog.durationOptions.map((option) => option.label),
+    ...categoryLabels,
+    ...helpers.levelOptions,
+    ...helpers.sortOptions.map((option) => option.label),
+    ...helpers.priceBandOptions.map((option) => option.label),
+    ...helpers.durationOptions.map((option) => option.label),
     ...payments.demoScenarios.flatMap((scenario) => [scenario.label, scenario.help]),
     ...content.purchaseTerms,
     ...content.ratingWords,

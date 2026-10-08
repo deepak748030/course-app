@@ -55,6 +55,10 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `GET` | `/api/orders/my` | learner's transactions |
 | `POST` | `/api/coupons/validate` | check a code + discounted price |
 | `GET/POST` | `/api/courses/:courseId/reviews` | list / write a review (enrolled only) |
+| `GET` | `/api/enrollments/my` | owned courses + lesson progress in one call |
+| `PATCH` | `/api/enrollments/:courseId/progress` | push completed lessons + resume position |
+| `GET` | `/api/uploads/policy` | which storage backend answers uploads |
+| `POST` | `/api/uploads` | multipart image upload (field `file`), admins → covers, learners → avatars |
 
 ### Admin (JWT + `role: admin`, all under `/api/admin`)
 
@@ -73,16 +77,39 @@ All bodies are validated with zod; errors come back as `{ error, details? }` wit
 right status code (400 validation, 401/403 auth, 404 not found, 409 conflict, 429 rate
 limit, 503 database down).
 
+## Realtime (socket.io)
+
+socket.io serves on the same HTTP server (`/socket.io`). The handshake accepts an
+optional Bearer token; sockets join `app` (everyone), `user:<id>` (their own devices)
+and `admins` (role: admin). Events pushed today:
+
+| Room | Event | When |
+| --- | --- | --- |
+| `app` | `catalog.changed` | a course/category is created, edited, published or deleted |
+| `app` | `settings.updated` | app settings change |
+| `user:<id>` | `enrollment.granted` | an order is marked paid or access is granted |
+| `admins` | `order.created`, `user.registered`, `review.created`, `catalog.changed`, `settings.updated` | live dashboard feed |
+
+## Image uploads
+
+`POST /api/uploads` (multipart, field `file`, ≤ 8 MB, images only) stores through
+**Cloudinary** when `CLOUDINARY_URL` (or `CLOUDINARY_CLOUD_NAME` + key + secret) is
+set — the returned URL is the CDN delivery URL. Without Cloudinary the server falls
+back to local storage in `server/uploads`, served from `GET /uploads/*`, so the flow
+works in plain development too. `GET /api/uploads/policy` reports which backend is live.
+
 ## Project layout
 
 ```
 src/
-├── index.js             # bootstrap: cors, json, routes, error handlers
+├── index.js             # bootstrap: cors, json, routes, static /uploads, error handlers
 ├── config/              # env + mongoose connection (retry-aware)
 ├── models/              # User, Category, Course, Review, Order, Enrollment, Coupon, Settings
 ├── middleware/          # auth (JWT), zod validate, dbGuard, rate limit, error handler
 ├── controllers/         # app-facing + admin/ handlers
 ├── routes/              # route tables with zod schemas
+├── realtime/socket.js   # socket.io rooms + typed emitters
+├── services/uploads.js  # Cloudinary (preferred) or local-disk image storage
 ├── seed/seed.js         # deterministic dev seed
 └── utils/               # HttpError, asyncHandler, token signing
 ```

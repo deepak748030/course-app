@@ -19,6 +19,12 @@ const userSchema = new Schema(
     avatarUrl: { type: String, default: '' },
     blocked: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
+    /** Optional profile fields the app edits from Profile → Edit. */
+    dateOfBirth: { type: String, default: '', trim: true, maxlength: 10 },
+    city: { type: String, default: '', trim: true, maxlength: 80 },
+    goal: { type: String, default: '', trim: true, maxlength: 120 },
+    /** Category slugs the learner picked on the interests step. */
+    interests: { type: [String], default: [] },
   },
   { timestamps: true }
 );

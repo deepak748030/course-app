@@ -7,12 +7,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppText, Badge, Button, DataList, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, firstPlayableLesson } from '@/data/catalog';
+import { firstPlayableLesson } from '@/lib/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import { formatInr } from '@/lib/format';
 
 export default function PurchaseSuccessScreen() {
+  const { byId } = useCatalog();
   const t = useT();
 
   const { courseId } = useLocalSearchParams<{ courseId: string }>();
@@ -20,7 +22,7 @@ export default function PurchaseSuccessScreen() {
   const insets = useSafeAreaInsets();
   const { isEnrolled, state } = useStore();
 
-  const course = useMemo(() => courseById(courseId), [courseId]);
+  const course = useMemo(() => byId(courseId), [byId, courseId]);
   const reduced = useReducedMotion();
   const appear = useSharedValue(reduced ? 1 : 0);
   const ring = useSharedValue(reduced ? 1 : 0.6);

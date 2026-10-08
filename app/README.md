@@ -5,16 +5,25 @@ hands and family producers browse structured video courses — milk handling, pa
 cheese, frozen desserts, farm practice, selling — buy them, and learn inside an immersive lesson
 player with a standardised batch sheet beside the video.
 
-> **Prototype build.** The catalog, prices, ratings and reviews are fictional sample
-> content. Authentication and payments are demo implementations; nothing is charged and no SMS is
-> sent. Anything not implemented is said so in the UI rather than shown as a working control.
+> **Server-connected build.** The catalog, accounts, purchases, lesson progress and reviews all
+> live on the YDU Academy server (`../server`). The payment gateway is still a simulation — no money
+> moves — but every paid order is a real record on the server. Lesson videos stay bundled demo media.
+> Anything not implemented is said so in the UI rather than shown as a working control.
 
 ## Run it
 
+The app talks to the YDU Academy server in `../server`. Start that first (MongoDB required —
+see `../server/.env.example`), then:
+
 ```bash
-npm install          # or: bun install
-npx expo start       # then press i / a / w, or scan with Expo Go
+npm install                          # or: bun install
+echo "EXPO_PUBLIC_API_URL=http://localhost:5000" > .env   # Android emulator works with localhost;
+                                                           # physical devices need the machine's LAN IP
+npx expo start                       # then press i / a / w, or scan with Expo Go
 ```
+
+If the server is unreachable the app shows an honest offline state with retry — it never fakes data.
+Seeded learner account: `learner@ydu.academy / Learner@123` (after `npm run seed` in the server).
 
 Handy scripts:
 
@@ -31,19 +40,12 @@ Expo Go can run most of the app. Screens that depend on native modules added by 
 npx expo run:android   # or: npx expo run:ios, or: eas build --profile development
 ```
 
-## Demo authentication
+## Authentication
 
-There is no SMS provider. `src/services/auth.ts` ships a demo adapter, and both auth screens say so.
-
-- **Demo code: `246810`** (6 digits). Documented here only — it is never shown in the app and never logged.
-- After **3 wrong attempts** the flow returns an “expired” state so that error path is reproducible.
-- `9000000000` is reserved to simulate a request that cannot reach the server.
-- Resend countdown starts at 30 seconds and is a UX affordance only; real rate limiting belongs on the server.
-- The session token is stored with `expo-secure-store` on native devices. On **web** there is no secure
-  store, so it falls back to `AsyncStorage` — acceptable for a demo, not for production.
-
-To go live, implement `AuthService` against your provider and swap the export at the bottom of the file.
-Nothing else in the app changes.
+Sign-in uses **email + password** against the server (`POST /api/auth/signup`, `/api/auth/login`)
+and stores the returned JWT with `expo-secure-store` on native devices (falls back to
+`AsyncStorage` on web). The session drives everything account-bound: enrollments, progress,
+orders, reviews and the private realtime channel.
 
 ## Demo payments
 
@@ -58,8 +60,9 @@ Checkout lets you pick which scenario the demo reproduces:
 | Failed payment | Shows the failure + retry state (nothing is charged) |
 | Cancelled by user | Returns to checkout with an explanatory note |
 
-Demo coupons: `YDU10` (10% off) and `DAIRY20` (20% off). Every coupon is applied to a
-simulated total only.
+Coupons are validated by the server (`POST /api/coupons/validate`); the seeded codes are
+`WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off). A successful demo payment
+creates a real order and enrollment on the server.
 
 ## Project structure
 
@@ -68,8 +71,7 @@ src/
   app/                     Expo Router routes (file = screen)
     index.tsx              entry gate: onboarding → sign-in → app
     onboarding.tsx         three-slide introduction
-    auth/phone.tsx         +91 mobile number entry
-    auth/otp.tsx           six-digit code, resend timer, error states
+    auth/signin.tsx        email + password sign-in / sign-up against the server
     auth/interests.tsx     optional preference chips
     (tabs)/                Home · Explore · My learning · Profile
     course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)
@@ -79,12 +81,14 @@ src/
     saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
   components/              UI kit (ui.tsx), course cards, animated icons, bottom sheet, brand marks
   constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
-  data/                    catalog.ts (courses, tracks, batch sheets), content.ts (FAQ, coupons, legal)
+  data/content.ts          editorial content kept in-app: notifications, FAQs, legal docs
   lib/format.ts            pure formatters/validators (runnable outside the app)
   lib/util.ts              haptics feedback
   media.ts                 the only place that maps data keys → bundled assets
-  services/                auth.ts, payments.ts (swappable boundaries)
-  store.tsx                single context: session, enrollments, progress, notes, saved, prefs
+  services/                api.ts (HTTP), realtime.ts (socket.io), catalogService.ts (server→app
+                           mapping), catalog-context.tsx (live catalog + gate), auth.ts, payments.ts
+  store.tsx                single context: session (server JWT), enrollments + progress hydrated
+                           from the server and synced back, notes, saved, prefs
   types/index.ts           typed data models
 ```
 
@@ -223,11 +227,11 @@ The UI follows the project's design rules document and is generated from one tok
   reduced-motion first.
 - **Profile is the one door to money, policies and help.** The profile screen's last group is
   `Settings & policies` and carries, in order: Settings, *Transactions*, *Refund policy*,
-  *Privacy policy*, *Terms and conditions* and *Help and support*. Transactions (`/transactions`) lists
-  every course unlocked on this device newest-first — cover, title, date, the demo coupon that was
-  applied, a `Saved ₹…` badge and the amount — over a summary of what was paid in total, with the
-  honest line that no gateway is connected. It is built from the real enrolments in the store, so a
-  demo purchase or a reset changes it immediately, and the empty state offers the catalog.
+  *Privacy policy*, *Terms and conditions* and *Help and support*. Transactions (`/transactions`)
+  lists every order on the account newest-first — cover, title, date, the coupon that was applied,
+  a `Saved ₹…` badge and the amount — over a summary of what was paid in total, fetched from the
+  server (`GET /api/orders/my`), with the honest line that payments are simulated. A new purchase
+  or a refund changes it immediately, and the empty state offers the catalog.
   The legal screen (`/legal`) now serves three documents — Terms, Privacy and Refunds — behind a
   segmented switcher instead of a two-way “read the other one” button, and its refund copy sets out the
   policy a shipped build would run on (seven-day window, nothing refunded past a quarter of the
@@ -315,10 +319,10 @@ onboarding completion and app preferences are kept.
 ## Verification performed
 
 - `npx tsc --noEmit` (also run with `--noUnusedLocals`) — clean.
-- `bun scripts/selfcheck.ts` (`npm run check`) — 11 checks: phone normalisation/validation/masking,
-  quantity scaling, INR/clock/duration formatting, the greeting helper, catalog derivation (unique
-  lesson ids, counts, section integrity, preview lessons), the search/filter/sort behaviour of the
-  Explore screen, the profile field validators (email, date of birth), and a source scan that fails the
+- `bun scripts/selfcheck.ts` (`npm run check`) — 19 checks: phone normalisation/validation/masking,
+  quantity scaling, INR/clock/duration formatting, the greeting helper, the server→app catalog
+  mapping (ids, offer math, curriculum grouping), the search/filter/sort helpers that act on any
+  catalog, the profile field validators (email, date of birth), and a source scan that fails the
   build if any Reanimated animation callback or animated-style body touches React state (see "Native
   worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route

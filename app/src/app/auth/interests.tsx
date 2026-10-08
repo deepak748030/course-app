@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Chip, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
-import { interests } from '@/data/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { useStore } from '@/store';
 
@@ -14,6 +14,8 @@ import { useStore } from '@/store';
  * first-class action, so nothing is gated behind a choice.
  */
 export default function InterestsScreen() {
+  const { categories } = useCatalog();
+  const interests = categories;
   const t = useT();
 
   const router = useRouter();

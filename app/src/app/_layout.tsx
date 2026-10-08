@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
+import { CatalogProvider } from '@/services/catalog-context';
 import { StoreProvider, useStore } from '@/store';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -127,6 +128,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.flex}>
       <SafeAreaProvider>
         <StoreProvider>
+          <CatalogProvider>
           <ThemedApp>
             <ErrorBoundary>
               <SplashGate>
@@ -149,6 +151,7 @@ export default function RootLayout() {
               </SplashGate>
             </ErrorBoundary>
           </ThemedApp>
+          </CatalogProvider>
         </StoreProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

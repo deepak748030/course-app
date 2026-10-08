@@ -1,6 +1,7 @@
 import { Eye, EyeOff, Star, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useRealtimeRefresh } from '../api/realtime';
 import type { Review } from '../api/types';
 import {
   Badge,
@@ -37,6 +38,9 @@ export default function Reviews() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeRefresh(['review.created'], load);
+
 
   async function toggleVisible(review: Review) {
     try {

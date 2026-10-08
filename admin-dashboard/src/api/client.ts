@@ -127,6 +127,37 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return res.json() as Promise<T>;
 }
 
+/**
+ * Multipart image upload (cover art, anything the dashboard needs hosted).
+ * Goes straight to the server's /api/uploads; returns the stored URL.
+ */
+export async function uploadImage(file: File, folder = 'covers'): Promise<{ url: string; provider: string }> {
+  if (demoMode) throw new ApiError(503, 'Uploads need the real server — demo mode cannot store files.');
+  const body = new FormData();
+  body.append('file', file);
+  body.append('folder', folder);
+  let res: Response;
+  try {
+    res = await fetch('/api/uploads', {
+      method: 'POST',
+      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+      body,
+    });
+  } catch {
+    throw new ApiError(0, 'Could not reach the server for the upload.');
+  }
+  if (!res.ok) {
+    let message = `Upload failed (${res.status})`;
+    try {
+      message = (await res.json()).error || message;
+    } catch {
+      /* not json */
+    }
+    throw new ApiError(res.status, message);
+  }
+  return res.json();
+}
+
 // ---------- typed surface -------------------------------------------------------------
 export const api = {
   login: (email: string, password: string) =>

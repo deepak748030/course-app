@@ -22,11 +22,25 @@ const booleanString = z.enum(['true', 'false']);
 router.get('/stats/overview', overview);
 
 // ---------- courses ------------------------------------------------------------
+const ingredientSchema = z.object({
+  item: z.string().trim().min(1).max(140),
+  quantity: z.string().trim().min(1).max(80),
+});
+const recipeSchema = z.object({
+  title: z.string().trim().min(1).max(140),
+  servings: z.number().int().min(1).max(500),
+  prepMinutes: z.number().int().min(0).default(0),
+  cookMinutes: z.number().int().min(0).default(0),
+  ingredients: z.array(ingredientSchema).max(40).default([]),
+  steps: z.array(z.string().trim().max(500)).max(40).default([]),
+  tips: z.array(z.string().trim().max(280)).max(20).default([]),
+});
 const lessonSchema = z.object({
   title: z.string().trim().min(1).max(140),
   description: z.string().trim().max(2000).default(''),
   minutes: z.number().int().min(1).max(600),
   isPreview: z.boolean().default(false),
+  recipe: recipeSchema.optional().nullable(),
 });
 const sectionSchema = z.object({
   title: z.string().trim().min(1).max(140),

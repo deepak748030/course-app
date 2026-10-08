@@ -8,7 +8,6 @@ import {
   Play,
   ShieldCheck,
   Tag,
-  Ticket,
   TriangleAlert,
 } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -23,15 +22,16 @@ import {
   AppText,
   Badge,
   Button,
-  Chip,
   FormField,
   MetaItem,
   Screen,
   SectionHeader,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseById, discountPercent, firstPlayableLesson } from '@/data/catalog';
-import { demoCoupons, purchaseTerms } from '@/data/content';
+import { discountPercent, firstPlayableLesson } from '@/lib/catalog';
+import { purchaseTerms } from '@/data/content';
+import { ApiError, api } from '@/services/api';
+import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
 import { useStore } from '@/store';
@@ -47,11 +47,13 @@ export default function CheckoutScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isEnrolled, addEnrollment } = useStore();
+  const { byId } = useCatalog();
 
-  const course = useMemo(() => courseById(id), [id]);
+  const course = useMemo(() => byId(id), [byId, id]);
 
   const [couponInput, setCouponInput] = useState('');
-  const [coupon, setCoupon] = useState<{ code: string; percentOff: number } | null>(null);
+  const [coupon, setCoupon] = useState<{ code: string; discountInr: number; percent: number | null } | null>(null);
+  const [checkingCoupon, setCheckingCoupon] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [scenario, setScenario] = useState<DemoScenario>('success');
   const [processing, setProcessing] = useState(false);
@@ -72,50 +74,73 @@ export default function CheckoutScreen() {
   }
 
   const enrolled = isEnrolled(course.id);
-  const couponValue = coupon ? Math.round((course.priceInr * coupon.percentOff) / 100) : 0;
+  const couponValue = coupon?.discountInr ?? 0;
   const payable = course.priceInr - couponValue;
   const offer = discountPercent(course);
   const firstLesson = firstPlayableLesson(course);
 
-  const applyCoupon = () => {
+  const applyCoupon = async () => {
     const code = couponInput.trim().toUpperCase();
-    const match = demoCoupons.find((entry) => entry.code === code);
-    if (!match) {
+    if (!code) return;
+    setCheckingCoupon(true);
+    setCouponError(null);
+    try {
+      const result = await api.validateCoupon(code, course.remoteId);
+      setCoupon({
+        code: result.coupon.code,
+        discountInr: result.discountInr,
+        percent: result.coupon.type === 'percent' ? result.coupon.value : null,
+      });
+      setCouponInput('');
+    } catch (err) {
       setCoupon(null);
-      setCouponError('That code is not in the demo dataset. Try YDU10.');
-      return;
+      setCouponError(
+        err instanceof ApiError && !err.isOffline
+          ? err.message
+          : 'Could not check this code. Check your connection and try again.',
+      );
+    } finally {
+      setCheckingCoupon(false);
     }
-    setCouponError(null);
-    setCoupon({ code: match.code, percentOff: match.percentOff });
-    setCouponInput('');
-  };
-
-  const applyCode = (code: string, percentOff: number) => {
-    feedback.select();
-    setCoupon({ code, percentOff });
-    setCouponInput('');
-    setCouponError(null);
   };
 
   const pay = async () => {
     setProcessing(true);
     setOutcome(null);
     const result = await demoPaymentService.authorize({ courseId: course.id, amountInr: payable, scenario });
-    setProcessing(false);
 
     if (result.status === 'paid') {
-      addEnrollment({
-        courseId: course.id,
-        purchasedAt: new Date().toISOString(),
-        priceInr: payable,
-        source: 'demo-checkout',
-        couponCode: coupon?.code,
-      });
-      feedback.success();
-      router.replace({ pathname: '/purchase-success', params: { courseId: course.id } });
-      return;
+      // The demo gateway approved the payment — record it on the server so the account,
+      // not this device, owns the course.
+      try {
+        await api.createOrder({
+          courseId: course.remoteId,
+          couponCode: coupon?.code,
+          paymentReference: result.reference,
+        });
+        addEnrollment({
+          courseId: course.id,
+          purchasedAt: new Date().toISOString(),
+          priceInr: payable,
+          source: 'server',
+          couponCode: coupon?.code,
+        });
+        feedback.success();
+        setProcessing(false);
+        router.replace({ pathname: '/purchase-success', params: { courseId: course.id } });
+        return;
+      } catch (err) {
+        setProcessing(false);
+        feedback.error();
+        setOutcome({
+          kind: 'failed',
+          message: err instanceof Error ? err.message : 'The order could not be recorded. Try again.',
+        });
+        return;
+      }
     }
 
+    setProcessing(false);
     feedback.error();
     if (result.status === 'failed') setOutcome({ kind: 'failed', message: t(result.reason) });
     else setOutcome({ kind: 'cancelled' });
@@ -146,7 +171,7 @@ export default function CheckoutScreen() {
           </View>
           <View style={styles.cardRule} />
           <View style={styles.orderBlock}>
-            <PriceSummary course={course} couponPercent={coupon?.percentOff ?? 0} couponCode={coupon?.code} />
+            <PriceSummary course={course} couponValueInr={coupon?.discountInr ?? 0} couponCode={coupon?.code} />
           </View>
         </View>
 
@@ -156,7 +181,9 @@ export default function CheckoutScreen() {
             <View style={styles.couponRow}>
               <Tag size={16} color={colors.success} strokeWidth={2} />
               <Text style={[type.labelStrong, { color: colors.success, flex: 1 }]}>
-                {t('{code} applied · {n}% OFF', { code: coupon.code, n: coupon.percentOff })}
+                {coupon.percent !== null
+                  ? t('{code} applied · {n}% OFF', { code: coupon.code, n: coupon.percent })
+                  : `${coupon.code} applied · ${formatInr(coupon.discountInr)} OFF`}
               </Text>
               <Pressable
                 accessibilityRole="button"
@@ -174,11 +201,11 @@ export default function CheckoutScreen() {
                   setCouponInput(text);
                   if (couponError) setCouponError(null);
                 }}
-                placeholder={t("Enter a demo code")}
+                placeholder={t("Enter a coupon code")}
                 accessibilityLabel={t("Coupon code")}
                 autoCapitalize="characters"
                 autoCorrect={false}
-                editable={!processing}
+                editable={!processing && !checkingCoupon}
                 error={couponError}
                 returnKeyType="done"
                 onSubmitEditing={applyCoupon}
@@ -186,32 +213,23 @@ export default function CheckoutScreen() {
                   <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={t("Apply coupon")}
-                    onPress={applyCoupon}
+                    onPress={() => void applyCoupon()}
                     hitSlop={8}
-                    disabled={processing || couponInput.trim().length === 0}>
+                    disabled={processing || checkingCoupon || couponInput.trim().length === 0}>
                     <Text
                       style={[
                         type.labelStrong,
                         {
                           color:
-                            processing || couponInput.trim().length === 0 ? colors.textSubtle : colors.accentText,
+                            processing || checkingCoupon || couponInput.trim().length === 0
+                              ? colors.textSubtle
+                              : colors.accentText,
                         },
-                      ]}>{t("Apply")}</Text>
+                      ]}>{checkingCoupon ? t('Checking…') : t("Apply")}</Text>
                   </Pressable>
                 }
               />
-              {/* The demo codes are one tap away instead of living in a hint nobody reads. */}
-              <View style={styles.couponChips}>
-                {demoCoupons.map((entry) => (
-                  <Chip
-                    key={entry.code}
-                    label={t('{code} · {n}% OFF', { code: entry.code, n: entry.percentOff })}
-                    icon={Ticket}
-                    disabled={processing}
-                    onPress={() => applyCode(entry.code, entry.percentOff)}
-                  />
-                ))}
-              </View>
+
             </View>
           )}
         </View>
@@ -315,7 +333,7 @@ export default function CheckoutScreen() {
         ) : null}
 
         <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
-          {t('Demo checkout: prices, coupons and outcomes are sample data. No payment is processed and no money moves.')}
+          {t('Payment is simulated by the demo gateway; the purchase itself is recorded on your account by the academy server.')}
         </Text>
       </Screen>
 
@@ -402,7 +420,6 @@ const styles = createStyles(() => StyleSheet.create({
 
   strike: { textDecorationLine: 'line-through' },
   couponBlock: { gap: spacing.sm, paddingHorizontal: layout.screen },
-  couponChips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   couponRow: {
     flexDirection: 'row',
     alignItems: 'center',

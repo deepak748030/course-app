@@ -71,6 +71,8 @@ export interface CourseRating {
 
 export interface Course {
   id: Id;
+  /** The server's Mongo id — used for checkout, coupons and reviews. */
+  remoteId: Id;
   title: string;
   promise: string;
   description: string;
@@ -109,8 +111,8 @@ export interface Enrollment {
   courseId: Id;
   purchasedAt: string;
   priceInr: number;
-  /** 'sample-seed' = demo account progress, 'demo-checkout' = bought in this prototype. */
-  source: 'sample-seed' | 'demo-checkout';
+  /** 'server' = purchased through the YDU API, 'demo-checkout' = legacy local purchase. */
+  source: 'server' | 'demo-checkout';
   /** Demo coupon that was applied at checkout, if any. Shown on the transactions list. */
   couponCode?: string;
 }
@@ -152,6 +154,10 @@ export interface UserProfile {
   city?: string;
   /** Short cooking goal picked from a fixed list — see profile editor. */
   goal?: string;
+  /** Avatar stored on the server (Cloudinary/local upload). */
+  avatarUrl?: string;
+  /** Category slugs picked on the interests step — synced to the server. */
+  interests?: string[];
 }
 
 export interface Session {

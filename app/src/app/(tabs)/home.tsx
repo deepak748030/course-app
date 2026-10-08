@@ -33,7 +33,8 @@ import {
 } from '@/components/ui';
 import { BrandMark } from '@/components/marks';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { categories, courses, discountPercent } from '@/data/catalog';
+import { discountPercent } from '@/lib/catalog';
+import { CatalogGate, useCatalog } from '@/services/catalog-context';
 import { notifications } from '@/data/content';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
@@ -45,6 +46,7 @@ export default function HomeScreen() {
 
   const router = useRouter();
   const { session, state, courseProgressRatio, resumeLesson } = useStore();
+  const { courses, categories, status } = useCatalog();
   const interestIds = state.interests;
 
   const rankByInterest = (course: Course) => (interestIds.includes(course.categoryId) ? 0 : 1);
@@ -56,7 +58,7 @@ export default function HomeScreen() {
     const rest = courses.filter((course) => !course.isPopular);
     return [...ranked, ...rest].slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [interestIds]);
+  }, [interestIds, courses]);
 
   const popular = useMemo(
     () =>
@@ -64,16 +66,16 @@ export default function HomeScreen() {
         .sort((a, b) => rankByInterest(a) - rankByInterest(b) || b.rating - a.rating || b.reviewCount - a.reviewCount)
         .slice(0, 6),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [interestIds],
+    [interestIds, courses],
   );
 
-  const quickSkills = useMemo(() => [...courses].sort((a, b) => a.hours - b.hours).slice(0, 4), []);
-  const beginnerPicks = useMemo(() => courses.filter((course) => course.isBeginnerPick).slice(0, 3), []);
+  const quickSkills = useMemo(() => [...courses].sort((a, b) => a.hours - b.hours).slice(0, 4), [courses]);
+  const beginnerPicks = useMemo(() => courses.filter((course) => course.isBeginnerPick).slice(0, 3), [courses]);
 
   const activeCourse = useMemo(() => {
     const enrolledIds = Object.keys(state.enrollments);
     return courses.find((course) => enrolledIds.includes(course.id)) ?? null;
-  }, [state.enrollments]);
+  }, [state.enrollments, courses]);
 
   const resume = activeCourse ? resumeLesson(activeCourse) : null;
   const unread = state.notificationsRead ? 0 : notifications.length;
@@ -91,10 +93,14 @@ export default function HomeScreen() {
             </BrandTile>
           }
           title="YDU Academy"
-          meta={t('{courses} courses · {tracks} tracks', {
-            courses: courses.length,
-            tracks: categories.length,
-          })}
+          meta={
+            status === 'ready'
+              ? t('{courses} courses · {tracks} tracks', {
+                  courses: courses.length,
+                  tracks: categories.length,
+                })
+              : t('Connecting to the academy…')
+          }
           actions={
             <>
               <IconButton
@@ -120,6 +126,7 @@ export default function HomeScreen() {
           }
         />
       }>
+      <CatalogGate>
       {/* Banner: full-bleed — zero left/right gap by design. It scrolls, and it pages itself. */}
       <HeroCarousel courses={featured} />
 
@@ -210,8 +217,9 @@ export default function HomeScreen() {
 
       <View style={styles.brandFooter}>
         <BrandMark size={20} />
-        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Sample catalog for a prototype build \u2014 courses, prices and reviews are fictional.")}</Text>
+        <Text style={[type.label, { color: colors.textSubtle }]}>{t("Live catalog \u2014 synced from the academy server in real time.")}</Text>
       </View>
+      </CatalogGate>
     </Screen>
   );
 }

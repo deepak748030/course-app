@@ -41,7 +41,7 @@ import {
   TabHeader,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courses } from '@/data/catalog';
+import { useCatalog } from '@/services/catalog-context';
 import { LANGUAGES, useT } from '@/i18n';
 import { ageFromDateOfBirth, formatDateOfBirth, formatDuration } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
@@ -49,6 +49,7 @@ import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
 
 export default function ProfileScreen() {
+  const { courses } = useCatalog();
   const t = useT();
 
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function ProfileScreen() {
   const profile = session?.profile ?? null;
   const avatarUri = state.profileAvatarUri;
 
-  const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments]);
+  const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments, courses]);
 
   const stats = useMemo(() => {
     let lessons = 0;
@@ -175,7 +176,7 @@ export default function ProfileScreen() {
           <View style={styles.signInCard}>
             <Text style={[type.bodyStrong, { color: colors.text }]}>{t("You are not signed in")}</Text>
             <Text style={[type.label, { color: colors.textMuted }]}>{t("Sign in to keep your courses, notes and progress on this device.")}</Text>
-            <Button label={t("Sign in with mobile")} onPress={() => router.push('/auth/phone')} />
+            <Button label={t("Sign in")} onPress={() => router.push('/auth/signin')} />
           </View>
         </View>
       )}
@@ -336,7 +337,7 @@ export default function ProfileScreen() {
           setLogoutOpen(false);
           setProfileAvatar(null);
           await signOut();
-          router.replace('/auth/phone');
+          router.replace('/auth/signin');
         }}
         onCancel={() => setLogoutOpen(false)}
       />

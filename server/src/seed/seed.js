@@ -45,11 +45,22 @@ const categories = [
   { slug: 'business', label: 'Dairy business', icon: 'Store', sortOrder: 8 },
 ];
 
-const lesson = (title, minutes, description = '', isPreview = false) => ({
+const lesson = (title, minutes, description = '', isPreview = false, recipe = undefined) => ({
   title,
   minutes,
   description,
   isPreview,
+  recipe,
+});
+
+const recipe = (title, servings, prepMinutes, cookMinutes, ingredients, steps, tips) => ({
+  title,
+  servings,
+  prepMinutes,
+  cookMinutes,
+  ingredients,
+  steps,
+  tips,
 });
 
 const courses = [
@@ -143,7 +154,31 @@ const courses = [
         title: 'Your first paneer',
         summary: 'The full make, coagulation to pressing.',
         lessons: [
-          lesson('Making a clean paneer block', 22, 'Coagulation, whey drain and pressing in one continuous make.'),
+          lesson(
+            'Making a clean paneer block',
+            22,
+            'Coagulation, whey drain and pressing in one continuous make.',
+            false,
+            recipe(
+              'Standard paneer batch',
+              4,
+              15,
+              40,
+              [
+                { item: 'Full-cream milk', quantity: '10 L' },
+                { item: 'Citric acid (1% solution)', quantity: '180 ml' },
+                { item: 'Salt', quantity: '10 g' },
+              ],
+              [
+                'Heat the milk to 82 °C, stirring gently to prevent scorching.',
+                'Cut the heat and bring it down to 72 °C before coagulation.',
+                'Add the acid solution in three passes, stirring each for 30 seconds.',
+                'Rest 5 minutes, then strain through muslin and rinse the curd.',
+                'Press under 8 kg for 20 minutes, then chill the block in cold water.',
+              ],
+              ['Do not over-stir after the curd forms — the grains stay softer.', 'Chill the block before cutting for clean cubes.']
+            )
+          ),
           lesson('Cutting, cooling and storing', 21, 'Block sizes, cube cutting, brine holding and shelf life.'),
           lesson('A soft chhana make', 16, 'The same milk, less pressing — the base for sandesh and rasgulla.'),
         ],
@@ -243,7 +278,29 @@ const courses = [
         title: 'Butter',
         summary: 'Churning, washing and salting a small batch.',
         lessons: [
-          lesson('Churning a clean white butter', 18, 'Temperature, timing and the wash that keeps it sweet.'),
+          lesson(
+            'Churning a clean white butter',
+            18,
+            'Temperature, timing and the wash that keeps it sweet.',
+            false,
+            recipe(
+              'White butter from 2 litres of cream',
+              2,
+              20,
+              30,
+              [
+                { item: 'Ripened cream (30% fat)', quantity: '2 L' },
+                { item: 'Chilled water for washing', quantity: '3 L' },
+              ],
+              [
+                'Chill the cream to 12 °C before churning.',
+                'Churn until the grains separate cleanly from the buttermilk.',
+                'Wash the grains twice in chilled water until it runs clear.',
+                'Work the butter gently to a smooth, dry finish.',
+              ],
+              ['Warmer cream churns faster but gives softer butter.', 'Keep the last wash water as sweet as the first.']
+            )
+          ),
           lesson('Salted, cultured and flavoured butters', 14, 'Working salt evenly and keeping flavours true.'),
         ],
       },
