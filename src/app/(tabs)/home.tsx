@@ -19,7 +19,6 @@ import { OfferBadge } from '@/components/offer-tag';
 import { CourseCard, CourseRow, ContinueCard } from '@/components/course-cards';
 import {
   AvatarButton,
-  BrandTile,
   Chip,
   DataList,
   IconButton,
@@ -31,7 +30,7 @@ import {
   TabHeader,
   usePressScale,
 } from '@/components/ui';
-import { BrandMark } from '@/components/marks';
+import { BrandLockup, BrandMark } from '@/components/marks';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { categories, courses, discountPercent } from '@/data/catalog';
 import { notifications } from '@/data/content';
@@ -86,9 +85,11 @@ export default function HomeScreen() {
         <TabHeader
           style={styles.headerCompact}
           leading={
-            <BrandTile size={40}>
-              <BrandMark size={26} color={colors.onAccent} />
-            </BrandTile>
+            /* The supplied logo, the file itself: at 40px it is the app's own icon sitting in its
+               own header, next to the name it already carries. The vector mark below is the same
+               artwork cut from the same file — it keeps the small spots (the footer) legible, where
+               a 14px wordmark would be a smudge. */
+            <BrandLockup width={40} />
           }
           title="YDU Academy"
           meta={t('{courses} courses · {tracks} tracks', {

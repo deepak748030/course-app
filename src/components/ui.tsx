@@ -1068,10 +1068,6 @@ export function TabHeader({
 }
 
 /** Yellow tile that carries the brand mark in tab headers. */
-export function BrandTile({ size = 40, children }: { size?: number; children: ReactNode }) {
-  return <View style={[styles.brandTile, { width: size, height: size }]}>{children}</View>;
-}
-
 /* ------------------------------------------------------------------ *
  * Search
  * ------------------------------------------------------------------ */
@@ -1221,12 +1217,6 @@ const styles = createStyles(() => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.primary,
     backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brandTile: {
-    borderRadius: radius.md,
-    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
