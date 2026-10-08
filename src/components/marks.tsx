@@ -8,11 +8,11 @@
  * own family.
  *
  * This vector drawing is the in-app mark only — headers, tiles and footers, where a small crisp SVG
- * beats a raster. The launcher icon, the splash icon, the favicon and the Android adaptive layers are
- * not drawn here: `scripts/generate-brand-icons.mjs` cuts every one of them out of the supplied
- * `assets/images/logo.png`, pixel for pixel, so the icon on the phone's home screen is the same logo
- * the app shows. `scripts/selfcheck.ts` pins this file's geometry and checks the derived icons against
- * the logo's own pixels, so neither half can drift quietly.
+ * beats a raster. The launcher icon, the splash icon, the favicon, the Android adaptive layers and the
+ * brand SVGs are not drawn here: `scripts/generate-brand-icons.mjs` cuts every one of them out of the
+ * supplied `assets/images/logo.png`, pixel for pixel, so the icon on the phone's home screen is the
+ * same logo the app shows. `scripts/selfcheck.ts` pins this file's geometry and checks the derived
+ * icons against the logo's own pixels, so neither half can drift quietly.
  *
  *   - `BrandMark`   — the churn and the leaves alone, for headers, tiles and footers. It carries the
  *                     brand's greens; pass `color` to flatten it to one colour when it sits on

@@ -121,7 +121,9 @@ raster and the text-free mark) is cut out of that one file's pixels by
 `scripts/generate-brand-icons.mjs`, so nothing can drift into a lookalike of the logo. The small
 in-app mark used by headers and tiles stays vector geometry in `src/components/marks.tsx`, and
 `scripts/selfcheck.ts` pins both halves: the mark's geometry, and pixel-level proof that each derived
-icon still carries the supplied logo's own colours.
+icon still carries the supplied logo's own colours. The two brand SVGs (`assets/brand/ydu-logo.svg`
+and `assets/brand/ydu-mark.svg`) are derived the same way — the logo's own pixels embedded in a
+vector wrapper — so even vector contexts show logo.png instead of a redrawing of it.
 
 ## Design system
 

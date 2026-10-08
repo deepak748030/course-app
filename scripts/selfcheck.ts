@@ -380,6 +380,8 @@ check('every brand icon is cut from the supplied logo.png', () => {
     'android-icon-foreground.png',
     'android-icon-monochrome.png',
     'brand-mark.png',
+    'ydu-logo.svg',
+    'ydu-mark.svg',
   ]) {
     assert.ok(generator.includes(`'${output}'`), `the generator writes ${output}`);
   }
@@ -405,6 +407,8 @@ check('every brand icon is cut from the supplied logo.png', () => {
     'assets/images/logo.png',
     'assets/images/brand-logo.png',
     'assets/images/brand-mark.png',
+    'assets/brand/ydu-logo.svg',
+    'assets/brand/ydu-mark.svg',
   ]) {
     assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
   }
@@ -455,6 +459,28 @@ check('every brand icon is cut from the supplied logo.png', () => {
   const mark = pixels('assets/images/brand-mark.png');
   assert.equal(at(mark, 0, 0)[3], 0, 'the text-free mark sits on transparent');
   assert.equal(at(mark, mark.width >> 1, mark.height >> 1)[3], 255, 'with the churn opaque at its centre');
+
+  // The brand SVGs are the logo's own pixels in a vector wrapper, not a second drawing: unwrap the
+  // embedded raster and it must carry the same field green and the same centre as logo.png.
+  for (const [file, size] of [
+    ['assets/brand/ydu-logo.svg', 1024],
+    ['assets/brand/ydu-mark.svg', 512],
+  ]) {
+    const svg = read(file);
+    assert.ok(svg.includes(`viewBox="0 0 ${size} ${size}"`), `${file} is a ${size} square`);
+    const match = svg.match(/href="data:image\/png;base64,([^"]+)"/);
+    assert.ok(match, `${file} embeds its pixels rather than redrawing them`);
+    const embedded = decodePng(Buffer.from(match[1], 'base64'));
+    assert.equal(embedded.width, size, `${file} embeds the ${size}px rendition`);
+    if (file.endsWith('ydu-logo.svg')) {
+      assert.ok(close(at(embedded, 0, 0), field, 2), `${file} embeds the logo with its field`);
+      assert.ok(close(at(embedded, size >> 1, size >> 1), centre), `${file} embeds the logo's centre`);
+    } else {
+      assert.equal(at(embedded, 0, 0)[3], 0, `${file} embeds the text-free mark on transparent`);
+      assert.equal(at(embedded, size >> 1, size >> 1)[3], 255, `${file} keeps the churn opaque`);
+    }
+  }
+
 });
 
 check('every onboarding slide fills the window, and the poster leads it', () => {

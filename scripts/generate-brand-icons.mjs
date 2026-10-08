@@ -16,6 +16,9 @@
  *   assets/images/android-icon-foreground.png  432, the logo with its corner field made transparent
  *   assets/images/android-icon-monochrome.png  432, white silhouette of the logo's artwork, for themed icons
  *   assets/images/brand-mark.png               256, the churn and leaves alone (no wordmark), transparent
+ *   assets/brand/ydu-logo.svg                  the lockup as an SVG: the logo's own 1024px pixels embedded,
+ *                                              so vector contexts show exactly logo.png, never a redrawing
+ *   assets/brand/ydu-mark.svg                  the text-free mark as an SVG, embedded the same way at 512
  *
  * The Android pair composes back to the logo exactly: the background layer is the logo's corner green
  * and the foreground is everything inside the disc, at the logo's own proportions, so a square, a
@@ -35,7 +38,7 @@
  * Only node's own zlib is needed (through ./png.mjs); there is deliberately nothing to install.
  */
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +46,7 @@ import { decodePng, encodePng } from './png.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const IMAGE_DIR = resolve(ROOT, 'assets/images');
+const BRAND_DIR = resolve(ROOT, 'assets/brand');
 const LOGO_PATH = resolve(IMAGE_DIR, 'logo.png');
 
 /* ------------------------------------------------------------------ *
@@ -281,9 +285,11 @@ function flat(size, [r, g, b]) {
 
 const opaque = { width: W, height: H, data: PX };
 const layers = { field: transparentField(), mono: monochrome(), mark: markWithoutWordmark() };
+const logo1024 = downscale(opaque, 1024);
+const mark512 = downscale(layers.mark, 512);
 
 const targets = [
-  ['icon.png', downscale(opaque, 1024)],
+  ['icon.png', logo1024],
   ['favicon.png', downscale(opaque, 196)],
   ['splash-icon.png', downscale(opaque, 512)],
   ['brand-logo.png', downscale(opaque, 512)],
@@ -299,8 +305,35 @@ for (const [name, image] of targets) {
   writeFileSync(resolve(IMAGE_DIR, name), encodePng(image));
 }
 
+/* ------------------------------------------------------------------ *
+ * The brand SVGs: the same pixels in a vector container
+ * ------------------------------------------------------------------ */
+
+/**
+ * The two SVGs embed the logo's own pixels in an `<image>` element instead of redrawing the artwork
+ * in paths. A hand-traced SVG would be one more slightly-different logo — thinner leaves, a flatter
+ * churn, a wordmark in a font the artwork never used — which is exactly the drift this script exists
+ * to prevent. Carrying the exact raster keeps every vector context (a browser favicon fallback, a
+ * design doc, a print PDF) showing logo.png itself, at the logo's own proportions.
+ */
+const svgWrap = (size, png) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  <image width="${size}" height="${size}" href="data:image/png;base64,${png.toString('base64')}" />
+</svg>
+`;
+
+mkdirSync(BRAND_DIR, { recursive: true });
+const svgs = [
+  ['ydu-logo.svg', svgWrap(1024, encodePng(logo1024))],
+  ['ydu-mark.svg', svgWrap(512, encodePng(mark512))],
+];
+for (const [name, svg] of svgs) {
+  writeFileSync(resolve(BRAND_DIR, name), svg);
+}
+
 process.stdout.write(
-  `derived ${targets.length} icons from assets/images/logo.png (${W}x${H}, field rgb(${FIELD.slice(0, 3)}))\n  ${targets
+  `derived ${targets.length} icons and ${svgs.length} SVGs from assets/images/logo.png (${W}x${H}, field rgb(${FIELD.slice(0, 3)}))\n  ${targets
     .map(([name, image]) => `${name} ${image.width}x${image.height}`)
+    .concat(svgs.map(([name]) => name))
     .join('\n  ')}\n`,
 );

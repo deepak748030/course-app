@@ -187,10 +187,60 @@ export function encodePng({ width, height, data }) {
   ihdr[8] = 8; // bit depth
   ihdr[9] = 6; // colour type RGBA
   const stride = width * 4;
+  const bpp = 4;
+
+  // Each scanline tries all five filters and keeps the cheapest (the smallest sum of signed
+  // bytes, which is what zlib can squeeze the most out of). Flat icon rows usually pick None or
+  // Up; the logo's gradients pick Paeth — together it halves the file against filter None alone.
+  const filtered = Buffer.alloc(stride);
   const raw = Buffer.alloc((stride + 1) * height);
+  const zero = Buffer.alloc(stride);
   for (let y = 0; y < height; y += 1) {
-    raw[y * (stride + 1)] = 0; // filter none: the icons are flat art, filters buy nothing here
-    Buffer.from(data.buffer, data.byteOffset + y * stride, stride).copy(raw, y * (stride + 1) + 1);
+    const cur = Buffer.from(data.buffer, data.byteOffset + y * stride, stride);
+    const prev = y > 0 ? Buffer.from(data.buffer, data.byteOffset + (y - 1) * stride, stride) : zero;
+    let bestFilter = 0;
+    let bestCost = Infinity;
+    let bestBytes = null;
+    for (let f = 0; f < 5; f += 1) {
+      let cost = 0;
+      for (let x = 0; x < stride; x += 1) {
+        const a = x >= bpp ? cur[x - bpp] : 0;
+        const b = prev[x];
+        const c = x >= bpp ? prev[x - bpp] : 0;
+        let v;
+        switch (f) {
+          case 0:
+            v = cur[x];
+            break;
+          case 1:
+            v = cur[x] - a;
+            break;
+          case 2:
+            v = cur[x] - b;
+            break;
+          case 3:
+            v = cur[x] - ((a + b) >> 1);
+            break;
+          default: {
+            const p = a + b - c;
+            const pa = Math.abs(p - a);
+            const pb = Math.abs(p - b);
+            const pc = Math.abs(p - c);
+            v = cur[x] - (pa <= pb && pa <= pc ? a : pb <= pc ? b : c);
+          }
+        }
+        filtered[x] = v & 0xff;
+        cost += Math.abs(v > 127 ? v - 256 : v);
+        if (cost >= bestCost) break;
+      }
+      if (cost < bestCost) {
+        bestCost = cost;
+        bestFilter = f;
+        bestBytes = Buffer.from(filtered);
+      }
+    }
+    raw[y * (stride + 1)] = bestFilter;
+    bestBytes.copy(raw, y * (stride + 1) + 1);
   }
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
