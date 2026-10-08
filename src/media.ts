@@ -17,8 +17,8 @@ export const images = {
   brandMark: require('@/assets/images/brand-mark.png') as ImageSource,
 
   /**
-   * Onboarding slide 1: the YDU Academy poster. It carries its own lettering, so the slide adds no
-   * headline of its own over it — only the brand lock-up in the artwork's empty top area.
+   * Onboarding slide 1: the YDU Academy poster. It carries its own lettering — the lock-up, the name
+   * and the tagline are printed in the artwork — so the slide writes nothing over it at all.
    */
   /**
    * Onboarding art is portrait (768×1376) on purpose: each slide's image fills the whole screen with

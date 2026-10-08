@@ -106,20 +106,24 @@ changes are needed.
 Derived media is reproducible and documented in scripts:
 
 ```bash
-bash scripts/generate-media.sh        # demo lesson clips (ffmpeg) + placeholder panels
-bash scripts/generate-brand-assets.sh # app icon, splash, favicon, Android adaptive layers
+bash scripts/generate-media.sh         # demo lesson clips (ffmpeg) + placeholder panels
+node scripts/generate-brand-icons.mjs  # app icon, splash, favicon, Android adaptive layers — all cut from assets/images/logo.png
 ```
 
 `assets/videos/demo-clip-*.mp4` are short, silent demo clips (a slow push-in over a still) used as
 placeholder lesson and trailer footage until real course video exists. They are real, playable files —
 no invented streaming URLs are used anywhere.
 
-The brand mark is a **milk can with a play triangle on its face and a drop beneath it**, drawn as
-vector geometry in `src/components/marks.tsx` (a 48-unit box: lid plate and neck, tapered shoulder,
-straight can body, knocked-out play triangle, drop) and mirrored by
-`scripts/generate-brand-assets.sh`, so the app icon, splash, favicon, Android adaptive layers and the
-in-app mark all come from the same source of truth. The wordmark is the two weights of DM Sans —
-"YDU" semibold, "Academy" regular.
+The brand logo is the supplied artwork **`assets/images/logo.png`** — a green field, a white disc, a
+milk churn with two leaves, and the name YDU ACADEMY. It is the single source of truth: every icon
+the platforms ask for (app icon, splash, favicon, the Android adaptive layers, the in-app lockup
+raster and the text-free mark) is cut out of that one file's pixels by
+`scripts/generate-brand-icons.mjs`, so nothing can drift into a lookalike of the logo. The small
+in-app mark used by headers and tiles stays vector geometry in `src/components/marks.tsx`, and
+`scripts/selfcheck.ts` pins both halves: the mark's geometry, and pixel-level proof that each derived
+icon still carries the supplied logo's own colours. The two brand SVGs (`assets/brand/ydu-logo.svg`
+and `assets/brand/ydu-mark.svg`) are derived the same way — the logo's own pixels embedded in a
+vector wrapper — so even vector contexts show logo.png instead of a redrawing of it.
 
 ## Design system
 
@@ -414,6 +418,12 @@ onboarding completion and app preferences are kept.
 - The brand mark was rendered at 512px and at 96px to check it survives icon size, and the app icon,
   splash, favicon and Android adaptive layers were regenerated from the same geometry. Onboarding,
   auth and the tabs all still boot with zero import errors.
+- The supplied `logo.png` became the single source for the whole icon set: `icon.png`, `favicon.png`,
+  `splash-icon.png`, `brand-logo.png`, the three Android adaptive layers and the text-free
+  `brand-mark.png` are now cut out of its pixels by `scripts/generate-brand-icons.mjs` (with a small
+  dependency-free PNG codec in `scripts/png.mjs`), and `scripts/selfcheck.ts` verifies them
+  pixel-wise against the logo. The first onboarding screen no longer writes its own Hindi title and
+  tagline over the poster artwork, which already carries that lettering.
 - Not performed: device/emulator runs, EAS builds, and pixel-level visual review (no browser or
   simulator in this environment) — layouts and gestures have not been verified on hardware.
 
