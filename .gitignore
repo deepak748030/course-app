@@ -3,7 +3,7 @@
 # dependencies
 node_modules/
 
-# Expo
+# Expo (app/)
 .expo/
 dist/
 web-build/
@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -42,3 +43,9 @@ example
 /ios
 /android
 package-lock.json
+
+# admin dashboard build output
+admin-dashboard/dist/
+
+# server logs
+server/*.log
