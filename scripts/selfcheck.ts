@@ -394,7 +394,18 @@ check('every brand icon is cut from the supplied logo.png', () => {
     'the supplied logo.png is registered for the in-app lockup',
   );
   assert.ok(read('app.json').includes('"icon": "./assets/images/logo.png"'), 'the app icon uses logo.png');
+  // Where the supplied file is shown in the app itself: the boot screen, the sign-in hero and the
+  // home header show the whole lockup; the small spots (the footer, the brand row) use the same
+  // artwork with the wordmark cut away, because a 14px "ACADEMY" is not a word, it is a smudge.
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
+  assert.ok(read('src/app/auth/phone.tsx').includes('<BrandLockup'), 'so does the sign-in hero');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandLockup'), 'and the home header');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandMark size={20} />'), 'the footer uses the mark');
+  assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
+  assert.ok(
+    !read('src/components/ui.tsx').includes('BrandTile'),
+    'nothing tints the mark into a coloured tile any more — the logo brings its own colours',
+  );
 
   // The icon set itself: every size the platforms ask for, written by the generator.
   for (const file of [

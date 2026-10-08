@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { BrandMark } from '@/components/marks';
+import { BrandLockup } from '@/components/marks';
 import { AppBar, Button, ErrorState, FormField, Screen, scrollClip } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
@@ -62,7 +62,8 @@ export default function PhoneScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.intro}>
-            <BrandMark size={40} />
+            {/* The lockup, disc and all — the sign-in screen has the room for the whole logo. */}
+            <BrandLockup width={96} />
             <Text style={[type.title, { color: colors.text }]}>{t("What is your mobile number?")}</Text>
             <Text style={[type.body, { color: colors.textMuted }]}>{t("We use it to keep your courses, progress and notes on your account. No marketing calls, ever.")}</Text>
           </View>
