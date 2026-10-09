@@ -1,0 +1,122 @@
+/**
+ * Realtime channel (socket.io) for the dashboard.
+ *
+ * Connects with the signed-in admin's token so the server admits the socket into the
+ * `admins` room, then surfaces the live activity the server pushes:
+ *
+ *   order.created    a learner paid (or a payment was recorded)
+ *   user.registered  a new account signed up
+ *   review.created   a learner posted a review
+ *   catalog.changed  a course or category was created/edited/deleted
+ *   settings.updated the app settings changed
+ *
+ * The dashboard uses this for two things: instant toasts in the layout, and automatic
+ * refreshes on the page whose data just changed. In demo mode (server unreachable) the
+ * socket simply stays disconnected and everything keeps working against the demo store.
+ */
+import { io, type Socket } from 'socket.io-client';
+import { getToken } from './client';
+
+export type RealtimeEvent =
+  | 'order.created'
+  | 'user.registered'
+  | 'review.created'
+  | 'catalog.changed'
+  | 'settings.updated';
+
+type Handler = (payload: Record<string, unknown>) => void;
+
+let socket: Socket | null = null;
+let connected = false;
+let demoModeActive = false;
+
+const statusListeners = new Set<(on: boolean) => void>();
+const handlers = new Map<RealtimeEvent, Set<Handler>>();
+
+function setConnected(on: boolean) {
+  if (connected !== on) {
+    connected = on;
+    statusListeners.forEach((cb) => cb(on));
+  }
+}
+
+/** Live indicator state for the layout's status dot. */
+export const isRealtimeConnected = () => connected;
+export function onRealtimeStatus(cb: (on: boolean) => void) {
+  statusListeners.add(cb);
+  return () => {
+    statusListeners.delete(cb);
+  };
+}
+
+export function onRealtimeEvent(event: RealtimeEvent, handler: Handler) {
+  if (!handlers.has(event)) handlers.set(event, new Set());
+  handlers.get(event)!.add(handler);
+  return () => {
+    handlers.get(event)?.delete(handler);
+  };
+}
+
+function wire(socketInstance: Socket) {
+  for (const event of handlers.keys()) {
+    socketInstance.on(event, (payload: Record<string, unknown>) => {
+      handlers.get(event as RealtimeEvent)?.forEach((handler) => handler(payload ?? {}));
+    });
+  }
+}
+
+/** Called once the admin is signed in and the dashboard talks to a real server. */
+export function connectRealtime() {
+  if (socket || demoModeActive) return;
+  const token = getToken();
+  if (!token) return;
+
+  // Same origin serves the API (Vite proxies /api and /socket.io to the server).
+  socket = io(window.location.origin, {
+    path: '/socket.io',
+    auth: { token },
+    transports: ['websocket', 'polling'],
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 2000,
+  });
+
+  socket.on('connect', () => setConnected(true));
+  socket.on('disconnect', () => setConnected(false));
+  socket.on('connect_error', () => setConnected(false));
+  wire(socket);
+}
+
+export function disconnectRealtime() {
+  socket?.disconnect();
+  socket = null;
+  setConnected(false);
+}
+
+/** Demo mode means no server — keep the socket down so it does not retry forever. */
+export function setRealtimeDemoMode(on: boolean) {
+  demoModeActive = on;
+  if (on) disconnectRealtime();
+}
+
+import { useEffect } from 'react';
+
+/**
+ * Re-run `reload` whenever one of the given server events arrives.
+ * Debounced lightly so a burst (one save can emit several events) hits the API once.
+ */
+export function useRealtimeRefresh(events: RealtimeEvent[], reload: () => void) {
+  useEffect(() => {
+    let timer: number | undefined;
+    const offs = events.map((event) =>
+      onRealtimeEvent(event, () => {
+        if (timer) window.clearTimeout(timer);
+        timer = window.setTimeout(() => reload(), 400);
+      })
+    );
+    return () => {
+      offs.forEach((off) => off());
+      if (timer) window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [events.join(','), reload]);
+}

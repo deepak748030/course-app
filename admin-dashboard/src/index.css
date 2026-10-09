@@ -1,0 +1,70 @@
+@import 'tailwindcss';
+
+/*
+ * YDU Academy admin theme — same white + yellow system as the mobile app
+ * (app/src/constants/theme.ts → yellowPalette):
+ * white surfaces, warm neutrals, #FFC629 accent, hairline borders, no shadows.
+ */
+@theme {
+  --font-sans: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  --color-canvas: #faf9f5; /* warm page background so white cards read */
+  --color-surface: #ffffff;
+  --color-surface-alt: #fbf5e4;
+
+  --color-ink: #17150f;
+  --color-muted: #6b6455;
+  --color-subtle: #968f7c;
+
+  --color-brand: #ffc629;
+  --color-brand-pressed: #f0b100;
+  --color-brand-soft: #fff4cc;
+  --color-brand-ink: #8a6200;
+  --color-gold: #d9a400;
+  --color-gold-soft: #fbeec4;
+
+  --color-success: #2f6b47;
+  --color-success-soft: #e7f0ea;
+  --color-error: #b42318;
+  --color-error-soft: #faeae8;
+  --color-info: #275a8c;
+  --color-info-soft: #e6eef6;
+
+  --color-line: rgba(23, 21, 15, 0.12);
+  --color-line-soft: rgba(23, 21, 15, 0.07);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-ink);
+}
+
+/* Thin, warm scrollbars to match the flat look */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(23, 21, 15, 0.18) transparent;
+}
+
+/* Recharts polish */
+.recharts-cartesian-axis-tick text {
+  font-size: 11px;
+  fill: var(--color-subtle);
+  font-family: var(--font-sans);
+}
+.recharts-tooltip-cursor {
+  fill: rgba(23, 21, 15, 0.04);
+}
