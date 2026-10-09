@@ -114,6 +114,16 @@ export interface AppSettings {
   currency: string;
   maintenanceMode: boolean;
   minAppVersion: string;
+  homeBanners: HomeBanner[];
+}
+
+/** A poster on the app's home screen. Empty imageUrl = the linked course's cover. */
+export interface HomeBanner {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  courseSlug: string;
+  active: boolean;
 }
 
 export interface Overview {

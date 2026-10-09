@@ -195,6 +195,8 @@ export type ServerSettings = {
   currency: string;
   maintenanceMode: boolean;
   minAppVersion: string;
+  /** Poster slider on the home screen; empty = featured courses. */
+  homeBanners?: { imageUrl: string; title: string; subtitle: string; courseSlug: string; active: boolean }[];
 };
 
 export const api = {

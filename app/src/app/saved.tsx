@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { CourseImage } from '@/components/course-image';
 import { useRouter } from 'expo-router';
 import { Bookmark, BookOpen, ShoppingBasket } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
@@ -68,7 +69,7 @@ export default function SavedScreen() {
                 accessibilityLabel={`${course.title}, saved. Open course.`}
                 onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
                 style={({ pressed }) => [styles.courseRow, pressed && { opacity: 0.75 }]}>
-                <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
+                <CourseImage source={course.cover} style={styles.thumb} transition={140} />
                 <View style={styles.flex}>
                   <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
                     {course.title}
@@ -107,7 +108,7 @@ export default function SavedScreen() {
                   })
                 }
                 style={({ pressed }) => [styles.recipeInner, pressed && { opacity: 0.75 }]}>
-                <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
+                <CourseImage source={course.cover} style={styles.thumb} transition={140} />
                 <View style={styles.flex}>
                   <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
                     {lesson.recipe!.title}

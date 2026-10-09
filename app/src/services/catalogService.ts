@@ -4,6 +4,7 @@
  * app shows, and the catalog context refreshes in realtime when admins change it.
  */
 
+import { COVER_PLACEHOLDER } from '@/constants/covers';
 import { API_URL, api, type ServerCourse } from '@/services/api';
 
 import type { Category, Course, Lesson, Recipe, VideoKey } from '@/types';
@@ -24,12 +25,15 @@ const CATEGORY_CLIP: Record<string, VideoKey> = {
 };
 
 /** expo-image accepts { uri } sources; the web needs a plain string in some cases. */
-function coverSource(coverUrl: string) {
-  if (!coverUrl) return require('@/assets/images/placeholder-panel-4x3.jpg');
+export function coverSource(coverUrl: string) {
+  if (!coverUrl) return COVER_PLACEHOLDER;
   // The local upload provider (no Cloudinary configured) answers /uploads/... paths.
   const url = coverUrl.startsWith('/') ? `${API_URL}${coverUrl}` : coverUrl;
   return { uri: url };
 }
+
+/** Any media URL (banner image, cover) as an expo-image source, with the shared fallback. */
+export const mediaSource = coverSource;
 
 function mapRecipe(server: ServerCourse['sections'][number]['lessons'][number]['recipe']): Recipe | undefined {
   if (!server) return undefined;

@@ -8,6 +8,7 @@
  * - Prices, ratings and counters use tabular figures so columns never wobble.
  * - Every visible metric has a reason to be on the card; nothing is decorative.
  */
+import { CourseImage } from '@/components/course-image';
 import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
@@ -63,7 +64,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}>
         <View style={styles.cardImageWrap}>
-          <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
+          <CourseImage source={course.cover} style={styles.cardImage} transition={160} />
           {/* The offer mark owns the top-left corner of the artwork; the level is in the body, once. */}
           {offer ? <OfferBadge percent={offer} size="md" style={styles.cardOffer} /> : null}
         </View>
@@ -127,7 +128,7 @@ export function CourseRow({ course }: { course: Course }) {
       )}.`}
       onPress={() => openCourse(router, course.id)}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
-      <Image source={course.cover} style={styles.rowImage} contentFit="cover" transition={140} />
+      <CourseImage source={course.cover} style={styles.rowImage} transition={140} />
 
       <View style={styles.flex}>
         <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
@@ -196,7 +197,7 @@ export function ContinueCard({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={({ pressed }) => [styles.continueRow, boxed && styles.continueRowBoxed, pressed && { opacity: 0.75 }]}>
-        <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={140} />
+        <CourseImage source={course.cover} style={styles.continueImage} transition={140} />
         <View style={styles.continueCopy}>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
             {course.title}

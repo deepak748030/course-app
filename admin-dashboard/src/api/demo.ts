@@ -415,6 +415,7 @@ function buildDb(): DemoDb {
     reviews,
     coupons,
     settings: {
+      homeBanners: [],
       appName: 'YDU Academy',
       tagline: 'Learn the dairy trade, one batch at a time.',
       supportEmail: 'support@ydu.academy',

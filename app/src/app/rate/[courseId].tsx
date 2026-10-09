@@ -12,6 +12,7 @@
  *   - once saved, the page shows what was saved and offers to edit it, rather than pretending the
  *     rating reached a catalogue.
  */
+import { CourseImage } from '@/components/course-image';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { CircleCheck, Star } from 'lucide-react-native';
@@ -134,7 +135,7 @@ export default function RateCourseScreen() {
       {/* The course, so the learner knows which one they are rating. */}
       <View style={styles.pad}>
         <View style={styles.courseCard}>
-          <Image source={course.cover} style={styles.cover} contentFit="cover" transition={200} />
+          <CourseImage source={course.cover} style={styles.cover} transition={200} />
           <View style={styles.flex}>
             <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
               {course.title}

@@ -5,6 +5,7 @@
  * record on the learner's account: amount paid, coupon used, date and status.
  */
 
+import { CourseImage } from '@/components/course-image';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Receipt, WifiOff } from 'lucide-react-native';
@@ -113,7 +114,7 @@ export default function TransactionsScreen() {
                     onPress={() => openCourse(order, course)}
                     style={({ pressed }) => [styles.row, pressed && { opacity: 0.72 }]}>
                     {course ? (
-                      <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
+                      <CourseImage source={course.cover} style={styles.thumb} transition={140} />
                     ) : (
                       <View style={styles.thumb} />
                     )}

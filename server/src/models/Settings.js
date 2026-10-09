@@ -6,6 +6,19 @@ const { Schema } = mongoose;
  * Singleton document with app-wide settings the admin dashboard controls
  * (id fixed to 'app'). The mobile app reads these at startup.
  */
+/** One home-screen banner. Image falls back to the linked course's cover when empty. */
+const homeBannerSchema = new Schema(
+  {
+    imageUrl: { type: String, default: '', trim: true },
+    title: { type: String, default: '', trim: true },
+    subtitle: { type: String, default: '', trim: true },
+    /** Slug of the course the banner opens. Empty = banner is informational only. */
+    courseSlug: { type: String, default: '', trim: true },
+    active: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
 const settingsSchema = new Schema(
   {
     _id: { type: String, default: 'app' },
@@ -18,6 +31,8 @@ const settingsSchema = new Schema(
     maintenanceMode: { type: Boolean, default: false },
     /** Minimum app build allowed to talk to this server, e.g. "1.2.0". Empty = no gate. */
     minAppVersion: { type: String, default: '' },
+    /** Poster banners at the top of the app's home screen (max 5). Empty = featured courses. */
+    homeBanners: { type: [homeBannerSchema], default: [] },
   },
   { timestamps: true }
 );

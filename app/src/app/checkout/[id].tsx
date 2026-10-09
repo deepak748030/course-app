@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { CourseImage } from '@/components/course-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   CircleCheck,
@@ -143,7 +144,7 @@ export default function CheckoutScreen() {
             on top, the order lines under a hairline, the total last. */}
         <View style={styles.card}>
           <View style={styles.courseRow}>
-            <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={150} />
+            <CourseImage source={course.cover} style={styles.thumb} transition={150} />
             <View style={styles.flex}>
               <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
                 {course.title}

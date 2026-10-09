@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { CourseImage } from '@/components/course-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -161,7 +162,7 @@ export default function CourseDetailsScreen() {
         contentStyle={{ paddingBottom: insets.bottom + 120 }}
         header={
           <View style={styles.hero}>
-            <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
+            <CourseImage source={course.cover} style={styles.heroImage} transition={200} />
             <Scrim to={colors.scrim} />
             <View style={[styles.heroBar, { paddingTop: insets.top + spacing.xs }]}>
               <IconButton

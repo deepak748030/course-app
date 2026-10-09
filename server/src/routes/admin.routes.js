@@ -166,6 +166,18 @@ const settingsSchema = z.object({
   currency: z.string().trim().length(3).optional(),
   maintenanceMode: z.boolean().optional(),
   minAppVersion: z.string().trim().max(20).optional(),
+  homeBanners: z
+    .array(
+      z.object({
+        imageUrl: z.string().trim().max(500).default(''),
+        title: z.string().trim().max(80).default(''),
+        subtitle: z.string().trim().max(160).default(''),
+        courseSlug: z.string().trim().max(80).default(''),
+        active: z.boolean().default(true),
+      })
+    )
+    .max(5)
+    .optional(),
 });
 
 router.get('/settings', settings.getSettings);
