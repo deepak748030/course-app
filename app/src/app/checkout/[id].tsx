@@ -34,7 +34,7 @@ import { ApiError, api } from '@/services/api';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
-import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
+import { razorpayPaymentService } from '@/services/payments';
 import { useStore } from '@/store';
 import { formatDuration, formatInr } from '@/lib/format';
 import { feedback } from '@/lib/util';
@@ -61,7 +61,6 @@ export default function CheckoutScreen() {
     if (course) track('checkout_started', { courseId: course.remoteId });
   }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [couponError, setCouponError] = useState<string | null>(null);
-  const [scenario, setScenario] = useState<DemoScenario>('success');
   const [processing, setProcessing] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>(null);
 
@@ -113,42 +112,25 @@ export default function CheckoutScreen() {
   const pay = async () => {
     setProcessing(true);
     setOutcome(null);
-    const result = await demoPaymentService.authorize({ courseId: course.id, amountInr: payable, scenario });
+    // Razorpay collects the payment; the server verifies it and grants the course.
+    const result = await razorpayPaymentService.pay({ courseId: course.remoteId, couponCode: coupon?.code });
+    setProcessing(false);
 
     if (result.status === 'paid') {
-      // The demo gateway approved the payment — record it on the server so the account,
-      // not this device, owns the course.
-      try {
-        await api.createOrder({
-          courseId: course.remoteId,
-          couponCode: coupon?.code,
-          paymentReference: result.reference,
-        });
-        addEnrollment({
-          courseId: course.id,
-          purchasedAt: new Date().toISOString(),
-          priceInr: payable,
-          source: 'server',
-          couponCode: coupon?.code,
-        });
-        feedback.success();
-        setProcessing(false);
-        router.replace({ pathname: '/purchase-success', params: { courseId: course.id } });
-        return;
-      } catch (err) {
-        setProcessing(false);
-        feedback.error();
-        setOutcome({
-          kind: 'failed',
-          message: err instanceof Error ? err.message : 'The order could not be recorded. Try again.',
-        });
-        return;
-      }
+      addEnrollment({
+        courseId: course.id,
+        purchasedAt: new Date().toISOString(),
+        priceInr: payable,
+        source: 'server',
+        couponCode: coupon?.code,
+      });
+      feedback.success();
+      router.replace({ pathname: '/purchase-success', params: { courseId: course.id, orderId: result.orderId } });
+      return;
     }
 
-    setProcessing(false);
     feedback.error();
-    if (result.status === 'failed') setOutcome({ kind: 'failed', message: t(result.reason) });
+    if (result.status === 'failed') setOutcome({ kind: 'failed', message: result.reason });
     else setOutcome({ kind: 'cancelled' });
   };
 
@@ -182,7 +164,7 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
-          <SectionHeader title={t("Coupon")} subtitle={t("Demo codes only \u2014 nothing is charged")} />
+          <SectionHeader title={t("Coupon")} subtitle={t("Enter a valid code to apply your discount")} />
           {coupon ? (
             <View style={styles.couponRow}>
               <Tag size={16} color={colors.success} strokeWidth={2} />
@@ -253,47 +235,11 @@ export default function CheckoutScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.headRow}>
-            <SectionHeader
-              title={t("Demo payment")}
-              subtitle={t("Pick the outcome the demo should reproduce")}
-              style={styles.flex}
-            />
-            <Badge label={t("No real payment")} tone="gold" />
-          </View>
-          <View style={styles.card}>
-            {demoScenarios.map((option, index) => {
-              const selected = scenario === option.id;
-              return (
-                <View key={option.id}>
-                  {index > 0 ? <View style={styles.rowRule} /> : null}
-                  <Pressable
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                    accessibilityLabel={t('{label}. {help}', { label: t(option.label), help: t(option.help) })}
-                    disabled={processing}
-                    onPress={() => {
-                      feedback.select();
-                      setScenario(option.id);
-                      setOutcome(null);
-                    }}
-                    style={({ pressed }) => [styles.scenarioRow, pressed && { opacity: 0.7 }]}>
-                    <View style={styles.flex}>
-                      <Text style={[type.body, { color: colors.text }]}>{t(option.label)}</Text>
-                      <Text style={[type.label, { color: colors.textMuted }]}>{t(option.help)}</Text>
-                    </View>
-                    <View style={[styles.radio, selected && styles.radioSelected]}>
-                      {selected ? <View style={styles.radioDot} /> : null}
-                    </View>
-                  </Pressable>
-                </View>
-              );
-            })}
-          </View>
+          <SectionHeader title={t("Secure payment")} subtitle={t("Razorpay Checkout opens when you pay")} />
           <View style={styles.security}>
             <ShieldCheck size={16} color={colors.sage} strokeWidth={1.9} />
             <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
-              {t('No card, UPI or bank details are requested or stored. A demo purchase only unlocks the course locally, on this device.')}
+              {t("Card, UPI and bank details are entered in Razorpay's secure checkout. They are never shared with this app or the academy server.")}
             </Text>
           </View>
         </View>
@@ -314,10 +260,10 @@ export default function CheckoutScreen() {
             <Text style={[type.body, { color: colors.textMuted }]}>
               {outcome.kind === 'failed'
                 ? `${outcome.message} Nothing was charged and the course stays locked.`
-                : 'You closed the demo payment before it finished. Nothing was charged and the course stays locked.'}
+                : 'You closed the payment before it finished. Nothing was charged and the course stays locked.'}
             </Text>
             <Button
-              label={t("Try the demo payment again")}
+              label={t("Try the payment again")}
               variant="secondary"
               fullWidth={false}
               onPress={pay}
@@ -333,13 +279,13 @@ export default function CheckoutScreen() {
               <Text style={[type.bodyStrong, { color: colors.text }]}>{t("Already purchased")}</Text>
             </View>
             <Text style={[type.body, { color: colors.textMuted }]}>
-              {t('This course is already unlocked on your account. Buying again would only create a duplicate demo enrolment, so there is nothing to pay.')}
+              {t('This course is already unlocked on your account. Buying again would only create a duplicate enrolment, so there is nothing to pay.')}
             </Text>
           </View>
         ) : null}
 
         <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>
-          {t('Payment is simulated by the demo gateway; the purchase itself is recorded on your account by the academy server.')}
+          {t('Payments are processed by Razorpay. Your course is recorded on your account once the payment is confirmed.')}
         </Text>
       </Screen>
 

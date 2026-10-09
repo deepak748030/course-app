@@ -348,7 +348,7 @@ export function PriceSummary({
       ) : null}
       <View style={styles.summaryDivider} />
       <SummaryRow label={t("Total payable")} value={formatInr(total)} strong accent />
-      <Text style={[type.label, { color: colors.textMuted }]}>{t("Inclusive of taxes. Demo checkout \u2014 no payment is processed.")}</Text>
+      <Text style={[type.label, { color: colors.textMuted }]}>{t("Inclusive of taxes. Secure checkout by Razorpay.")}</Text>
     </View>
   );
 }

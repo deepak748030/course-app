@@ -58,7 +58,7 @@ export const faqs: FaqItem[] = [
     id: 'f2',
     question: 'Are the purchases in this app real?',
     answer:
-      'No. YDU Academy currently ships a demo checkout: no payment gateway is connected, no card details are ever collected, and no money moves. The course unlocks locally so you can see the full journey.',
+      'Yes. Payments are processed by Razorpay in its secure checkout. Card, UPI and bank details never reach the YDU Academy app or server, and the course unlocks on your account once the payment is confirmed.',
   },
   {
     id: 'f3',

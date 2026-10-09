@@ -393,7 +393,7 @@ export default function CourseDetailsScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text style={[type.label, { color: colors.textMuted }]}>{t("One-time \u00b7 demo checkout")}</Text>
+              <Text style={[type.label, { color: colors.textMuted }]}>{t("One-time \u00b7 secure checkout")}</Text>
             </View>
             <Button
               label={t("Buy now")}

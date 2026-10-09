@@ -55,6 +55,15 @@
       "backgroundColor": "#FFFFFF",
       "barStyle": "dark-content",
       "translucent": false
+    },
+    "ios": {
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "phonepe",
+          "paytmmp"
+        ]
+      }
     }
   }
 }

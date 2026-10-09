@@ -9,6 +9,7 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { initializeRealtime } from './realtime/socket.js';
 import routes from './routes/index.js';
 import { requestCounter } from './services/analytics.js';
+import { razorpayWebhook } from './controllers/payments.controller.js';
 import { uploadDir } from './services/uploads.js';
 
 const app = express();
@@ -29,6 +30,10 @@ app.use(
 // gzip every JSON payload: catalog responses shrink ~70%, which the app feels
 // directly on slow mobile connections.
 app.use(compression());
+
+// Razorpay webhooks are signed over the exact raw bytes, so this route must see the body
+// before express.json() parses it.
+app.post('/api/payments/razorpay/webhook', express.raw({ type: '*/*', limit: '1mb' }), razorpayWebhook);
 
 app.use(express.json({ limit: '1mb' }));
 if (!isProd) app.use(morgan('dev'));

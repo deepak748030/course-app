@@ -8,6 +8,7 @@ import catalogRoutes from './catalog.routes.js';
 import couponsRoutes from './coupons.routes.js';
 import enrollmentsRoutes from './enrollments.routes.js';
 import ordersRoutes from './orders.routes.js';
+import paymentsRoutes from './payments.routes.js';
 import reviewsRoutes from './reviews.routes.js';
 import settingsRoutes from './settings.routes.js';
 import uploadsRoutes from './uploads.routes.js';
@@ -32,6 +33,7 @@ router.use('/auth', authRoutes);
 router.use('/', catalogRoutes); // /api/categories, /api/courses
 router.use('/analytics', analyticsRoutes); // /api/analytics/events
 router.use('/orders', ordersRoutes);
+router.use('/payments', paymentsRoutes);
 router.use('/enrollments', enrollmentsRoutes);
 router.use('/users', usersRoutes);
 router.use('/', reviewsRoutes); // /api/courses/:courseId/reviews

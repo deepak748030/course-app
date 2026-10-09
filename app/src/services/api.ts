@@ -159,6 +159,17 @@ export type ServerOrder = {
   createdAt: string;
 };
 
+/** What the app needs to open Razorpay Checkout. The key id is public; the secret never leaves the server. */
+export type RazorpayOrderConfig = {
+  keyId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  prefill: { name?: string; email?: string; contact?: string };
+};
+
 export type ServerEnrollment = {
   _id: string;
   course: { _id: string; slug: string; title: string; priceInr: number } | null;
@@ -225,8 +236,15 @@ export const api = {
       '/api/coupons/validate',
       { method: 'POST', body: { code, courseId } },
     ),
-  createOrder: (input: { courseId: string; couponCode?: string; paymentReference?: string }) =>
-    request<{ order: ServerOrder }>('/api/orders', { method: 'POST', body: input }),
+  /** Prices the course on the server and opens a Razorpay order for the checkout sheet. */
+  createRazorpayOrder: (input: { courseId: string; couponCode?: string }) =>
+    request<{ order: ServerOrder; razorpay: RazorpayOrderConfig }>('/api/payments/razorpay/order', {
+      method: 'POST',
+      body: input,
+    }),
+  /** Confirms a successful checkout with the server, which grants the course. */
+  verifyRazorpayPayment: (input: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    request<{ order: ServerOrder }>('/api/payments/razorpay/verify', { method: 'POST', body: input }),
   myOrders: () => request<{ orders: ServerOrder[] }>('/api/orders/my'),
 
   // ---- learning ----

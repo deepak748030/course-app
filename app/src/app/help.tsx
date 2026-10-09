@@ -84,7 +84,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[docText, styles.supportText, { color: colors.textMuted }]}>
-              {t('Courses, prices and reviews are sample content. Authentication and payments are demo implementations. Anything that is not implemented in the app is said so plainly rather than shown as a working control.')}
+              {t('Courses, prices and reviews are sample content. Sign-in codes are demo codes until an SMS provider is connected. Payments are processed by Razorpay. Anything that is not implemented in the app is said so plainly rather than shown as a working control.')}
             </Text>
           </View>
           <Text style={[docText, { color: colors.textSubtle }]}>

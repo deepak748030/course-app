@@ -39,6 +39,19 @@ retries; while the database is down, every data route answers a clean `503` and
 Any other valid Indian mobile number also works in the app with OTP `246810`, outside
 production. Each seeded learner has a unique +91 mobile number (10 digits starting 6–9).
 
+## Payments (Razorpay)
+
+- `POST /api/payments/razorpay/order` `{ courseId, couponCode? }` prices the course on the server,
+  creates a Razorpay order and returns the checkout config (public key id, order id, amount in paise).
+- `POST /api/payments/razorpay/verify` `{ razorpay_order_id, razorpay_payment_id, razorpay_signature }`
+  checks the HMAC signature, confirms with Razorpay that the payment is `captured` and that the
+  amount matches, then unlocks the course. Calling it again is safe.
+- `POST /api/payments/razorpay/webhook` handles `payment.captured` as a backup, so a course still
+  unlocks if the app closes before verify. It is checked against `RAZORPAY_WEBHOOK_SECRET`.
+- `POST /api/orders` no longer creates paid orders. A learner can only get a paid order through Razorpay.
+- Set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` and `RAZORPAY_WEBHOOK_SECRET` in `.env`. Without the keys
+  the payment routes answer `503 Payments are not configured`.
+
 ## Phone sign-in (OTP)
 
 - `POST /api/auth/otp/request` `{ phone }` sends a six-digit code. The phone may be typed as
@@ -74,7 +87,9 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `POST` | `/api/auth/register` | create email + password account |
 | `POST` | `/api/auth/login` | email + password → JWT (admin dashboard) |
 | `GET` | `/api/auth/me` | current user |
-| `POST` | `/api/orders` | checkout (creates enrollment when paid) |
+| `POST` | `/api/payments/razorpay/order` | start a Razorpay checkout for a course |
+| `POST` | `/api/payments/razorpay/verify` | confirm a Razorpay payment and unlock the course |
+| `POST` | `/api/payments/razorpay/webhook` | Razorpay webhook (signed, raw body) |
 | `GET` | `/api/orders/my` | learner's transactions |
 | `POST` | `/api/coupons/validate` | check a code + discounted price |
 | `GET/POST` | `/api/courses/:courseId/reviews` | list / write a review (enrolled only) |

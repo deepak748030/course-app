@@ -17,7 +17,7 @@ export default function PurchaseSuccessScreen() {
   const { byId } = useCatalog();
   const t = useT();
 
-  const { courseId } = useLocalSearchParams<{ courseId: string }>();
+  const { courseId, orderId } = useLocalSearchParams<{ courseId: string; orderId?: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isEnrolled, state } = useStore();
@@ -81,14 +81,14 @@ export default function PurchaseSuccessScreen() {
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={[type.label, { color: colors.textMuted }]}>{t('Paid (demo)')}</Text>
+          <Text style={[type.label, { color: colors.textMuted }]}>{t('Paid')}</Text>
           <AppText variant="bodyStrong" style={[tabularNums, styles.right]}>
             {enrollment ? formatInr(enrollment.priceInr) : '—'}
           </AppText>
         </View>
         <View style={styles.summaryRow}>
           <Text style={[type.label, { color: colors.textMuted }]}>{t("Reference")}</Text>
-          <Text style={[type.label, styles.right, { color: colors.textMuted }]}>local demo enrolment</Text>
+          <Text style={[type.label, styles.right, { color: colors.textMuted }]} numberOfLines={1}>{orderId ? orderId : '—'}</Text>
         </View>
       </DataList>
 

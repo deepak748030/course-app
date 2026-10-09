@@ -582,9 +582,8 @@ check('a bought course can be rated locally and posted to the server', () => {
 });
 
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
-  const [helpers, payments, content, i18n, hindi] = await Promise.all([
+  const [helpers, content, i18n, hindi] = await Promise.all([
     import('../src/lib/catalog'),
-    import('../src/services/payments'),
     import('../src/data/content'),
     import('../src/i18n'),
     import('../src/i18n/hi'),
@@ -634,14 +633,11 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     ...helpers.sortOptions.map((option) => option.label),
     ...helpers.priceBandOptions.map((option) => option.label),
     ...helpers.durationOptions.map((option) => option.label),
-    ...payments.demoScenarios.flatMap((scenario) => [scenario.label, scenario.help]),
     ...content.purchaseTerms,
     ...content.ratingWords,
     ...content.ratingHighlights,
     // The two theme names and their descriptions, rendered through t() by the picker on Profile.
     ...THEMES.flatMap((theme) => [theme.label, theme.description]),
-    // The one message the demo gateway returns (src/services/payments.ts).
-    'The demo gateway declined this payment. No money moved.',
     // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).
     buildDateOfBirth('31', '02', '1996', today).error!,
     buildDateOfBirth('05', '10', '2030', today).error!,

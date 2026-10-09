@@ -265,7 +265,7 @@ export default function ProfileScreen() {
             <ListRow
               icon={Receipt}
               label={t("Transactions")}
-              subtitle={t("Demo purchases made on this device")}
+              subtitle={t("Your course purchases and payments")}
               onPress={() => router.push('/transactions')}
             />
             <ListRow
@@ -305,7 +305,7 @@ export default function ProfileScreen() {
             </AppText>
             <Badge label={t("Demo")} tone="gold" />
           </View>
-          <AppText variant="label" color={colors.textSubtle}>{t("Sample catalog, demo authentication and demo payments. No real transactions.")}</AppText>
+          <AppText variant="label" color={colors.textSubtle}>{t("Sample catalog and demo sign-in codes. Payments are processed by Razorpay.")}</AppText>
         </View>
       </View>
 

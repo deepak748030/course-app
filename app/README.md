@@ -52,22 +52,24 @@ prints each generated code in the server console. The demo code can never sign i
 production server (see `DEMO_OTP` in `server/.env.example`). The session drives everything account-bound: enrollments, progress,
 orders, reviews and the private realtime channel.
 
-## Demo payments
+## Payments (Razorpay)
 
-There is no payment gateway. `src/services/payments.ts` never touches the network, never collects card,
-UPI or bank details, and never claims a real settlement.
+Checkout uses **Razorpay**. The server prices the course (coupons included), creates a Razorpay
+order, and the app opens Razorpay Checkout. The payment is confirmed on the server before the
+course unlocks.
 
-Checkout lets you pick which scenario the demo reproduces:
+- **iOS / Android:** the native `react-native-razorpay` SDK (v3). It opens Razorpay's own sheet, not a
+  WebView. It needs a **development build**, not Expo Go: `npx expo prebuild`, then
+  `npx expo run:android` or `npx expo run:ios`.
+- **Web:** Razorpay's `checkout.js`, which draws the same modal in the page. No WebView.
+- Card, UPI and bank details are entered only in Razorpay's sheet. They never reach the app or the server.
+- The app only holds the public key id (sent by the server with each order). The key secret stays on the server.
 
-| Scenario | Result |
-| --- | --- |
-| Successful payment | Enrols you and unlocks every lesson of the course |
-| Failed payment | Shows the failure + retry state (nothing is charged) |
-| Cancelled by user | Returns to checkout with an explanatory note |
+Outcomes: a successful payment unlocks the course. A failed payment shows the failure with a retry
+button and nothing is charged. A payment the learner closes shows the cancelled note.
 
 Coupons are validated by the server (`POST /api/coupons/validate`); the seeded codes are
-`WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off). A successful demo payment
-creates a real order and enrollment on the server.
+`WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off).
 
 ## Analytics and recommendations
 
