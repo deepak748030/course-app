@@ -18,6 +18,38 @@ import { verifyToken } from '../utils/token.js';
 /** @type {Server | null} */
 let io = null;
 
+/** socket id -> { userId, role } for every live connection (anonymous ones have no userId). */
+const live = new Map();
+
+/** Live presence counts. Distinct accounts, plus anonymous visitors. */
+export function presenceSnapshot() {
+  const signedIn = new Set();
+  const learners = new Set();
+  const admins = new Set();
+  let visitors = 0;
+  for (const c of live.values()) {
+    if (!c.userId) {
+      visitors += 1;
+      continue;
+    }
+    signedIn.add(c.userId);
+    if (c.role === 'admin') admins.add(c.userId);
+    else learners.add(c.userId);
+  }
+  return {
+    total: live.size,
+    signedIn: signedIn.size,
+    learners: learners.size,
+    admins: admins.size,
+    visitors,
+    at: new Date().toISOString(),
+  };
+}
+
+function broadcastPresence() {
+  if (io) io.to('admins').emit('presence.updated', presenceSnapshot());
+}
+
 export function initializeRealtime(httpServer) {
   const origins = env.corsOrigin.split(',').map((o) => o.trim()).filter(Boolean);
   io = new Server(httpServer, {
@@ -44,6 +76,7 @@ export function initializeRealtime(httpServer) {
   io.on('connection', (socket) => {
     socket.join('app');
     const user = socket.data.user;
+    live.set(socket.id, { userId: user?.id ?? null, role: user?.role ?? null });
     if (user) {
       socket.join(`user:${user.id}`);
       if (user.role === 'admin') socket.join('admins');
@@ -51,6 +84,13 @@ export function initializeRealtime(httpServer) {
     socket.emit('hello', {
       rooms: ['app', ...(user ? [`user:${user.id}`, ...(user.role === 'admin' ? ['admins'] : [])] : [])],
       serverTime: new Date().toISOString(),
+    });
+    socket.emit('presence.updated', presenceSnapshot());
+    broadcastPresence();
+
+    socket.on('disconnect', () => {
+      live.delete(socket.id);
+      broadcastPresence();
     });
   });
 

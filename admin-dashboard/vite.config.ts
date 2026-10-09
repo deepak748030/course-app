@@ -21,6 +21,12 @@ export default defineConfig({
         target: process.env.VITE_PROXY_TARGET || 'http://localhost:5000',
         changeOrigin: true,
       },
+      // Realtime (socket.io). Without this the dashboard socket never reaches the server.
+      '/socket.io': {
+        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5000',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });
