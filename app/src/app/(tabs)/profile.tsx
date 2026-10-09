@@ -176,7 +176,7 @@ export default function ProfileScreen() {
           <View style={styles.signInCard}>
             <Text style={[type.bodyStrong, { color: colors.text }]}>{t("You are not signed in")}</Text>
             <Text style={[type.label, { color: colors.textMuted }]}>{t("Sign in to keep your courses, notes and progress on this device.")}</Text>
-            <Button label={t("Sign in")} onPress={() => router.push('/auth/signin')} />
+            <Button label={t("Sign in")} onPress={() => router.push('/auth/phone')} />
           </View>
         </View>
       )}
@@ -337,7 +337,7 @@ export default function ProfileScreen() {
           setLogoutOpen(false);
           setProfileAvatar(null);
           await signOut();
-          router.replace('/auth/signin');
+          router.replace('/auth/phone');
         }}
         onCancel={() => setLogoutOpen(false)}
       />

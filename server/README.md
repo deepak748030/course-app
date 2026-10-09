@@ -29,10 +29,30 @@ retries; while the database is down, every data route answers a clean `503` and
 
 ## Seeded logins
 
-| Role | Email | Password |
+| Role | Sign in with | Credential |
 | --- | --- | --- |
-| Admin (dashboard) | `admin@yduacademy.com` | `Admin@123` |
-| Learner (app) | `learner@ydu.academy` | `Learner@123` |
+| Admin (dashboard) | email `admin@yduacademy.com` | password `Admin@123` |
+| Learner (dashboard/API) | email `learner@ydu.academy` | password `Learner@123` |
+| Learner (app) | mobile `+91 98765 00001` | OTP `246810` (demo) |
+| Learner (app, phone only) | mobile `+91 98765 00002` | OTP `246810` (demo) |
+
+Any other valid Indian mobile number also works in the app with OTP `246810`, outside
+production. Each seeded learner has a unique +91 mobile number (10 digits starting 6–9).
+
+## Phone sign-in (OTP)
+
+- `POST /api/auth/otp/request` `{ phone }` sends a six-digit code. The phone may be typed as
+  `+91 98765 43210`, `919876543210` or `09876543210`. The code is valid for 5 minutes, the app may
+  ask for a new one after 30 seconds, and `429` is returned when it asks sooner.
+- `POST /api/auth/otp/verify` `{ phone, code }` returns `{ token, user }`. Three wrong codes
+  expire the current code (`410`). A wrong code returns `401`.
+- Codes are stored as an HMAC (never in plain text) and deleted once used.
+- **SMS delivery:** no provider is wired up yet. `src/services/sms.js` is the single place to add
+  one. Until then, development prints the code to the server console, and production returns
+  `503` rather than logging a code.
+- `DEMO_OTP` (default `246810`) is accepted for any number outside `NODE_ENV=production`.
+- After changing the user model, re-run `npm run seed`: the phone and email indexes are now
+  partial (empty values are allowed), so an older database may still carry the stricter ones.
 
 The seed mirrors the app catalog (8 dairy courses) and generates ~60 days of users,
 orders, enrollments and reviews so the dashboard charts have data.
@@ -49,8 +69,10 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `GET` | `/api/courses/:idOrSlug` | course detail |
 | `GET` | `/api/courses/:idOrSlug/related` | recommendation rail — co-purchase first, then same track |
 | `GET` | `/api/settings` | app settings (maintenance mode, support, …) |
-| `POST` | `/api/auth/register` | create learner account |
-| `POST` | `/api/auth/login` | email + password → JWT |
+| `POST` | `/api/auth/otp/request` | send a one-time code to a +91 mobile |
+| `POST` | `/api/auth/otp/verify` | mobile + code → JWT (creates the learner on first sign-in) |
+| `POST` | `/api/auth/register` | create email + password account |
+| `POST` | `/api/auth/login` | email + password → JWT (admin dashboard) |
 | `GET` | `/api/auth/me` | current user |
 | `POST` | `/api/orders` | checkout (creates enrollment when paid) |
 | `GET` | `/api/orders/my` | learner's transactions |

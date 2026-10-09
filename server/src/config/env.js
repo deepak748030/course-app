@@ -8,6 +8,8 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   nodeEnv: process.env.NODE_ENV || 'development',
+  /** Fixed demo code accepted on every phone outside production (see README → Phone sign-in). */
+  demoOtp: process.env.DEMO_OTP || '246810',
 };
 
 export const isProd = env.nodeEnv === 'production';

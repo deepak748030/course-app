@@ -364,7 +364,7 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 
   // The screens that own a scroller put the same overflow on it themselves.
-  for (const screen of ['src/app/auth/signin.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
+  for (const screen of ['src/app/auth/otp.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
     assert.ok(read(screen).includes('scrollClip'), `${screen} keeps its scroller clipped`);
   }
   assert.ok(
@@ -422,7 +422,7 @@ check('every brand icon is cut from the supplied logo.png', () => {
   // home header show the whole lockup; the small spots (the footer, the brand row) use the same
   // artwork with the wordmark cut away, because a 14px "ACADEMY" is not a word, it is a smudge.
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
-  assert.ok(read('src/app/auth/signin.tsx').includes('<BrandLockup'), 'so does the sign-in hero');
+  assert.ok(read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen shows the brand mark');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandLockup'), 'and the home header');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandMark size={20} />'), 'the footer uses the mark');
   assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');

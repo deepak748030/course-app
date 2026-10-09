@@ -42,9 +42,14 @@ npx expo run:android   # or: npx expo run:ios, or: eas build --profile developme
 
 ## Authentication
 
-Sign-in uses **email + password** against the server (`POST /api/auth/signup`, `/api/auth/login`)
-and stores the returned JWT with `expo-secure-store` on native devices (falls back to
-`AsyncStorage` on web). The session drives everything account-bound: enrollments, progress,
+Sign-in uses an **Indian mobile number (+91) and a one-time code**. The app calls
+`POST /api/auth/otp/request` with the number, then `POST /api/auth/otp/verify` with the 6-digit
+code. A number seen for the first time gets a learner account on the spot. The returned JWT is
+stored with `expo-secure-store` on native devices (falls back to `AsyncStorage` on web).
+
+Outside production the server accepts the demo code **`246810`** for any number, and it also
+prints each generated code in the server console. The demo code can never sign in on a
+production server (see `DEMO_OTP` in `server/.env.example`). The session drives everything account-bound: enrollments, progress,
 orders, reviews and the private realtime channel.
 
 ## Demo payments
@@ -86,7 +91,8 @@ src/
   app/                     Expo Router routes (file = screen)
     index.tsx              entry gate: onboarding → sign-in → app
     onboarding.tsx         three-slide introduction
-    auth/signin.tsx        email + password sign-in / sign-up against the server
+    auth/phone.tsx         +91 mobile number entry (Get OTP)
+    auth/otp.tsx           six-digit code entry, verify, resend
     auth/interests.tsx     optional preference chips
     (tabs)/                Home · Explore · My learning · Profile
     course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)

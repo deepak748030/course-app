@@ -107,7 +107,7 @@ export default function OnboardingScreen() {
 
   const finish = useCallback(() => {
     completeOnboarding();
-    router.replace('/auth/signin');
+    router.replace('/auth/phone');
   }, [completeOnboarding, router]);
 
   const onScroll = useAnimatedScrollHandler((event) => {

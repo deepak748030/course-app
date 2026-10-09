@@ -567,6 +567,18 @@ async function run() {
   const userHash = await bcrypt.hash('Learner@123', 10);
   const learners = [];
   const now = Date.now();
+  // Indian mobiles: 10 digits starting 6-9, unique per learner. The two demo numbers below are
+  // reserved, and 9000000000 is left out because the app uses it to simulate a network failure.
+  const usedPhones = new Set(['9876500001', '9876500002', '9000000000']);
+  const newPhone = () => {
+    for (;;) {
+      const candidate = `${pick(['6', '7', '8', '9'])}${String(randInt(100000000, 999999999))}`;
+      if (!usedPhones.has(candidate)) {
+        usedPhones.add(candidate);
+        return candidate;
+      }
+    }
+  };
   for (let i = 0; i < 42; i += 1) {
     const name = `${pick(firstNames)} ${pick(lastNames)}`;
     const email = `${name.toLowerCase().replace(/[^a-z]+/g, '.')}${randInt(1, 99)}@example.com`;
@@ -575,18 +587,25 @@ async function run() {
         name,
         email,
         passwordHash: userHash,
-        phone: `98${String(randInt(10000000, 99999999))}`,
+        phone: newPhone(),
         createdAt: new Date(now - randInt(0, 75) * DAY - randInt(0, 20) * 60 * 60 * 1000),
       })
     );
   }
-  // Also one known learner account for testing the app side.
+  // Known learner with email + password (dashboard/API testing) and the same number for OTP sign-in.
   learners.push(
     await User.create({
       name: 'Demo Learner',
       email: 'learner@ydu.academy',
       passwordHash: await bcrypt.hash('Learner@123', 10),
       phone: '9876500001',
+    })
+  );
+  // Known phone-only learner: signs in with +91 98765 00002 and OTP, no email or password.
+  learners.push(
+    await User.create({
+      name: 'Asha Verma',
+      phone: '9876500002',
     })
   );
 
@@ -766,6 +785,11 @@ async function run() {
   console.log('──────────────────────────────────────────────');
   console.log(' Admin login:    admin@yduacademy.com / Admin@123');
   console.log(' Learner login:  learner@ydu.academy / Learner@123');
+  console.log('──────────────────────────────────────────────');
+  console.log(' App sign-in (+91 mobile + OTP):');
+  console.log('   +91 98765 00001   Demo Learner (also has email login)');
+  console.log('   +91 98765 00002   Asha Verma (phone only)');
+  console.log(' OTP for any number outside production: 246810 (DEMO_OTP)');
   console.log('──────────────────────────────────────────────');
   await mongoose.disconnect();
 }

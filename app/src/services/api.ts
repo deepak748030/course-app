@@ -188,15 +188,17 @@ export type ServerSettings = {
 
 export const api = {
   // ---- auth ----
-  register: (name: string, email: string, password: string) =>
-    request<{ token: string; user: ServerUser }>('/api/auth/register', {
+  /** Sends a one-time code to an Indian mobile (+91). The server returns the resend wait. */
+  requestOtp: (phone: string) =>
+    request<{ ok: boolean; expiresInSeconds: number; resendInSeconds: number }>('/api/auth/otp/request', {
       method: 'POST',
-      body: { name, email, password },
+      body: { phone },
     }),
-  login: (email: string, password: string) =>
-    request<{ token: string; user: ServerUser }>('/api/auth/login', {
+  /** Checks the code; a number seen for the first time gets a learner account. */
+  verifyOtp: (phone: string, code: string) =>
+    request<{ token: string; user: ServerUser }>('/api/auth/otp/verify', {
       method: 'POST',
-      body: { email, password },
+      body: { phone, code },
     }),
   me: () => request<{ user: ServerUser }>('/api/auth/me'),
   updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'dateOfBirth' | 'city' | 'goal' | 'interests'>>) =>

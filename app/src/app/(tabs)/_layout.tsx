@@ -13,7 +13,7 @@ export default function TabsLayout() {
   const t = useT();
 
   // Deep links must not land inside the app without a session.
-  if (ready && !session) return <Redirect href="/auth/signin" />;
+  if (ready && !session) return <Redirect href="/auth/phone" />;
 
   return (
     <Tabs
