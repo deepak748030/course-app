@@ -19,7 +19,7 @@ import {
   View,
 } from 'react-native';
 
-import { BrandMark } from '@/components/marks';
+import { BrandLockup } from '@/components/marks';
 import { AppBar, Button, ErrorState, FormField, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
@@ -87,7 +87,8 @@ export default function SignInScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.intro}>
-            <BrandMark size={40} />
+            {/* The lockup, disc and all — the sign-in screen has the room for the whole logo. */}
+            <BrandLockup width={96} />
             <Text style={[type.title, { color: colors.text }]}>
               {mode === 'signin' ? t('Welcome back') : t('Create your account')}
             </Text>

@@ -1,5 +1,5 @@
 /**
- * Introduction: four slides, each one drawn edge to edge on the screen.
+ * Introduction: three slides, each one drawn edge to edge on the screen.
  *
  * The artwork is the screen. Every slide's image fills the whole window — under the status bar, under
  * the brand row and under the footer — with `cover`, so it is never letterboxed and never leaves a
@@ -10,13 +10,13 @@
  *   - the dots, Skip and the one action over the same scrim.
  *
  * Every block a slide positions against is measured rather than guessed: the pager is the window, the
- * top bar reports its own height, the footer reports its own, and the slides pad their contents by
- * those numbers. That is what keeps the copy clear of the button on a short phone and on a tablet.
+ * footer reports its own height, and the slides pad their contents by that number. That is what keeps
+ * the copy clear of the button on a short phone and on a tablet.
  *
- * The first slide is the brand poster. Its artwork carries the whole message, so the slide adds none
- * of its own — no headline over a poster — and draws only the lock-up, and only when the artwork has
- * an empty top for it (`posterTitle` / `posterTagline`). The lock-up sits over the poster's pale top
- * band, so it is written in the poster's own green rather than in white.
+ * The first slide is the brand poster. Its artwork already carries the whole message — the lock-up,
+ * the name and the tagline are printed in the poster itself — so the slide writes nothing over it:
+ * no headline, no lock-up, nothing between the artwork and the reader. The interface around it (the
+ * brand row, the dots, the action) is chrome; the poster is the screen.
  */
 
 import { Image } from 'expo-image';
@@ -45,9 +45,6 @@ import { images } from '@/media';
 import { useStore } from '@/store';
 import type { ImageSource } from 'expo-image';
 
-/** The poster's own green, from the printed artwork — deliberately outside the two app palettes. */
-const POSTER_GREEN = '#14532D';
-
 /** How much of the height each fade covers: the top rail's content is small, the scrim's is not. */
 const TOP_FADE = 132;
 const SCRIM_HEIGHT = '62%';
@@ -67,16 +64,6 @@ type Slide = {
   poster?: boolean;
   /** Spoken description of a poster, since all of its text is inside the image. */
   posterLabel?: string;
-  /**
-   * Brand lock-up drawn over a poster's empty top area: the YDU name in Hindi and its tagline, the
-   * way the printed poster sets them (logo, title, tagline, a short accent rule).
-   *
-   * This is brand artwork, not interface copy, so it is written as-is rather than through `t()` — the
-   * brand reads the same in both interface languages, which is exactly how the poster is printed.
-   * Drop these two fields when the artwork carries its own lettering.
-   */
-  posterTitle?: string;
-  posterTagline?: string;
 };
 
 const slides: Slide[] = [
@@ -86,8 +73,6 @@ const slides: Slide[] = [
     cta: 'Next',
     poster: true,
     posterLabel: 'YDU Academy — Yadav dairy production. Learn dairy, grow your business.',
-    posterTitle: 'यादव दूध उत्पादन',
-    posterTagline: 'डेरी सीखें, व्यवसाय बढ़ाएँ',
   },
   {
     key: 'milk',
@@ -101,13 +86,6 @@ const slides: Slide[] = [
     image: images.onboardingTesting,
     headline: 'Learn the numbers,\nnot the guesswork.',
     support: 'Fat, SNF, lactometer readings and adulteration tests — shown at the bench, step by step.',
-    cta: 'Next',
-  },
-  {
-    key: 'range',
-    image: images.onboardingRange,
-    headline: 'From milk\nto a finished product.',
-    support: 'Paneer, ghee, curd, cheese and frozen desserts: pick a track, follow the make-sheet, sell it.',
     cta: 'Start learning',
   },
 ];
@@ -121,10 +99,9 @@ export default function OnboardingScreen() {
   const scrollX = useSharedValue(0);
   const listRef = useRef<Animated.FlatList<Slide>>(null);
   const [index, setIndex] = useState(0);
-  // Both blocks measure themselves, but a measurement only arrives after the first paint — so they
-  // start from a close estimate (the brand row, and the footer at its real height on this inset) and
-  // the copy never flashes in the wrong place on the first frame.
-  const [topBarHeight, setTopBarHeight] = useState(() => insets.top + 44);
+  // The footer measures itself, but a measurement only arrives after the first paint — so it starts
+  // from a close estimate (the footer at its real height on this inset) and the copy never flashes in
+  // the wrong place on the first frame.
   const [footerHeight, setFooterHeight] = useState(() => insets.bottom + 132);
   const { completeOnboarding } = useStore();
 
@@ -170,14 +147,13 @@ export default function OnboardingScreen() {
               width={width}
               height={height}
               scrollX={scrollX}
-              topInset={topBarHeight}
               footerInset={footerHeight}
             />
           )}
         />
       </View>
 
-      {/* A white fade under the brand row, so the lockup and the status bar read on any photo. */}
+      {/* A white fade under the brand row, so the brand mark and the status bar read on any photo. */}
       <LinearGradient
         pointerEvents="none"
         colors={[colors.background, 'rgba(255,255,255,0.82)', 'transparent']}
@@ -185,9 +161,7 @@ export default function OnboardingScreen() {
         style={[styles.topFade, { height: insets.top + TOP_FADE }]}
       />
 
-      <View
-        style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}
-        onLayout={(event: LayoutChangeEvent) => setTopBarHeight(event.nativeEvent.layout.height)}>
+      <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.brand}>
           <BrandMark size={26} />
           <Text style={[type.bodyStrong, { color: colors.text }]}>YDU Academy</Text>
@@ -240,7 +214,6 @@ function SlideView({
   width,
   height,
   scrollX,
-  topInset,
   footerInset,
 }: {
   slide: Slide;
@@ -248,8 +221,6 @@ function SlideView({
   width: number;
   height: number;
   scrollX: SharedValue<number>;
-  /** Height of the brand row, measured by the screen: a poster's lock-up starts below it. */
-  topInset: number;
   /** Height of the dots-and-action block: the copy ends above it. */
   footerInset: number;
 }) {
@@ -298,23 +269,10 @@ function SlideView({
         style={styles.bottomScrim}
       />
 
-      {slide.poster ? (
-        slide.posterTitle ? (
-          /* The artwork's own empty space at the top: the mark, the name, the tagline and a short
-             rule — the poster's lettering, in the poster's green. */
-          <View style={[styles.posterLockup, { top: topInset + spacing.sm }]} pointerEvents="none">
-            <View style={styles.posterPlate}>
-              <BrandMark size={30} color={POSTER_GREEN} />
-            </View>
-            <Text style={[type.display, styles.posterTitle, { color: POSTER_GREEN }]}>{slide.posterTitle}</Text>
-            <Text style={[type.subheading, styles.posterTagline, { color: POSTER_GREEN }]}>
-              {slide.posterTagline}
-            </Text>
-            <View style={styles.posterRule} />
-          </View>
-        ) : null
-      ) : (
-        /* The copy, on the foot of the artwork and clear of the dots and the button. */
+      {/* A poster carries its own lettering — the name, the tagline, the rule are printed in the
+          artwork — so nothing is written over it: only the non-poster slides position copy here, on
+          the foot of the artwork and clear of the dots and the button. */}
+      {!slide.poster && (
         <Animated.View style={[styles.copy, { bottom: footerInset + spacing.sm }, textStyle]}>
           <Text style={[type.title, { color: colors.textInverse }]}>{slide.headline}</Text>
           <Text style={[type.body, styles.support, { color: colors.onPlayerMuted }]}>{slide.support}</Text>
@@ -349,34 +307,6 @@ const styles = createStyles(() => StyleSheet.create({
     gap: spacing.sm,
   },
   support: { maxWidth: 420 },
-  posterLockup: {
-    position: 'absolute',
-    left: layout.section,
-    right: layout.section,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  posterPlate: {
-    /* The lock-up sits on the poster's pale top band, so the plate is white against the artwork. */
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(20, 83, 45, 0.16)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-  },
-  posterTitle: { textAlign: 'center' },
-  posterTagline: { textAlign: 'center' },
-  posterRule: {
-    width: 52,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: POSTER_GREEN,
-    marginTop: spacing.xs,
-  },
   footer: {
     paddingHorizontal: layout.screen,
     paddingTop: spacing.md,

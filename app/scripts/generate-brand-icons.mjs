@@ -1,303 +1,339 @@
 /**
- * Generates the YDU Academy logo and the whole app-icon set from one piece of geometry.
- *
- * Why a generator: the logo has to be *identical* on the splash screen, in the header, in the web
- * favicon, on iOS and on Android — where the launcher crops the artwork into a circle, a squircle or
- * a rounded square depending on the device. Drawing it once here and rendering every size from the
- * same source is the only way that stays true.
+ * Derives the whole app-icon set from the supplied brand artwork, `assets/images/logo.png`.
  *
  *   node scripts/generate-brand-icons.mjs
  *
- * What it writes:
- *   assets/brand/ydu-logo.svg              the lockup: white disc, milk can with two leaves, wordmark
- *   assets/brand/ydu-mark.svg              the can and leaves alone, without the disc or the name
- *   assets/images/icon.png                 1024, green field + logo (iOS and store listings)
- *   assets/images/android-icon-foreground.png  432, logo inside Android's 66% safe zone
- *   assets/images/android-icon-background.png  432, the flat green the icon sits on
- *   assets/images/android-icon-monochrome.png  432, white silhouette for themed icons
- *   assets/images/favicon.png              196, green field + logo
- *   assets/images/splash-icon.png          512, logo on transparent (the splash screen is white)
- *   assets/images/brand-logo.png           512, the lockup for use inside the app
- *   assets/images/brand-mark.png           256, the mark for small, text-free spots
+ * Why derived, not drawn: the logo is a supplied raster, and an icon set re-drawn by hand next to it
+ * always drifts — a slightly different churn, a lighter green, a wordmark in a font the artwork does
+ * not use. The only way the favicon, the launcher icons and the splash can be *the same logo* is to
+ * cut every one of them out of the one file. So this script reads logo.png's pixels and writes:
  *
- * Colours are fixed, not themed: a logo that changed with the app's theme would no longer be a logo.
+ *   assets/images/icon.png                    1024, the logo as-is (iOS icon and store listings)
+ *   assets/images/favicon.png                  196, the logo as-is (web tab icon)
+ *   assets/images/splash-icon.png              512, the logo as-is (splash screen; app.json paints white behind it)
+ *   assets/images/brand-logo.png               512, the logo as-is (the in-app lockup raster)
+ *   assets/images/android-icon-background.png  432, flat field in the logo's own corner green
+ *   assets/images/android-icon-foreground.png  432, the logo with its corner field made transparent
+ *   assets/images/android-icon-monochrome.png  432, white silhouette of the logo's artwork, for themed icons
+ *   assets/images/brand-mark.png               256, the churn and leaves alone (no wordmark), transparent
+ *   assets/brand/ydu-logo.svg                  the lockup as an SVG: the logo's own 1024px pixels embedded,
+ *                                              so vector contexts show exactly logo.png, never a redrawing
+ *   assets/brand/ydu-mark.svg                  the text-free mark as an SVG, embedded the same way at 512
  *
- * The drawing follows the brand artwork: a white disc filling the square, a tall milk churn with a
- * wide lid, a white ring where the shoulder meets the body and two white-outlined handles, two big
- * leaves with a white vein sweeping down and out from behind the can, and the name in a heavy
- * geometric face. The letters YDU are drawn as paths rather than set in type — the reference weight is
- * heavier than any font we ship, and paths mean the icon never depends on a font being installed.
- * Only ACADEMY is set in DM Sans (the app's own family), loaded from the installed font package; the
- * script fails loudly if that font cannot be read, because a logo with the wordmark silently missing
- * is worse than no logo at all.
+ * The Android pair composes back to the logo exactly: the background layer is the logo's corner green
+ * and the foreground is everything inside the disc, at the logo's own proportions, so a square, a
+ * circle or a squircle mask all show the same artwork the app shows everywhere else. The foreground
+ * keeps a soft alpha edge where the disc meets the field, so no mask shape leaves a jaggy rim.
+ *
+ * Pixel work, in short:
+ *   - the corner field is flood-filled from the four corners along the green↔white blend, which finds
+ *     the field and the disc's anti-aliased rim without touching the artwork inside the disc;
+ *   - rim pixels keep a partial alpha equal to their white share, so the disc edge stays smooth over
+ *     any background;
+ *   - downsampling is an area (box) filter in premultiplied space — the correct filter for shrinking,
+ *     and the reason a 16px favicon gets clean edges instead of resvg's nearest ringing;
+ *   - the monochrome layer and the text-free mark come from luminance masks of the same pixels, so
+ *     even the silhouettes are the supplied artwork, not a second opinion of it.
+ *
+ * Only node's own zlib is needed (through ./png.mjs); there is deliberately nothing to install.
  */
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Resvg } from '@resvg/resvg-js';
+import { decodePng, encodePng } from './png.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const BRAND_DIR = resolve(ROOT, 'assets/brand');
 const IMAGE_DIR = resolve(ROOT, 'assets/images');
+const BRAND_DIR = resolve(ROOT, 'assets/brand');
+const LOGO_PATH = resolve(IMAGE_DIR, 'logo.png');
 
 /* ------------------------------------------------------------------ *
- * Palette
+ * The supplied logo, decoded once
  * ------------------------------------------------------------------ */
 
-/** The brand's field green — the same value the app uses in marks.tsx and app.json. */
-const GREEN = '#0B5C1E';
-const GREEN_DEEP = '#08430F';
-const GREEN_LIGHT = '#2E8B3A';
-/** The leaves run from a sunlit tip to a deep base, as in the artwork. */
-const LEAF_TIP = '#A7E97C';
-const LEAF_MID = '#4FB94A';
-const LEAF_BASE = '#26822F';
-/** The name is cut in a near-black green with a lighter top edge. */
-const INK_TOP = '#3A8C3D';
-const INK_BOTTOM = '#123F19';
-const INK_BEVEL = '#4CA64C';
-/** The ring, the handles' outline and the veins: the artwork's white detailing. */
-const WHITE = '#FFFFFF';
+const logo = decodePng(readFileSync(LOGO_PATH));
+const { width: W, height: H, data: PX } = logo;
+if (W !== H) throw new Error(`logo.png must be square, it is ${W}x${H}`);
 
-/** One square unit for every drawing: the lockup, the mark and the icons all start from 1000. */
-const BOX = 1000;
-
-/* ------------------------------------------------------------------ *
- * Geometry — one drawing, reused by every output
- * ------------------------------------------------------------------ */
-
-const DISC = { cx: 500, cy: 500, r: 500 };
-
-/**
- * Two leaves behind the can: slender blades whose bases hide behind the body and whose tips point
- * down and out, as in the artwork. Each is a lens — one edge bulging up, the other down.
- */
-const LEAF_PATHS = [
-  'M 438 330 Q 232 366 106 646 Q 318 622 438 330 Z',
-  'M 562 330 Q 768 366 894 646 Q 682 622 562 330 Z',
-];
-/** One white vein per leaf, following the blade from just short of the tip back to the can. */
-const LEAF_VEINS = ['M 196 584 Q 306 470 408 372', 'M 804 584 Q 694 470 592 372'];
-const LEAF_GRADIENTS = [
-  { id: 'leafL', x1: 106, y1: 646, x2: 438, y2: 330 },
-  { id: 'leafR', x1: 894, y1: 646, x2: 562, y2: 330 },
-];
-
-/**
- * The two handles: a squared bracket with rounded corners, drawn with a white outline and a green
- * core — the detail that makes the silhouette read as a milk churn and not a jar. Both ends run past
- * the can's edge and are hidden behind it.
- */
-const HANDLE_PATHS = [
-  'M 440 252 L 380 252 Q 332 252 332 300 L 332 382 Q 332 430 380 430 L 428 430',
-  'M 560 252 L 620 252 Q 668 252 668 300 L 668 382 Q 668 430 620 430 L 572 430',
-];
-
-/** The body: a curved shoulder off the neck, a tall near-cylinder, rounded base. */
-const BODY_PATH =
-  'M 424 244 C 392 274 372 312 366 352 L 358 558 Q 358 596 396 596 L 604 596 Q 642 596 642 558 L 634 352 C 628 312 608 274 576 244 Z';
-/** The lid, the white gap under it, the neck, and the ring where the shoulder meets the body. */
-const CAP = { x: 398, y: 112, width: 204, height: 64, rx: 24 };
-const CAP_GAP = { x: 432, y: 178, width: 136, height: 10 };
-const NECK_PATH = 'M 430 188 L 570 188 L 578 246 L 422 246 Z';
-const RING = { cx: 500, cy: 352, rx: 136, ry: 16 };
-
-/**
- * YDU, drawn as paths: three letters of 212 units with a 16-unit gap, on a 210-unit cap height. The
- * Y's arms have vertical outer edges that turn into the diagonal, the D's bowl is squared off, and
- * the U's inner floor is a shallow curve — the reference letterforms, heavier than any font we ship.
- */
-const NAME_TOP = 620;
-const NAME_BOXES = [
-  ['Y', 166],
-  ['D', 394],
-  ['U', 620],
-];
-const LETTER_PATHS = {
-  Y: 'M 0 0 L 74 0 L 150 104 L 62 104 Z M 138 0 L 212 0 L 150 104 L 62 104 Z M 62 104 L 150 104 L 150 210 L 62 210 Z',
-  D: 'M 0 0 L 116 0 Q 210 0 210 105 Q 210 210 116 210 L 0 210 Z M 70 56 L 70 154 L 116 154 Q 156 154 156 105 Q 156 56 116 56 Z',
-  U: 'M 0 0 L 0 118 Q 0 210 105 210 Q 210 210 210 118 L 210 0 L 142 0 L 142 100 Q 142 150 105 150 Q 68 150 68 100 L 68 0 Z',
+const pixel = (x, y) => {
+  const o = (y * W + x) * 4;
+  return [PX[o], PX[o + 1], PX[o + 2], PX[o + 3]];
 };
-/** The name is lifted 9 units in a lighter green first, which leaves a bevel along its top edges. */
-const NAME_BEVEL = 9;
 
-/** ACADEMY, tracked wide under the name. */
-const SUFFIX = { size: 90, letterSpacing: 11, baseline: 912 };
+/** The field green, read from the artwork's own corner rather than trusted from a constant. */
+const FIELD = pixel(0, 0);
+/** The disc white, sampled inside the disc above the churn's lid. */
+const PAPER = pixel(W >> 1, Math.round(H * 0.05));
 
-const GRADIENTS = `
-    <linearGradient id="canLid" x1="0" y1="112" x2="0" y2="322" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${GREEN_LIGHT}" />
-      <stop offset="0.5" stop-color="#1B7A2B" />
-      <stop offset="1" stop-color="#14672A" />
-    </linearGradient>
-    <linearGradient id="canBody" x1="356" y1="0" x2="646" y2="0" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#17702A" />
-      <stop offset="0.18" stop-color="#3B9E45" />
-      <stop offset="0.45" stop-color="#26822F" />
-      <stop offset="0.78" stop-color="#14672A" />
-      <stop offset="1" stop-color="${GREEN_DEEP}" />
-    </linearGradient>
-${LEAF_GRADIENTS.map(
-  (g) => `    <linearGradient id="${g.id}" x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${LEAF_TIP}" />
-      <stop offset="0.55" stop-color="${LEAF_MID}" />
-      <stop offset="1" stop-color="${LEAF_BASE}" />
-    </linearGradient>`,
-).join('\n')}
-    <linearGradient id="ink" x1="0" y1="${NAME_TOP}" x2="0" y2="${NAME_TOP + 210}" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="${INK_TOP}" />
-      <stop offset="1" stop-color="${INK_BOTTOM}" />
-    </linearGradient>`;
-
-/** The letters, positioned and filled with whatever paints them. */
-const name = (paint) =>
-  NAME_BOXES.map(
-    ([letter, x]) =>
-      `    <path d="${LETTER_PATHS[letter]}"${paint ? ` fill="${paint}"` : ''} fill-rule="nonzero" transform="translate(${x} ${NAME_TOP})" />`,
-  ).join('\n');
-
-/** Leaves, then the handles over them, then the can — the reference artwork's stacking order. */
-const leaves = (fill) =>
-  LEAF_PATHS.map((d, index) => `    <path d="${d}" fill="${fill ?? `url(#${LEAF_GRADIENTS[index].id})`}" />`).join(
-    '\n',
-  );
-
-const MARK_LAYERS = (fill) => `
-${leaves(fill)}
-${HANDLE_PATHS.map(
-  (d) =>
-    `    <path d="${d}" fill="none" stroke="${fill}" stroke-width="46" stroke-linecap="round" stroke-linejoin="round" />`,
-).join('\n')}
-    <path d="${BODY_PATH}" fill="${fill}" />
-    <path d="${NECK_PATH}" fill="${fill}" />
-    <rect x="${CAP.x}" y="${CAP.y}" width="${CAP.width}" height="${CAP.height}" rx="${CAP.rx}" fill="${fill}" />`;
-
-/** The mark on its own: the same can and leaves, no disc and no name — for small, text-free spots. */
-const markSvg = (color) =>
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}" width="${BOX}" height="${BOX}">${MARK_LAYERS(
-    color,
-  )}\n</svg>\n`;
-
-/** The full lockup: disc, leaves, can, name. */
-const LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}" width="${BOX}" height="${BOX}">
-  <defs>${GRADIENTS}
-  </defs>
-  <circle cx="${DISC.cx}" cy="${DISC.cy}" r="${DISC.r}" fill="${WHITE}" />
-${leaves()}
-  <g>
-${HANDLE_PATHS.map(
-  (d) =>
-    `    <path d="${d}" fill="none" stroke="${WHITE}" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" />`,
-).join('\n')}
-${HANDLE_PATHS.map(
-  (d) =>
-    `    <path d="${d}" fill="none" stroke="url(#canLid)" stroke-width="27" stroke-linecap="round" stroke-linejoin="round" />`,
-).join('\n')}
-  </g>
-${LEAF_VEINS.map(
-  (d) =>
-    `  <path d="${d}" fill="none" stroke="${WHITE}" stroke-width="14" stroke-linecap="round" opacity="0.9" />`,
-).join('\n')}
-  <path d="${BODY_PATH}" fill="url(#canBody)" />
-  <ellipse cx="${RING.cx}" cy="${RING.cy}" rx="${RING.rx}" ry="${RING.ry}" fill="none" stroke="${WHITE}" stroke-width="11" />
-  <rect x="384" y="352" width="26" height="188" rx="13" fill="${WHITE}" opacity="0.18" />
-  <rect x="400" y="336" width="12" height="150" rx="6" fill="${WHITE}" opacity="0.3" />
-  <path d="${NECK_PATH}" fill="url(#canLid)" />
-  <rect x="${CAP_GAP.x}" y="${CAP_GAP.y}" width="${CAP_GAP.width}" height="${CAP_GAP.height}" fill="${WHITE}" />
-  <rect x="${CAP.x}" y="${CAP.y}" width="${CAP.width}" height="${CAP.height}" rx="${CAP.rx}" fill="url(#canLid)" />
-  <g fill="${INK_BEVEL}" transform="translate(0 -${NAME_BEVEL})">
-${name(null)}
-  </g>
-${name('url(#ink)')}
-  <text x="500" y="${SUFFIX.baseline}" text-anchor="middle" font-family="DM Sans" font-size="${SUFFIX.size}"
-        font-weight="700" letter-spacing="${SUFFIX.letterSpacing}" fill="${INK_BOTTOM}">ACADEMY</text>
-</svg>
-`;
+const luminance = ([r, g, b]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 
 /* ------------------------------------------------------------------ *
- * Rendering
+ * The corner field: flood-filled along the green↔white blend
  * ------------------------------------------------------------------ */
 
-const FONT_FILES = [
-  resolve(ROOT, 'node_modules/@expo-google-fonts/dm-sans/800ExtraBold/DMSans_800ExtraBold.ttf'),
-  resolve(ROOT, 'node_modules/@expo-google-fonts/dm-sans/700Bold/DMSans_700Bold.ttf'),
-];
+/**
+ * How far a colour sits from the field towards the disc white, and how far off that blend line it
+ * is. Field pixels and the disc's anti-aliased rim lie on the line (residual ≈ 0); the artwork's
+ * saturated greens do not, and the flood stops at them — and could never reach them anyway, because
+ * the rim's last pixel (t ≈ 1) is excluded and closes the disc off.
+ */
+function blend(c) {
+  const dx = PAPER[0] - FIELD[0];
+  const dy = PAPER[1] - FIELD[1];
+  const dz = PAPER[2] - FIELD[2];
+  const len = dx * dx + dy * dy + dz * dz;
+  const t = clamp01(((c[0] - FIELD[0]) * dx + (c[1] - FIELD[1]) * dy + (c[2] - FIELD[2]) * dz) / len);
+  let residual = 0;
+  for (let i = 0; i < 3; i += 1) {
+    residual = Math.max(residual, Math.abs(c[i] - (FIELD[i] + t * (PAPER[i] - FIELD[i]))));
+  }
+  return { t, residual };
+}
 
-for (const file of FONT_FILES) {
-  if (!existsSync(file)) {
-    throw new Error(
-      `missing font ${file} — run \`npm install\` (@expo-google-fonts/dm-sans ships the wordmark's type)`,
-    );
+const BLEND_TOLERANCE = 24; // the field is flat, but stay generous with artwork-adjacent noise
+const RIM_CEILING = 0.98; // rim pixels whiter than this stay with the disc, closing the flood off
+
+const fieldT = new Float32Array(W * H).fill(-1); // -1 = not field; else the white share of the rim
+{
+  const stack = [0, W - 1, (H - 1) * W, (H - 1) * W + W - 1];
+  while (stack.length) {
+    const i = stack.pop();
+    if (fieldT[i] >= 0) continue;
+    const { t, residual } = blend(pixel(i % W, (i / W) | 0));
+    if (residual > BLEND_TOLERANCE || t > RIM_CEILING) continue;
+    fieldT[i] = t;
+    const x = i % W;
+    const y = (i / W) | 0;
+    if (x > 0) stack.push(i - 1);
+    if (x < W - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - W);
+    if (y < H - 1) stack.push(i + W);
   }
 }
+const fieldPixels = fieldT.filter((t) => t >= 0).length;
+if (fieldPixels < W * H * 0.05) {
+  throw new Error(`the corner-field flood found only ${fieldPixels} px — logo.png is not the expected artwork`);
+}
 
-/** Rasterises one SVG string at the exact pixel size the platform expects. */
-function render(source, size, background) {
-  const resvg = new Resvg(source, {
-    fitTo: { mode: 'width', value: size },
-    background: background ?? 'rgba(0,0,0,0)',
-    font: { fontFiles: FONT_FILES, loadSystemFonts: false, defaultFontFamily: 'DM Sans' },
-  });
-  return resvg.render().asPng();
+/* ------------------------------------------------------------------ *
+ * Layers cut from the logo
+ * ------------------------------------------------------------------ */
+
+/** The logo with its corner field made transparent; the rim keeps a partial alpha so edges stay soft. */
+function transparentField() {
+  const data = new Uint8Array(W * H * 4);
+  for (let i = 0; i < W * H; i += 1) {
+    const o = i * 4;
+    if (fieldT[i] >= 0) {
+      const a = Math.round(fieldT[i] * 255);
+      data[o] = PAPER[0];
+      data[o + 1] = PAPER[1];
+      data[o + 2] = PAPER[2];
+      data[o + 3] = a;
+    } else {
+      data[o] = PX[o];
+      data[o + 1] = PX[o + 1];
+      data[o + 2] = PX[o + 2];
+      data[o + 3] = 255;
+    }
+  }
+  return { width: W, height: H, data };
 }
 
 /**
- * Places one piece of artwork on a square canvas: `share` is how much of the canvas it covers, `field`
- * the colour behind it (null leaves the canvas transparent). This is what holds the artwork inside
- * Android's 66% safe zone and inside the iOS icon's rounded mask.
+ * A white silhouette of everything the artwork draws inside the disc — churn, leaves, YDU, ACADEMY —
+ * for Android's themed icons, which tint a single-colour layer. The disc and the field drop out;
+ * luminance ramps the mask so the silhouette keeps the artwork's anti-aliased edges.
  */
-function place(size, share, field, art = LOGO_SVG) {
-  const inner = art.replace(/^<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '');
-  const artSize = Math.round(size * share);
-  const offset = (size - artSize) / 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
-  ${field ? `<rect width="${size}" height="${size}" fill="${field}" />` : ''}
-  <g transform="translate(${offset} ${offset}) scale(${artSize / BOX})">${inner}</g>
-</svg>
-`;
+function monochrome() {
+  const data = new Uint8Array(W * H * 4);
+  for (let i = 0; i < W * H; i += 1) {
+    const o = i * 4;
+    const a = fieldT[i] >= 0 ? 0 : clamp01((0.94 - luminance([PX[o], PX[o + 1], PX[o + 2]]) ) / 0.1);
+    data[o] = 255;
+    data[o + 1] = 255;
+    data[o + 2] = 255;
+    data[o + 3] = Math.round(a * 255);
+  }
+  return { width: W, height: H, data };
 }
 
-const targets = [
-  // App icon: the green field runs to every edge, so a square, a circle or a squircle crop all read.
-  ['assets/images/icon.png', render(place(1024, 0.88, GREEN), 1024)],
-  // Android draws its own background, so the foreground carries only the lockup — held inside the
-  // 66% safe zone so no mask, from the tightest circle to the widest rounded square, can clip it.
-  ['assets/images/android-icon-foreground.png', render(place(432, 0.62, null), 432)],
-  [
-    'assets/images/android-icon-background.png',
-    render(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 432 432"><rect width="432" height="432" fill="${GREEN}" /></svg>`,
-      432,
-    ),
-  ],
-  // Themed icons are tinted by the system, so this one is a flat silhouette of the mark: the wordmark
-  // would be about five pixels tall inside a launcher and would read as dirt, not as a name.
-  ['assets/images/android-icon-monochrome.png', render(place(432, 0.56, null, markSvg(WHITE)), 432)],
-  ['assets/images/favicon.png', render(place(196, 0.92, GREEN), 196)],
-  // The splash screen paints its own white background, so this stays transparent.
-  ['assets/images/splash-icon.png', render(LOGO_SVG, 512)],
-  ['assets/images/brand-logo.png', render(LOGO_SVG, 512)],
-  ['assets/images/brand-mark.png', render(markSvg(GREEN), 256)],
-];
+/**
+ * The mark without the wordmark: the churn and the leaves, on transparent, for small text-free spots.
+ * The wordmark is cut off at the first fully blank scanline below the leaves — the gap the artwork
+ * already leaves between the leaves and the Y — and the disc white is keyed out by luminance, with
+ * each semi-transparent edge pixel un-premultiplied against the white it was blended with.
+ */
+function markWithoutWordmark() {
+  const alpha = new Float32Array(W * H);
+  for (let i = 0; i < W * H; i += 1) {
+    const o = i * 4;
+    alpha[i] = fieldT[i] >= 0 ? 0 : clamp01((0.97 - luminance([PX[o], PX[o + 1], PX[o + 2]])) / 0.1);
+  }
+
+  let cutY = -1;
+  for (let y = Math.round(H * 0.55); y < Math.round(H * 0.8); y += 1) {
+    let ink = 0;
+    for (let x = 0; x < W; x += 1) ink += alpha[y * W + x] > 0.5 ? 1 : 0;
+    if (ink === 0) {
+      cutY = y;
+      break;
+    }
+  }
+  if (cutY < 0) throw new Error('could not find the blank band between the leaves and the wordmark');
+
+  let x0 = W;
+  let y0 = cutY;
+  let x1 = -1;
+  let y1 = -1;
+  for (let y = 0; y < cutY; y += 1) {
+    for (let x = 0; x < W; x += 1) {
+      if (alpha[y * W + x] <= 0.5) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  const pad = Math.round(W * 0.015);
+  x0 = Math.max(0, x0 - pad);
+  y0 = Math.max(0, y0 - pad);
+  x1 = Math.min(W - 1, x1 + pad);
+  y1 = Math.min(cutY - 1, y1 + pad);
+
+  const width = x1 - x0 + 1;
+  const height = y1 - y0 + 1;
+  const data = new Uint8Array(width * height * 4);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const i = (y + y0) * W + (x + x0);
+      const o = (y * width + x) * 4;
+      const a = alpha[i];
+      data[o + 3] = Math.round(a * 255);
+      if (a > 0.004) {
+        // Un-premultiply the edge pixels against the disc white they were drawn on.
+        for (let c = 0; c < 3; c += 1) {
+          data[o + c] = Math.max(0, Math.min(255, Math.round((PX[i * 4 + c] - (1 - a) * PAPER[c]) / a)));
+        }
+      }
+    }
+  }
+  return { width, height, data };
+}
 
 /* ------------------------------------------------------------------ *
- * SVG sources, then the pixels
+ * Resampling: an area (box) filter, in premultiplied space
  * ------------------------------------------------------------------ */
 
+/** Shrinks an RGBA image to size×size by averaging each destination pixel's source area. Averaging
+ *  premultiplied colour is what keeps a semi-transparent edge from bleeding its colour into nothing. */
+function downscale(source, size) {
+  const { width: sw, height: sh, data: sd } = source;
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    const y0 = Math.floor((y * sh) / size);
+    const y1 = Math.max(y0 + 1, Math.floor(((y + 1) * sh) / size));
+    for (let x = 0; x < size; x += 1) {
+      const x0 = Math.floor((x * sw) / size);
+      const x1 = Math.max(x0 + 1, Math.floor(((x + 1) * sw) / size));
+      let pr = 0;
+      let pg = 0;
+      let pb = 0;
+      let pa = 0;
+      for (let sy = y0; sy < y1; sy += 1) {
+        for (let sx = x0; sx < x1; sx += 1) {
+          const o = (sy * sw + sx) * 4;
+          const a = sd[o + 3] / 255;
+          pr += sd[o] * a;
+          pg += sd[o + 1] * a;
+          pb += sd[o + 2] * a;
+          pa += a;
+        }
+      }
+      const o = (y * size + x) * 4;
+      const alpha = pa / ((x1 - x0) * (y1 - y0));
+      data[o + 3] = Math.round(alpha * 255);
+      if (pa > 0) {
+        data[o] = Math.round(pr / pa);
+        data[o + 1] = Math.round(pg / pa);
+        data[o + 2] = Math.round(pb / pa);
+      }
+    }
+  }
+  return { width: size, height: size, data };
+}
+
+/** A flat square in one colour — the Android background layer, which is the logo's own field green. */
+function flat(size, [r, g, b]) {
+  const data = new Uint8Array(size * size * 4);
+  for (let i = 0; i < size * size; i += 1) {
+    const o = i * 4;
+    data[o] = r;
+    data[o + 1] = g;
+    data[o + 2] = b;
+    data[o + 3] = 255;
+  }
+  return { width: size, height: size, data };
+}
+
+/* ------------------------------------------------------------------ *
+ * Write the set
+ * ------------------------------------------------------------------ */
+
+const opaque = { width: W, height: H, data: PX };
+const layers = { field: transparentField(), mono: monochrome(), mark: markWithoutWordmark() };
+const logo1024 = downscale(opaque, 1024);
+const mark512 = downscale(layers.mark, 512);
+
+const targets = [
+  ['icon.png', logo1024],
+  ['favicon.png', downscale(opaque, 196)],
+  ['splash-icon.png', downscale(opaque, 512)],
+  ['brand-logo.png', downscale(opaque, 512)],
+  ['android-icon-background.png', flat(432, FIELD)],
+  // The foreground is the disc at the logo's own proportions: the field behind it is the background
+  // layer, so every mask shape — circle, squircle, rounded square — composes back to the logo.
+  ['android-icon-foreground.png', downscale(layers.field, 432)],
+  ['android-icon-monochrome.png', downscale(layers.mono, 432)],
+  ['brand-mark.png', downscale(layers.mark, 256)],
+];
+
+for (const [name, image] of targets) {
+  writeFileSync(resolve(IMAGE_DIR, name), encodePng(image));
+}
+
+/* ------------------------------------------------------------------ *
+ * The brand SVGs: the same pixels in a vector container
+ * ------------------------------------------------------------------ */
+
+/**
+ * The two SVGs embed the logo's own pixels in an `<image>` element instead of redrawing the artwork
+ * in paths. A hand-traced SVG would be one more slightly-different logo — thinner leaves, a flatter
+ * churn, a wordmark in a font the artwork never used — which is exactly the drift this script exists
+ * to prevent. Carrying the exact raster keeps every vector context (a browser favicon fallback, a
+ * design doc, a print PDF) showing logo.png itself, at the logo's own proportions.
+ */
+const svgWrap = (size, png) =>
+  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+  <image width="${size}" height="${size}" href="data:image/png;base64,${png.toString('base64')}" />
+</svg>
+`;
+
 mkdirSync(BRAND_DIR, { recursive: true });
-mkdirSync(IMAGE_DIR, { recursive: true });
-
-writeFileSync(resolve(BRAND_DIR, 'ydu-logo.svg'), LOGO_SVG);
-writeFileSync(resolve(BRAND_DIR, 'ydu-mark.svg'), markSvg(GREEN));
-
-for (const [relative, png] of targets) {
-  writeFileSync(resolve(ROOT, relative), png);
+const svgs = [
+  ['ydu-logo.svg', svgWrap(1024, encodePng(logo1024))],
+  ['ydu-mark.svg', svgWrap(512, encodePng(mark512))],
+];
+for (const [name, svg] of svgs) {
+  writeFileSync(resolve(BRAND_DIR, name), svg);
 }
 
 process.stdout.write(
-  `wrote the logo, the mark and ${targets.length} icon files\n  ${targets
-    .map(([relative]) => relative.replace('assets/images/', ''))
+  `derived ${targets.length} icons and ${svgs.length} SVGs from assets/images/logo.png (${W}x${H}, field rgb(${FIELD.slice(0, 3)}))\n  ${targets
+    .map(([name, image]) => `${name} ${image.width}x${image.height}`)
+    .concat(svgs.map(([name]) => name))
     .join('\n  ')}\n`,
 );

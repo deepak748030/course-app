@@ -11,11 +11,12 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { decodePng } from './png.mjs';
+
 declare const Bun: { plugin: (options: unknown) => void } | undefined;
 
-// Bundled images/videos are Metro assets, not runtime files: stub them so the catalog-mapping
-// layer can be loaded outside the app runtime. react-native itself is stubbed too — the mapping
-// code only touches Platform.OS.
+// Bundled images/videos are Metro assets, not runtime files: stub them so the catalog can be
+// loaded (and its derived lesson ids/counts verified) outside the app runtime.
 if (typeof Bun !== 'undefined') {
   Bun.plugin({
     name: 'app-runtime-stubs',
@@ -372,42 +373,63 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 });
 
-check('the app draws the same brand mark the icons are generated from', () => {
+check('every brand icon is cut from the supplied logo.png', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
+  const pixels = (relative: string) =>
+    decodePng(readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url))));
 
-  // One source of truth: the churn's body and neck, its handles, the leaves and their veins, and the
-  // YDU letterforms exist twice (vector in the app, paths in the generator that rasterises the launcher
-  // icons), so the two copies are compared here. Without this the in-app logo could quietly stop
-  // matching the icon on the home screen of the phone.
+  // The in-app vector mark keeps its geometry: headers, tiles and footers draw it at small sizes.
   const marks = read('src/components/marks.tsx');
-  const generator = read('scripts/generate-brand-icons.mjs');
-  const needles = [
+  for (const geometry of [
     'M 424 244 C 392 274 372 312 366 352 L 358 558 Q 358 596 396 596 L 604 596 Q 642 596 642 558 L 634 352 C 628 312 608 274 576 244 Z',
     'M 440 252 L 380 252 Q 332 252 332 300 L 332 382 Q 332 430 380 430 L 428 430',
     'M 438 330 Q 232 366 106 646 Q 318 622 438 330 Z',
     'M 196 584 Q 306 470 408 372',
     'M 430 188 L 570 188 L 578 246 L 422 246 Z',
-  ];
-  for (const geometry of needles) {
-    assert.ok(marks.includes(geometry), `marks.tsx draws ${geometry.slice(0, 22)}…`);
-    assert.ok(generator.includes(geometry), `the icon generator draws ${geometry.slice(0, 22)}…`);
-  }
-
-  // The letterforms live only in the generator: the app shows the rendered logo (brand-logo.png) rather
-  // than drawing a second copy of the name, so there is nothing to compare them against in marks.tsx.
-  for (const letter of [
-    'M 0 0 L 74 0 L 150 104 L 62 104 Z M 138 0 L 212 0 L 150 104 L 62 104 Z M 62 104 L 150 104 L 150 210 L 62 210 Z',
-    'M 0 0 L 116 0 Q 210 0 210 105 Q 210 210 116 210 L 0 210 Z M 70 56 L 70 154 L 116 154 Q 156 154 156 105 Q 156 56 116 56 Z',
-    'M 0 0 L 0 118 Q 0 210 105 210 Q 210 210 210 118 L 210 0 L 142 0 L 142 100 Q 142 150 105 150 Q 68 150 68 100 L 68 0 Z',
   ]) {
-    assert.ok(generator.includes(letter), `the icon generator cuts ${letter.slice(0, 14)}… in the wordmark`);
+    assert.ok(marks.includes(geometry), `marks.tsx draws ${geometry.slice(0, 22)}…`);
   }
 
-  // The app shows the rendered lockup rather than a second drawing of the name, which is what keeps
-  // the splash screen, the favicon and the launcher icon the same picture.
+  // The icon set, though, is no longer a second drawing of the logo: the generator reads the supplied
+  // artwork and cuts every size out of those pixels, so the favicon, the launcher icons and the splash
+  // cannot drift away from the logo the app shows everywhere else.
+  const generator = read('scripts/generate-brand-icons.mjs');
+  assert.ok(generator.includes("resolve(IMAGE_DIR, 'logo.png')"), 'the generator reads the supplied logo.png');
+  for (const output of [
+    'icon.png',
+    'favicon.png',
+    'splash-icon.png',
+    'brand-logo.png',
+    'android-icon-background.png',
+    'android-icon-foreground.png',
+    'android-icon-monochrome.png',
+    'brand-mark.png',
+    'ydu-logo.svg',
+    'ydu-mark.svg',
+  ]) {
+    assert.ok(generator.includes(`'${output}'`), `the generator writes ${output}`);
+  }
+
+  // The in-app lockup uses the supplied logo asset rather than a second drawing of the name.
   assert.ok(marks.includes('export function BrandLockup'), 'the app can show the full logo');
-  assert.ok(marks.includes('images.brandLogo'), 'and it shows the generated file, not a redraw');
+  assert.ok(marks.includes('images.brandLogo'), 'the lockup reads the registered logo asset');
+  assert.ok(
+    /brandLogo: require\('@\/assets\/images\/logo\.png'\)/.test(read('src/media.ts')),
+    'the supplied logo.png is registered for the in-app lockup',
+  );
+  assert.ok(read('app.json').includes('"icon": "./assets/images/logo.png"'), 'the app icon uses logo.png');
+  // Where the supplied file is shown in the app itself: the boot screen, the sign-in hero and the
+  // home header show the whole lockup; the small spots (the footer, the brand row) use the same
+  // artwork with the wordmark cut away, because a 14px "ACADEMY" is not a word, it is a smudge.
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
+  assert.ok(read('src/app/auth/signin.tsx').includes('<BrandLockup'), 'so does the sign-in hero');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandLockup'), 'and the home header');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandMark size={20} />'), 'the footer uses the mark');
+  assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
+  assert.ok(
+    !read('src/components/ui.tsx').includes('BrandTile'),
+    'nothing tints the mark into a coloured tile any more — the logo brings its own colours',
+  );
 
   // The icon set itself: every size the platforms ask for, written by the generator.
   for (const file of [
@@ -417,18 +439,92 @@ check('the app draws the same brand mark the icons are generated from', () => {
     'assets/images/android-icon-monochrome.png',
     'assets/images/favicon.png',
     'assets/images/splash-icon.png',
+    'assets/images/logo.png',
     'assets/images/brand-logo.png',
     'assets/images/brand-mark.png',
     'assets/brand/ydu-logo.svg',
+    'assets/brand/ydu-mark.svg',
   ]) {
     assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
   }
+
+  // Pixel proof that the icons are the logo and not a lookalike: the opaque ones carry the logo's own
+  // corner field and the logo's own centre, at every size the platforms ask for.
+  type Pixels = { width: number; height: number; data: Uint8Array };
+  const at = (image: Pixels, x: number, y: number) => {
+    const o = (y * image.width + x) * 4;
+    return [image.data[o], image.data[o + 1], image.data[o + 2], image.data[o + 3]];
+  };
+  const close = (a: number[], b: number[], tolerance = 14) => a.every((v, i) => Math.abs(v - b[i]) <= tolerance);
+
+  const logo = pixels('assets/images/logo.png');
+  const field = at(logo, 0, 0);
+  const centre = at(logo, logo.width >> 1, logo.height >> 1);
+
+  for (const [file, size] of [
+    ['assets/images/icon.png', 1024],
+    ['assets/images/favicon.png', 196],
+    ['assets/images/splash-icon.png', 512],
+    ['assets/images/brand-logo.png', 512],
+  ]) {
+    const icon = pixels(file);
+    assert.equal(icon.width, size, `${file} is ${size}px wide`);
+    assert.equal(icon.height, size, `${file} is ${size}px tall`);
+    assert.ok(close(at(icon, 0, 0), field, 2), `${file} keeps the logo's field green in its corner`);
+    assert.ok(close(at(icon, size >> 1, size >> 1), centre), `${file} keeps the logo's centre`);
+  }
+
+  // The Android pair composes back to the logo: the flat field behind the disc with its field keyed
+  // out, plus a white silhouette of the artwork for themed icons.
+  const background = pixels('assets/images/android-icon-background.png');
+  for (const [x, y] of [
+    [0, 0],
+    [216, 216],
+    [431, 431],
+  ]) {
+    assert.ok(close(at(background, x, y), field, 2), 'the adaptive background is the logo field, flat');
+  }
+  const foreground = pixels('assets/images/android-icon-foreground.png');
+  assert.equal(at(foreground, 0, 0)[3], 0, 'the adaptive foreground drops the corner field');
+  assert.equal(at(foreground, 216, 216)[3], 255, 'and keeps the disc opaque');
+  assert.ok(close(at(foreground, 216, 216), centre), 'with the logo at its centre');
+  const mono = pixels('assets/images/android-icon-monochrome.png');
+  assert.equal(at(mono, 0, 0)[3], 0, 'the monochrome layer is transparent outside the artwork');
+  assert.deepEqual(at(mono, 216, 216), [255, 255, 255, 255], 'and a white silhouette where the churn is');
+  const mark = pixels('assets/images/brand-mark.png');
+  assert.equal(at(mark, 0, 0)[3], 0, 'the text-free mark sits on transparent');
+  assert.equal(at(mark, mark.width >> 1, mark.height >> 1)[3], 255, 'with the churn opaque at its centre');
+
+  // The brand SVGs are the logo's own pixels in a vector wrapper, not a second drawing: unwrap the
+  // embedded raster and it must carry the same field green and the same centre as logo.png.
+  for (const [file, size] of [
+    ['assets/brand/ydu-logo.svg', 1024],
+    ['assets/brand/ydu-mark.svg', 512],
+  ]) {
+    const svg = read(file);
+    assert.ok(svg.includes(`viewBox="0 0 ${size} ${size}"`), `${file} is a ${size} square`);
+    const match = svg.match(/href="data:image\/png;base64,([^"]+)"/);
+    assert.ok(match, `${file} embeds its pixels rather than redrawing them`);
+    const embedded = decodePng(Buffer.from(match[1], 'base64'));
+    assert.equal(embedded.width, size, `${file} embeds the ${size}px rendition`);
+    if (file.endsWith('ydu-logo.svg')) {
+      assert.ok(close(at(embedded, 0, 0), field, 2), `${file} embeds the logo with its field`);
+      assert.ok(close(at(embedded, size >> 1, size >> 1), centre), `${file} embeds the logo's centre`);
+    } else {
+      assert.equal(at(embedded, 0, 0)[3], 0, `${file} embeds the text-free mark on transparent`);
+      assert.equal(at(embedded, size >> 1, size >> 1)[3], 255, `${file} keeps the churn opaque`);
+    }
+  }
+
 });
 
 check('every onboarding slide fills the window, and the poster leads it', () => {
   const read = (relative: string) => readFileSync(fileURLToPath(new URL(`../${relative}`, import.meta.url)), 'utf8');
 
   const screen = read('src/app/onboarding.tsx');
+  const slideKeys = [...screen.matchAll(/^\s{4}key: '([^']+)'/gm)].map((match) => match[1]);
+  assert.deepEqual(slideKeys, ['poster', 'milk', 'bench'], 'onboarding contains exactly three slides');
+  assert.ok(/key: 'bench'[\s\S]*?cta: 'Start learning'/.test(screen), 'the final slide has its finishing action');
 
   // The artwork is the screen: `cover` on a full-window box, in a pager that is absolute-filled, so
   // no slide can end up letterboxed (which is what a `contain` image with page padding did).
@@ -442,16 +538,17 @@ check('every onboarding slide fills the window, and the poster leads it', () => 
   assert.ok(screen.includes('styles.bottomScrim'), 'and a scrim keeps the white copy legible at the foot');
 
   // Positions come from measurements, not from magic numbers.
-  assert.ok(screen.includes('setTopBarHeight('), 'the brand row reports its height');
   assert.ok(screen.includes('setFooterHeight('), 'the footer reports its height');
   assert.ok(screen.includes('bottom: footerInset + spacing.sm'), 'the copy clears the measured footer');
-  assert.ok(screen.includes('top: topInset + spacing.sm'), "a poster's lock-up clears the measured brand row");
 
-  // The poster still leads the flow, keeps its lock-up, and adds no headline of its own.
+  // The poster still leads the flow, and nothing is written over it: its name and tagline are printed
+  // in the artwork itself, so an overlay lock-up only doubled the lettering on the image.
   assert.ok(screen.includes('poster: true'), 'the first slide is marked as a poster');
   assert.ok(screen.indexOf("key: 'poster'") < screen.indexOf("key: 'milk'"), 'and it is the first one');
-  assert.ok(screen.includes('posterLockup'), 'the poster keeps its brand lock-up');
-  assert.ok(screen.includes('posterTitle'), 'and the lock-up is data, not a second headline');
+  assert.ok(screen.includes('posterLabel'), 'the poster is described to screen readers instead of overlaid');
+  for (const overlay of ['posterTitle', 'posterTagline', 'posterLockup', 'posterPlate', 'posterRule']) {
+    assert.ok(!screen.includes(overlay), `no ${overlay} is drawn over the poster artwork`);
+  }
   assert.ok(
     /onboardingPoster: require\('@\/assets\/images\/onboarding-ydu-poster\.jpg'\)/.test(read('src/media.ts')),
     'the poster asset is registered',

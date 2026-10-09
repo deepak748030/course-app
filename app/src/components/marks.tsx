@@ -7,15 +7,17 @@
  * than any font we ship and paths never depend on a font being installed); ACADEMY is set in the app's
  * own family.
  *
- * This is the same drawing that `scripts/generate-brand-icons.mjs` rasterises into the launcher icon,
- * the splash icon and the favicon, and `scripts/selfcheck.ts` compares the two files so they cannot
- * drift apart: change the geometry here, run the generator, and every icon follows.
+ * This vector drawing is the in-app mark only — headers, tiles and footers, where a small crisp SVG
+ * beats a raster. The launcher icon, the splash icon, the favicon, the Android adaptive layers and the
+ * brand SVGs are not drawn here: `scripts/generate-brand-icons.mjs` cuts every one of them out of the
+ * supplied `assets/images/logo.png`, pixel for pixel, so the icon on the phone's home screen is the
+ * same logo the app shows. `scripts/selfcheck.ts` pins this file's geometry and checks the derived
+ * icons against the logo's own pixels, so neither half can drift quietly.
  *
  *   - `BrandMark`   — the churn and the leaves alone, for headers, tiles and footers. It carries the
  *                     brand's greens; pass `color` to flatten it to one colour when it sits on
  *                     something that is already brand-coloured (the poster's lock-up, a yellow tile).
- *   - `BrandLockup` — the full logo (disc, mark, name), shown from the same PNG the icons are made
- *                     from, so the app never draws a second version of the brand.
+ *   - `BrandLockup` — the full logo, shown directly from the supplied `assets/images/logo.png` file.
  *   - `Wordmark`    — the mark next to the name in running text, for places that need a small label.
  */
 
@@ -151,9 +153,8 @@ export function BrandMark({ size = 40, color }: { size?: number; color?: string 
 }
 
 /**
- * The full logo — disc, mark and name — shown from the PNG the launcher icon and the favicon are
- * rendered from. Using the file rather than redrawing it here is what keeps the app, the splash screen
- * and the icon on the home screen exactly the same picture.
+ * The full logo from the supplied PNG asset. Using the file rather than redrawing it keeps the
+ * original artwork intact everywhere this lock-up is shown.
  */
 export function BrandLockup({ width = 200 }: { width?: number }) {
   return (
