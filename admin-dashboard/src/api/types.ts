@@ -115,6 +115,8 @@ export interface AppSettings {
   maintenanceMode: boolean;
   minAppVersion: string;
   homeBanners: HomeBanner[];
+  /** 'web' = Razorpay hosted page in the phone browser (works in Expo Go); 'sdk' = native SDK (dev build). */
+  checkoutMode: 'web' | 'sdk';
 }
 
 /** A poster on the app's home screen. Empty imageUrl = the linked course's cover. */

@@ -48,7 +48,7 @@ export default function CheckoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isEnrolled, addEnrollment } = useStore();
+  const { isEnrolled, addEnrollment, settings } = useStore();
   const { byId } = useCatalog();
 
   const course = useMemo(() => byId(id), [byId, id]);
@@ -114,7 +114,11 @@ export default function CheckoutScreen() {
     setProcessing(true);
     setOutcome(null);
     // Razorpay collects the payment; the server verifies it and grants the course.
-    const result = await razorpayPaymentService.pay({ courseId: course.remoteId, couponCode: coupon?.code });
+    const result = await razorpayPaymentService.pay({
+      courseId: course.remoteId,
+      couponCode: coupon?.code,
+      mode: settings?.checkoutMode ?? 'web',
+    });
     setProcessing(false);
 
     if (result.status === 'paid') {

@@ -6,8 +6,10 @@
  * Card, UPI and bank details are entered in Razorpay's checkout and never reach this app or the
  * academy server.
  *
- * - iOS / Android: the native `react-native-razorpay` SDK (needs a development build, not Expo Go).
  * - Web: Razorpay's `checkout.js`, which opens the same modal inside the page. No WebView.
+ * - iOS / Android, mode 'web' (default): the server creates a Razorpay Payment Link and the phone
+ *   opens Razorpay's hosted page in the system browser. Works in Expo Go. No WebView.
+ * - iOS / Android, mode 'sdk': the native `react-native-razorpay` SDK (needs a development build).
  */
 
 
@@ -20,12 +22,15 @@ export type PaymentResult =
 
 export interface PaymentService {
   /** Runs the whole purchase: create the order, collect payment, verify it on the server. */
-  pay(input: { courseId: string; couponCode?: string }): Promise<PaymentResult>;
+  pay(input: { courseId: string; couponCode?: string; mode?: 'web' | 'sdk' }): Promise<PaymentResult>;
 }
 
 /** Razorpay's error code for "the user closed the sheet" (PAYMENT_CANCELLED). */
 const RAZORPAY_PAYMENT_CANCELLED = 2;
 const CHECKOUT_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
+/** How long the app waits for the hosted payment page before asking the user to try again. */
+const LINK_WAIT_MS = 5 * 60 * 1000;
+const LINK_POLL_MS = 3000;
 
 type CheckoutSuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
 type CheckoutError = { code?: number | string; description?: string };
@@ -115,6 +120,47 @@ async function openWebCheckout(config: RazorpayOrderConfig): Promise<CheckoutSuc
   });
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Native, mode 'web': opens the Razorpay Payment Link in the system browser and waits for the
+ * server to confirm it. The app is never blocked by a native module, so this works in Expo Go.
+ */
+async function payWithPaymentLink(input: { courseId: string; couponCode?: string }): Promise<PaymentResult> {
+  let created: Awaited<ReturnType<typeof api.createRazorpayPaymentLink>>;
+  try {
+    created = await api.createRazorpayPaymentLink({ courseId: input.courseId, couponCode: input.couponCode });
+  } catch (err) {
+    return { status: 'failed', reason: describeFailure(err) };
+  }
+
+  try {
+    const { Linking } = require('react-native') as typeof import('react-native');
+    await Linking.openURL(created.paymentLink.url);
+  } catch {
+    return { status: 'failed', reason: 'Could not open the payment page. Check your browser and try again.' };
+  }
+
+  const deadline = Date.now() + LINK_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(LINK_POLL_MS);
+    try {
+      const res = await api.razorpayLinkStatus(created.order._id);
+      if (res.status === 'paid') return { status: 'paid', orderId: res.order._id };
+      if (res.status === 'cancelled') return { status: 'cancelled' };
+      if (res.status === 'expired') return { status: 'failed', reason: 'The payment link expired. Please try again.' };
+    } catch {
+      // Briefly offline or the app was backgrounded: keep waiting for the next poll.
+    }
+  }
+  return {
+    status: 'failed',
+    reason: 'We have not received your payment yet. If you paid, your course will unlock shortly. Otherwise try again.',
+  };
+}
+
 function isCancelled(err: unknown): boolean {
   return typeof err === 'object' && err !== null && (err as CheckoutError).code === RAZORPAY_PAYMENT_CANCELLED;
 }
@@ -130,7 +176,9 @@ function describeFailure(err: unknown): string {
 }
 
 export const razorpayPaymentService: PaymentService = {
-  async pay({ courseId, couponCode }) {
+  async pay({ courseId, couponCode, mode = 'web' }) {
+    if (typeof document === 'undefined' && mode === 'web') return payWithPaymentLink({ courseId, couponCode });
+
     let created: Awaited<ReturnType<typeof api.createRazorpayOrder>>;
     try {
       created = await api.createRazorpayOrder({ courseId, couponCode });

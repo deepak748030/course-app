@@ -197,6 +197,8 @@ export type ServerSettings = {
   minAppVersion: string;
   /** Poster slider on the home screen; empty = featured courses. */
   homeBanners?: { imageUrl: string; title: string; subtitle: string; courseSlug: string; active: boolean }[];
+  /** 'web' = Razorpay hosted page in the browser (works in Expo Go); 'sdk' = native SDK (dev build). */
+  checkoutMode?: 'web' | 'sdk';
 };
 
 export const api = {
@@ -244,6 +246,17 @@ export const api = {
       method: 'POST',
       body: input,
     }),
+  /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
+  createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
+    request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {
+      method: 'POST',
+      body: input,
+    }),
+  /** Checks whether the payment link was paid; the server grants the course when it was. */
+  razorpayLinkStatus: (orderId: string) =>
+    request<{ status: 'paid' | 'pending' | 'cancelled' | 'expired'; order: ServerOrder }>(
+      `/api/payments/razorpay/link/${orderId}`,
+    ),
   /** Confirms a successful checkout with the server, which grants the course. */
   verifyRazorpayPayment: (input: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
     request<{ order: ServerOrder }>('/api/payments/razorpay/verify', { method: 'POST', body: input }),

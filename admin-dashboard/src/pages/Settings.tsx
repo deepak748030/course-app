@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ImagePlus, Plus, Save, Smartphone, Trash2, Wrench } from 'lucide-react';
+import { ArrowDown, ArrowUp, CreditCard, ImagePlus, Plus, Save, Smartphone, Trash2, Wrench } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, uploadImage } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
@@ -254,6 +254,28 @@ export default function Settings() {
               </div>
             </div>
             <Toggle checked={form.maintenanceMode} onChange={(v) => set('maintenanceMode', v)} label="Maintenance mode" />
+          </div>
+          <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft">
+                <CreditCard size={16} className="text-brand" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Checkout mode</p>
+                <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+                  Web: Razorpay opens in the phone browser (works in Expo Go). SDK: native Razorpay sheet (dev build only).
+                </p>
+              </div>
+            </div>
+            <Select
+              value={form.checkoutMode}
+              onChange={(e) => set('checkoutMode', e.target.value as AppSettings['checkoutMode'])}
+              className="sm:w-56"
+              aria-label="Checkout mode"
+            >
+              <option value="web">Web (browser)</option>
+              <option value="sdk">SDK (native sheet)</option>
+            </Select>
           </div>
           <div className="flex items-center justify-between gap-4 p-5">
             <div className="flex items-start gap-3">
