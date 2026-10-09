@@ -166,6 +166,7 @@ const settingsSchema = z.object({
   currency: z.string().trim().length(3).optional(),
   maintenanceMode: z.boolean().optional(),
   minAppVersion: z.string().trim().max(20).optional(),
+  checkoutMode: z.enum(['web', 'sdk']).optional(),
   homeBanners: z
     .array(
       z.object({

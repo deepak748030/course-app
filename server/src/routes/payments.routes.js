@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { createRazorpayOrder, verifyRazorpayPayment } from '../controllers/payments.controller.js';
+import {
+  createRazorpayOrder,
+  createRazorpayPaymentLink,
+  paymentLinkStatus,
+  verifyRazorpayPayment,
+} from '../controllers/payments.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 
@@ -20,5 +25,7 @@ const verifySchema = z.object({
 
 router.post('/razorpay/order', validateBody(createSchema), createRazorpayOrder);
 router.post('/razorpay/verify', validateBody(verifySchema), verifyRazorpayPayment);
+router.post('/razorpay/link', validateBody(createSchema), createRazorpayPaymentLink);
+router.get('/razorpay/link/:orderId', paymentLinkStatus);
 
 export default router;

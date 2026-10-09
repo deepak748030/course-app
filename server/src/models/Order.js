@@ -26,6 +26,8 @@ const orderSchema = new Schema(
     paymentReference: { type: String, default: '' },
     /** Razorpay order id (order_…) for gateway purchases; empty for legacy rows. */
     razorpayOrderId: { type: String, default: '', index: true },
+    /** Razorpay Payment Link id (plink_...) for purchases made through the hosted browser page. */
+    paymentLinkId: { type: String, default: '', index: true },
   },
   { timestamps: true }
 );

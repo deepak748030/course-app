@@ -33,6 +33,8 @@ const settingsSchema = new Schema(
     minAppVersion: { type: String, default: '' },
     /** Poster banners at the top of the app's home screen (max 5). Empty = featured courses. */
     homeBanners: { type: [homeBannerSchema], default: [] },
+    /** How the app takes payment: 'web' = Razorpay hosted page in the browser, 'sdk' = native SDK (dev build). */
+    checkoutMode: { type: String, enum: ['web', 'sdk'], default: 'web' },
   },
   { timestamps: true }
 );
