@@ -8,6 +8,7 @@ import {
   paymentsConfigured,
   publicKeyId,
   razorpayClient,
+  razorpayFailure,
   toPaise,
   verifyCheckoutSignature,
   verifyWebhookSignature,
@@ -77,12 +78,19 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
     paymentMethod: 'razorpay',
   });
 
-  const rzpOrder = await razorpayClient().orders.create({
-    amount: toPaise(amountInr),
-    currency: 'INR',
-    receipt: String(order._id),
-    notes: { orderId: String(order._id), courseId: String(course._id) },
-  });
+  let rzpOrder;
+  try {
+    rzpOrder = await razorpayClient().orders.create({
+      amount: toPaise(amountInr),
+      currency: 'INR',
+      receipt: String(order._id),
+      notes: { orderId: String(order._id), courseId: String(course._id) },
+    });
+  } catch (err) {
+    // Nothing was charged; drop the pending row so it does not clutter the order book.
+    await Order.deleteOne({ _id: order._id });
+    throw razorpayFailure(err);
+  }
   order.razorpayOrderId = rzpOrder.id;
   await order.save();
 
@@ -119,7 +127,12 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
     throw new HttpError(400, 'Payment could not be verified. Nothing was charged to your course.');
   }
 
-  const payment = await razorpayClient().payments.fetch(paymentId);
+  let payment;
+  try {
+    payment = await razorpayClient().payments.fetch(paymentId);
+  } catch (err) {
+    throw razorpayFailure(err);
+  }
   if (payment.order_id !== orderId || Number(payment.amount) !== toPaise(order.amountInr)) {
     throw new HttpError(400, 'Payment does not match this order.');
   }

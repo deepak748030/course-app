@@ -22,6 +22,20 @@ export function razorpayClient() {
   return client;
 }
 
+/**
+ * Turns a Razorpay SDK failure into a readable API error instead of a generic 500.
+ * 401 means the server's key id/secret are wrong; other errors carry Razorpay's own description.
+ */
+export function razorpayFailure(err) {
+  console.error('[payments] Razorpay request failed:', err?.statusCode, err?.error || err?.message || err);
+  if (err?.statusCode === 401) {
+    return new HttpError(503, 'Payments are not set up correctly on the server (Razorpay keys rejected).');
+  }
+  const description = err?.error?.description;
+  if (description) return new HttpError(502, `Razorpay could not process this payment: ${description}`);
+  return new HttpError(502, 'Razorpay is unreachable right now. Please try again in a moment.');
+}
+
 /** Razorpay amounts are in paise (1 INR = 100 paise). */
 export const toPaise = (amountInr) => Math.round(Number(amountInr) * 100);
 

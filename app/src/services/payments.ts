@@ -114,12 +114,13 @@ function isCancelled(err: unknown): boolean {
 }
 
 function describeFailure(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
-  if (typeof err === 'object' && err !== null && 'description' in err && typeof err.description === 'string') {
-    return err.description;
-  }
-  if (err instanceof Error) return err.message;
-  return 'The payment did not go through.';
+  let message = 'The payment did not go through.';
+  if (err instanceof ApiError) message = err.message;
+  else if (typeof err === 'object' && err !== null && 'description' in err && typeof err.description === 'string') {
+    message = err.description;
+  } else if (err instanceof Error) message = err.message;
+  // The failure text is shown as a sentence followed by "Nothing was charged…".
+  return /[.!?]$/.test(message) ? message : `${message}.`;
 }
 
 export const razorpayPaymentService: PaymentService = {
