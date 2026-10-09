@@ -492,13 +492,6 @@ export function useToast() {
 }
 
 // ---------- course cover placeholder --------------------------------------------------------------
-const coverGradients = [
-  'linear-gradient(135deg, #E4F0E7 0%, #14532D 100%)',
-  'linear-gradient(135deg, #EDF4EE 0%, #0E3F22 100%)',
-  'linear-gradient(135deg, #EDF4EE 0%, #2F6B47 100%)',
-  'linear-gradient(135deg, #F5F8F6 0%, #A9C7B2 100%)',
-];
-
 export function CourseCover({
   title,
   coverUrl,
@@ -511,15 +504,13 @@ export function CourseCover({
   if (coverUrl) {
     return <img src={coverUrl} alt="" className={`${className} shrink-0 rounded-md border border-line-soft object-cover`} />;
   }
-  let hash = 0;
-  for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-  const bg = coverGradients[Math.abs(hash) % coverGradients.length];
+  // Same default artwork the learner app shows when a course has no image.
   return (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-md border border-line-soft text-[11px] font-bold text-brand-ink`}
-      style={{ background: bg }}
-    >
-      {initials(title)}
-    </div>
+    <img
+      src="/course-placeholder.jpg"
+      alt=""
+      className={`${className} shrink-0 rounded-md border border-line-soft object-contain`}
+      style={{ background: '#FBF6E3' }}
+    />
   );
 }
