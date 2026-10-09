@@ -353,7 +353,8 @@ export function Button({
   accessibilityHint,
 }: {
   label: string;
-  onPress: () => void;
+  /** May return a promise: the button then shows its busy state until it settles. */
+  onPress: () => void | Promise<unknown>;
   variant?: ButtonVariant;
   icon?: LucideIcon;
   /** Rendered instead of `icon` — used for animated icons. */
@@ -368,7 +369,10 @@ export function Button({
 }) {
   const press = usePressScale(0.985);
   const reduced = useReducedMotion();
-  const inactive = disabled || loading;
+  // Async presses keep the button busy until they settle, so every tap shows it is working.
+  const [pending, setPending] = useState(false);
+  const busy = loading || pending;
+  const inactive = disabled || busy;
   const sheenValue = useSharedValue(0);
 
   useEffect(() => {
@@ -405,11 +409,15 @@ export function Button({
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityHint={accessibilityHint}
-        accessibilityState={{ disabled: inactive, busy: loading }}
+        accessibilityState={{ disabled: inactive, busy }}
         disabled={inactive}
         onPress={() => {
           feedback.tap();
-          onPress();
+          const result = onPress();
+          if (result && typeof (result as Promise<unknown>).finally === 'function') {
+            setPending(true);
+            void (result as Promise<unknown>).catch(() => {}).finally(() => setPending(false));
+          }
         }}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
@@ -425,8 +433,13 @@ export function Button({
           },
         ]}>
         {sheen ? <Animated.View style={[styles.buttonSheen, sheenStyle]} /> : null}
-        {loading ? (
-          <ActivityIndicator color={tones.fg} size="small" />
+        {busy ? (
+          <>
+            <ActivityIndicator color={tones.fg} size="small" />
+            <Text style={[type.bodyStrong, { color: tones.fg }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </>
         ) : (
           <>
             {Icon ? <Icon size={18} color={tones.fg} strokeWidth={1.9} /> : null}

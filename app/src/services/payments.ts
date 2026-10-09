@@ -10,7 +10,6 @@
  * - Web: Razorpay's `checkout.js`, which opens the same modal inside the page. No WebView.
  */
 
-import { Platform } from 'react-native';
 
 import { ApiError, api, type RazorpayOrderConfig } from '@/services/api';
 
@@ -135,7 +134,7 @@ export const razorpayPaymentService: PaymentService = {
     let payment: CheckoutSuccess;
     try {
       payment =
-        Platform.OS === 'web'
+        typeof document !== 'undefined'
           ? await openWebCheckout(created.razorpay)
           : await openNativeCheckout(created.razorpay);
     } catch (err) {

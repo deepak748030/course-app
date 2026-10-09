@@ -17,6 +17,7 @@ import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
+import { CatalogSkeleton } from '@/components/skeletons';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
 import { OfferMark } from '@/components/offer-tag';
@@ -117,11 +118,7 @@ export default function CourseDetailsScreen() {
             onAction={() => void refresh()}
           />
         ) : status === 'loading' ? (
-          <EmptyState
-            icon={Clapperboard}
-            title={t("Loading the catalog…")}
-            body={t("Fetching the latest courses from the academy.")}
-          />
+          <CatalogSkeleton />
         ) : (
           <EmptyState
             icon={Clapperboard}

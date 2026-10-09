@@ -11,6 +11,7 @@ import { Receipt, WifiOff } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ListSkeleton } from '@/components/skeletons';
 import { AppBar, Badge, DataList, EmptyState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useT } from '@/i18n';
@@ -61,7 +62,7 @@ export default function TransactionsScreen() {
       header={<AppBar title={t("Transactions")} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       {state === 'loading' ? (
-        <EmptyState icon={Receipt} title={t("Loading your purchases…")} body={t("Fetching your orders from the academy.")} />
+        <ListSkeleton rows={4} />
       ) : state === 'error' ? (
         <EmptyState
           icon={WifiOff}
