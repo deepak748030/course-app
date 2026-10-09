@@ -36,6 +36,29 @@ export function razorpayFailure(err) {
   return new HttpError(502, 'Razorpay is unreachable right now. Please try again in a moment.');
 }
 
+/**
+ * Checks the key pair once at boot and logs the outcome, so a wrong key shows up in the
+ * server log right away instead of as a 503 on the first purchase. The secret is never logged.
+ */
+export async function checkRazorpayKeys() {
+  if (!paymentsConfigured()) {
+    console.warn('[payments] RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are not set — payments answer 503.');
+    return;
+  }
+  try {
+    await razorpayClient().orders.all({ count: 1 });
+    console.log(`[payments] Razorpay keys accepted (${env.razorpayKeyId.slice(0, 12)}…)`);
+  } catch (err) {
+    if (err?.statusCode === 401) {
+      console.error(
+        '[payments] Razorpay REJECTED the keys (401 Authentication failed). Copy RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET again from the Razorpay dashboard (the secret is normally 24 characters, no spaces) and restart the server.'
+      );
+    } else {
+      console.error('[payments] Could not reach Razorpay to check the keys:', err?.error?.description || err?.message);
+    }
+  }
+}
+
 /** Razorpay amounts are in paise (1 INR = 100 paise). */
 export const toPaise = (amountInr) => Math.round(Number(amountInr) * 100);
 

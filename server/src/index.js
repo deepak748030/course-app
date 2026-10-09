@@ -11,6 +11,7 @@ import routes from './routes/index.js';
 import { requestCounter } from './services/analytics.js';
 import { razorpayWebhook } from './controllers/payments.controller.js';
 import { uploadDir } from './services/uploads.js';
+import { checkRazorpayKeys } from './services/razorpay.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -57,6 +58,7 @@ server.listen(env.port, () => {
   console.log(`[api] YDU Academy server listening on http://0.0.0.0:${env.port}`);
   console.log(`[api] Health: http://localhost:${env.port}/api/health`);
   console.log(`[api] Realtime: socket.io on the same port (/socket.io)`);
+  void checkRazorpayKeys();
 });
 
 connectDb();
