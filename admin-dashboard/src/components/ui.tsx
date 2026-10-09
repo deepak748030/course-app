@@ -508,7 +508,7 @@ export function CourseCover({
   return (
     <img
       src="/course-placeholder.jpg"
-      alt=""
+      alt={title}
       className={`${className} shrink-0 rounded-md border border-line-soft object-contain`}
       style={{ background: '#FBF6E3' }}
     />
