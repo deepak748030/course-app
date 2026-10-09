@@ -8,11 +8,13 @@ import {
   ConfirmDialog,
   EmptyState,
   LoadingBlock,
+  Pagination,
   SearchInput,
   Select,
   formatDate,
   formatInr,
   initials,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -24,6 +26,7 @@ export default function Users() {
   const [blockedFilter, setBlockedFilter] = useState('');
   const [deleting, setDeleting] = useState<AdminUser | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const pager = usePagination(users, 10, `${search}|${roleFilter}|${blockedFilter}`);
 
   const load = useCallback(async () => {
     try {
@@ -80,13 +83,13 @@ export default function Users() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2.5">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, email or phone…" className="w-72" />
-        <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-36">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search by name, email or phone…" className="w-full sm:w-72" />
+        <Select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="w-full sm:w-36">
           <option value="">All roles</option>
           <option value="user">Learners</option>
           <option value="admin">Admins</option>
         </Select>
-        <Select value={blockedFilter} onChange={(e) => setBlockedFilter(e.target.value)} className="w-36">
+        <Select value={blockedFilter} onChange={(e) => setBlockedFilter(e.target.value)} className="w-full sm:w-36">
           <option value="">Any status</option>
           <option value="false">Active</option>
           <option value="true">Blocked</option>
@@ -104,14 +107,14 @@ export default function Users() {
               <thead>
                 <tr>
                   {['Learner', 'Role', 'Status', 'Courses', 'Spent', 'Joined', ''].map((h, i) => (
-                    <th key={i} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={i} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${['Role', 'Courses', 'Spent', 'Joined'].includes(h) ? 'hidden md:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {pager.rows.map((user) => (
                   <tr key={user._id} className="group hover:bg-canvas/60">
                     <td className="border-b border-line-soft px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -124,17 +127,17 @@ export default function Users() {
                         </div>
                       </div>
                     </td>
-                    <td className="border-b border-line-soft px-4 py-3">
+                    <td className="hidden border-b border-line-soft px-4 py-3 md:table-cell">
                       {user.role === 'admin' ? <Badge tone="info">Admin</Badge> : <Badge tone="outline">Learner</Badge>}
                     </td>
                     <td className="border-b border-line-soft px-4 py-3">
                       {user.blocked ? <Badge tone="error">Blocked</Badge> : <Badge tone="success">Active</Badge>}
                     </td>
-                    <td className="border-b border-line-soft px-4 py-3 font-semibold">{user.enrollmentCount ?? 0}</td>
-                    <td className="border-b border-line-soft px-4 py-3 font-semibold">{formatInr(user.totalSpentInr ?? 0)}</td>
-                    <td className="border-b border-line-soft px-4 py-3 text-muted">{formatDate(user.createdAt)}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 font-semibold md:table-cell">{user.enrollmentCount ?? 0}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 font-semibold md:table-cell">{formatInr(user.totalSpentInr ?? 0)}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{formatDate(user.createdAt)}</td>
                     <td className="border-b border-line-soft px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                         <button
                           title={user.role === 'admin' ? 'Make learner' : 'Make admin'}
                           disabled={busyId === user._id || user.role === 'admin'}
@@ -166,6 +169,9 @@ export default function Users() {
               </tbody>
             </table>
           </div>
+        )}
+        {users && users.length > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
 

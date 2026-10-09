@@ -3,7 +3,9 @@ import {
   ChartColumn,
   LayoutDashboard,
   LogOut,
+  Menu,
   RefreshCw,
+  X,
   Settings,
   Shapes,
   ShoppingBag,
@@ -15,9 +17,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isDemoMode, onDemoModeChange } from '../api/client';
-import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus } from '../api/realtime';
+import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus, usePresence } from '../api/realtime';
 import { resetDemoDb } from '../api/demo';
 import { useAuth } from '../auth/AuthContext';
 import { initials } from './ui';
@@ -50,7 +52,7 @@ function BrandMark() {
   return (
     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#17150F" />
+        <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#FFFFFF" />
       </svg>
     </div>
   );
@@ -114,12 +116,31 @@ export default function Layout() {
     };
   }, []);
 
-  const current = TITLES[window.location.pathname] || TITLES['/'];
+  const location = useLocation();
+  const current = TITLES[location.pathname] || TITLES['/'];
+  const presence = usePresence();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => setMenuOpen(false), [location.pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ---------- sidebar ---------- */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
+      {/* Mobile drawer backdrop */}
+      {menuOpen && (
+        <button
+          aria-label="Close menu"
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-30 bg-ink/30 md:hidden"
+        />
+      )}
+
+      {/* ---------- sidebar (drawer on mobile, column on md+) ---------- */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-line bg-surface transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
+          menuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
           <BrandMark />
           <div>
@@ -150,7 +171,7 @@ export default function Layout() {
 
         <div className="border-t border-line-soft p-3">
           <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-ink">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-white">
               {initials(user?.name || 'Admin')}
             </div>
             <div className="min-w-0 flex-1">
@@ -173,12 +194,30 @@ export default function Layout() {
 
       {/* ---------- main ---------- */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-surface px-6">
-          <div>
-            <h1 className="text-lg font-bold leading-tight">{current.title}</h1>
-            <p className="text-[13px] text-muted">{current.subtitle}</p>
+        <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              aria-label="Open menu"
+              onClick={() => setMenuOpen(true)}
+              className="-ml-1 shrink-0 rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink md:hidden"
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight">{current.title}</h1>
+              <p className="hidden truncate text-[13px] text-muted sm:block">{current.subtitle}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {presence && !demo && (
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink"
+                title="Signed-in accounts online right now"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                {presence.signedIn} online
+              </span>
+            )}
             {!demo && (
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
@@ -189,7 +228,7 @@ export default function Layout() {
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-success' : 'bg-subtle'}`}
                 />
-                {live ? 'Live' : 'Connecting…'}
+                <span className="hidden sm:inline">{live ? 'Live' : 'Connecting…'}</span>
               </span>
             )}
             {demo && (
@@ -218,13 +257,13 @@ export default function Layout() {
           </div>
         )}
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>
 
       {/* Live activity toasts */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2">
+      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 sm:left-auto sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-80">
         {toasts.map((toast) => (
           <div
             key={toast.id}

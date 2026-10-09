@@ -14,12 +14,14 @@ import {
   Field,
   Input,
   LoadingBlock,
+  Pagination,
   SearchInput,
   Select,
   Stars,
   Textarea,
   Toggle,
   formatInr,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -121,6 +123,7 @@ export default function Courses() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Course | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
+  const pager = usePagination(courses, 10, `${search}|${categoryFilter}|${statusFilter}`);
 
   const load = useCallback(async () => {
     try {
@@ -236,20 +239,20 @@ export default function Courses() {
     <div className="space-y-4">
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search courses…" className="w-64" />
-        <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-48">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search courses…" className="w-full sm:w-64" />
+        <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full sm:w-48">
           <option value="">All categories</option>
           {categories.map((c) => (
             <option key={c._id} value={c._id}>{c.label}</option>
           ))}
         </Select>
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-36">
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-36">
           <option value="">All statuses</option>
           <option value="true">Published</option>
           <option value="false">Draft</option>
         </Select>
-        <div className="flex-1" />
-        <Button icon={Plus} onClick={openCreate}>New course</Button>
+        <div className="hidden flex-1 md:block" />
+        <Button icon={Plus} onClick={openCreate} className="w-full sm:w-auto">New course</Button>
       </div>
 
       {/* table */}
@@ -269,14 +272,14 @@ export default function Courses() {
               <thead>
                 <tr>
                   {['Course', 'Category', 'Level', 'Price', 'Rating', 'Enrolled', 'Status', ''].map((h, i) => (
-                    <th key={i} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={i} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${['Category', 'Level', 'Rating', 'Enrolled'].includes(h) ? 'hidden lg:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {courses.map((course) => {
+                {pager.rows.map((course) => {
                   const category = typeof course.category === 'string' ? null : course.category;
                   return (
                     <tr key={course._id} className="group hover:bg-canvas/60">
@@ -295,21 +298,21 @@ export default function Courses() {
                           </div>
                         </div>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3">
+                      <td className="hidden border-b border-line-soft px-4 py-3 lg:table-cell">
                         <Badge tone="outline">{category?.label || '—'}</Badge>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3 text-muted">{course.level}</td>
+                      <td className="hidden border-b border-line-soft px-4 py-3 text-muted lg:table-cell">{course.level}</td>
                       <td className="border-b border-line-soft px-4 py-3">
                         <p className="font-semibold">{formatInr(course.priceInr)}</p>
                         {course.listPriceInr != null && <p className="text-xs text-subtle line-through">{formatInr(course.listPriceInr)}</p>}
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3">
+                      <td className="hidden border-b border-line-soft px-4 py-3 lg:table-cell">
                         <div className="flex items-center gap-1.5">
                           <Stars rating={course.rating} />
                           <span className="text-xs text-subtle">({course.reviewCount})</span>
                         </div>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3 font-semibold">{course.enrollmentCount ?? 0}</td>
+                      <td className="hidden border-b border-line-soft px-4 py-3 font-semibold lg:table-cell">{course.enrollmentCount ?? 0}</td>
                       <td className="border-b border-line-soft px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Toggle checked={course.published} onChange={() => togglePublish(course)} label={`Publish ${course.title}`} />
@@ -319,7 +322,7 @@ export default function Courses() {
                         </div>
                       </td>
                       <td className="border-b border-line-soft px-4 py-3">
-                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                           <button title={course.published ? 'Unpublish' : 'Publish'} onClick={() => togglePublish(course)} className="rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink">
                             {course.published ? <EyeOff size={15} /> : <Eye size={15} />}
                           </button>
@@ -337,6 +340,9 @@ export default function Courses() {
               </tbody>
             </table>
           </div>
+        )}
+        {courses && courses.length > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
 
@@ -367,7 +373,7 @@ export default function Courses() {
             <Textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Category">
               <Select value={form.category} onChange={(e) => set('category', e.target.value)}>
                 <option value="" disabled>Choose…</option>
@@ -447,7 +453,7 @@ export default function Courses() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 rounded-xl border border-line-soft bg-surface-alt p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-xl border border-line-soft bg-surface-alt p-4">
             <label className="flex items-center gap-2 text-[13px] font-semibold">
               <Toggle checked={form.published} onChange={(v) => set('published', v)} label="Published" /> Published
             </label>
@@ -462,7 +468,7 @@ export default function Courses() {
           <Field label="Who is this for">
             <Textarea rows={2} value={form.audience} onChange={(e) => set('audience', e.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Outcomes" hint="One per line.">
               <Textarea rows={4} value={form.outcomesText} onChange={(e) => set('outcomesText', e.target.value)} />
             </Field>

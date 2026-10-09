@@ -1,4 +1,4 @@
-import { Activity, Eye, IndianRupee, Search, ShoppingBag, UserPlus, Users } from 'lucide-react';
+import { Activity, Eye, IndianRupee, Radio, Search, ShieldCheck, ShoppingBag, UserPlus, Users } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import {
   Area,
@@ -12,17 +12,17 @@ import {
   YAxis,
 } from 'recharts';
 import { api } from '../api/client';
-import { useRealtimeRefresh } from '../api/realtime';
+import { isRealtimeConnected, useRealtimeRefresh, usePresence } from '../api/realtime';
 import type { AnalyticsOverview } from '../api/types';
 import { Card, CardHeader, LoadingBlock, formatInr } from '../components/ui';
 
-const GOLD = '#D9A400';
-const BRAND = '#FFC629';
-const INK = '#17150F';
+const GOLD = '#2F6B47';
+const BRAND = '#14532D';
+const INK = '#0F231A';
 
 const tooltipStyle = {
   borderRadius: 10,
-  border: '1px solid rgba(23,21,15,0.12)',
+  border: '1px solid rgba(16,35,26,0.12)',
   boxShadow: 'none',
   fontSize: 13,
 };
@@ -32,6 +32,21 @@ const PERIODS = [
   { days: 30, label: '30 days' },
   { days: 90, label: '90 days' },
 ];
+
+function LiveTile({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: number | string; note: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-line-soft bg-surface-alt px-4 py-3">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface">
+        <Icon size={16} className="text-success" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-xl font-bold leading-tight tabular-nums">{value}</p>
+        <p className="truncate text-[13px] font-semibold">{label}</p>
+        <p className="truncate text-xs text-subtle">{note}</p>
+      </div>
+    </div>
+  );
+}
 
 function Kpi({ icon: Icon, label, value, note }: { icon: typeof Activity; label: string; value: string; note?: string }) {
   return (
@@ -65,6 +80,7 @@ export default function Analytics() {
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [error, setError] = useState('');
+  const presence = usePresence();
 
   const load = useCallback(() => {
     setError('');
@@ -85,22 +101,24 @@ export default function Analytics() {
   if (!data) return <Card><LoadingBlock label="Crunching the numbers…" /></Card>;
 
   const { kpis, funnel } = data;
+  const presenceNow = presence;
+  const online = presenceNow ? presenceNow.signedIn : null;
   const interval = data.daily.length > 40 ? 12 : data.daily.length > 14 ? 4 : 1;
 
   return (
     <div className="space-y-4">
       {/* period picker */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-[13px] text-muted">
           Requests, activity and conversions as the server records them — nothing here is estimated.
         </p>
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
+        <div className="flex w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5 sm:w-auto">
           {PERIODS.map((p) => (
             <button
               key={p.days}
               onClick={() => setDays(p.days)}
               className={`rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-                days === p.days ? 'bg-brand text-ink' : 'text-muted hover:text-ink'
+                days === p.days ? 'bg-brand text-white' : 'text-muted hover:text-ink'
               }`}
             >
               {p.label}
@@ -109,8 +127,33 @@ export default function Analytics() {
         </div>
       </div>
 
+      {/* live presence — pushed over the realtime socket */}
+      <Card className="p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Radio size={16} className={presenceNow ? 'text-success' : 'text-subtle'} />
+            <h2 className="text-[15px] font-semibold">Live now</h2>
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                presenceNow ? 'bg-success-soft text-success' : 'bg-ink/5 text-subtle'
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${presenceNow ? 'animate-pulse bg-success' : 'bg-subtle'}`} />
+              {presenceNow ? 'Live' : isRealtimeConnected() ? 'Waiting for data…' : 'Connecting…'}
+            </span>
+          </div>
+          <p className="text-xs text-subtle">Updates as people sign in, browse and leave</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <LiveTile icon={Users} label="Online now" value={online ?? '—'} note="Signed-in accounts" />
+          <LiveTile icon={UserPlus} label="Learners online" value={presenceNow?.learners ?? '—'} note="Learner accounts in the app" />
+          <LiveTile icon={ShieldCheck} label="Admins online" value={presenceNow?.admins ?? '—'} note="Dashboard sessions" />
+          <LiveTile icon={Eye} label="Anonymous visitors" value={presenceNow?.visitors ?? '—'} note={`${presenceNow?.total ?? 0} open connections`} />
+        </div>
+      </Card>
+
       {/* KPI cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Kpi icon={Activity} label="API requests" value={kpis.requests.total.toLocaleString('en-IN')} note={`${kpis.requests.today.toLocaleString('en-IN')} today`} />
         <Kpi icon={Users} label="Active users" value={kpis.activeUsers.dau.toLocaleString('en-IN')} note={`WAU ${kpis.activeUsers.wau.toLocaleString('en-IN')} · MAU ${kpis.activeUsers.mau.toLocaleString('en-IN')}`} />
         <Kpi icon={UserPlus} label="New signups" value={kpis.signups.total.toLocaleString('en-IN')} note={`${kpis.signups.today} today`} />
@@ -131,7 +174,7 @@ export default function Analytics() {
                     <stop offset="100%" stopColor={BRAND} stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="rgba(23,21,15,0.07)" />
+                <CartesianGrid vertical={false} stroke="rgba(16,35,26,0.07)" />
                 <XAxis dataKey="label" tickLine={false} axisLine={false} interval={interval} />
                 <YAxis tickLine={false} axisLine={false} width={46} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={{ fontWeight: 600, color: INK }} />
@@ -173,14 +216,14 @@ export default function Analytics() {
           <div className="px-2 py-4">
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={data.peakHours} margin={{ top: 5, right: 12, left: -18, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="rgba(23,21,15,0.07)" />
+                <CartesianGrid vertical={false} stroke="rgba(16,35,26,0.07)" />
                 <XAxis dataKey="hour" tickLine={false} axisLine={false} interval={3} tickFormatter={(h: number) => `${h}:00`} />
                 <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelFormatter={(h) => `${h}:00 – ${Number(h) + 1}:00`}
                   formatter={(value) => [Number(value).toLocaleString('en-IN'), 'Events']}
-                  cursor={{ fill: 'rgba(23,21,15,0.04)' }}
+                  cursor={{ fill: 'rgba(16,35,26,0.04)' }}
                 />
                 <Bar dataKey="count" fill={BRAND} radius={[3, 3, 0, 0]} />
               </BarChart>

@@ -43,20 +43,20 @@ export default function Login() {
         <div className="flex items-center gap-2.5">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-ink">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#FFC629" />
+              <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#FFFFFF" />
             </svg>
           </div>
           <div>
-            <p className="text-lg font-bold leading-tight text-ink">YDU Academy</p>
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink/70">Admin console</p>
+            <p className="text-lg font-bold leading-tight text-white">YDU Academy</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-white/70">Admin console</p>
           </div>
         </div>
 
         <div>
-          <h2 className="max-w-md text-3xl font-bold leading-snug text-ink">
+          <h2 className="max-w-md text-3xl font-bold leading-snug text-white">
             Full control of the academy — courses, learners, orders and more.
           </h2>
-          <ul className="mt-6 space-y-2.5 text-[15px] font-medium text-ink/80">
+          <ul className="mt-6 space-y-2.5 text-[15px] font-medium text-white/80">
             <li>• Live revenue and enrollment charts</li>
             <li>• Publish and price the whole catalog</li>
             <li>• Moderate reviews and manage refunds</li>
@@ -64,7 +64,7 @@ export default function Login() {
           </ul>
         </div>
 
-        <p className="text-[13px] font-medium text-ink/60">Learn the dairy trade, one batch at a time.</p>
+        <p className="text-[13px] font-medium text-white/60">Learn the dairy trade, one batch at a time.</p>
 
         {/* soft decorative circles */}
         <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/25" />
@@ -78,7 +78,7 @@ export default function Login() {
             <div className="mb-7 flex items-center gap-2.5 lg:hidden">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand">
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                  <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#17150F" />
+                  <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#0F231A" />
                 </svg>
               </div>
               <p className="text-base font-bold">YDU Academy — Admin</p>

@@ -63,7 +63,7 @@ export default function Settings() {
       <Card>
         <CardHeader title="App identity" subtitle="Shown across the mobile app" />
         <div className="space-y-4 p-5">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="App name">
               <Input value={form.appName} onChange={(e) => set('appName', e.target.value)} />
             </Field>
@@ -79,7 +79,7 @@ export default function Settings() {
 
       <Card>
         <CardHeader title="Support" subtitle="Where learners reach a human" />
-        <div className="grid grid-cols-2 gap-4 p-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 p-5">
           <Field label="Support email">
             <Input type="email" value={form.supportEmail} onChange={(e) => set('supportEmail', e.target.value)} />
           </Field>

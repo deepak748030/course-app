@@ -8,10 +8,12 @@ import {
   Card,
   EmptyState,
   LoadingBlock,
+  Pagination,
   SearchInput,
   Select,
   formatDateTime,
   formatInr,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -53,6 +55,7 @@ export default function Orders() {
 
   useRealtimeRefresh(['order.created'], load);
 
+  const pager = usePagination(orders, 10, `${statusFilter}|${search}`);
 
   async function changeStatus(order: Order, status: OrderStatus) {
     if (order.status === status) return;
@@ -72,22 +75,22 @@ export default function Orders() {
     <div className="space-y-4">
       {/* summary + filters */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
+        <div className="flex w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5 sm:w-auto">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
               className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                statusFilter === tab.id ? 'bg-brand text-ink' : 'text-muted hover:text-ink'
+                statusFilter === tab.id ? 'bg-brand text-white' : 'text-muted hover:text-ink'
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search course, learner or coupon…" className="w-72" />
-        <div className="flex-1" />
-        <div className="flex items-center gap-4 text-[13px]">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search course, learner or coupon…" className="w-full sm:w-72" />
+        <div className="hidden flex-1 md:block" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
           <span className="inline-flex items-center gap-1.5 text-muted">
             <ShoppingBag size={14} /> {totals.count} orders
           </span>
@@ -111,14 +114,14 @@ export default function Orders() {
               <thead>
                 <tr>
                   {['Order', 'Learner', 'Course', 'Coupon', 'Amount', 'Paid at', 'Status'].map((h) => (
-                    <th key={h} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={h} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${h === 'Coupon' || h === 'Paid at' ? 'hidden md:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {pager.rows.map((order) => (
                   <tr key={order._id} className="hover:bg-canvas/60">
                     <td className="border-b border-line-soft px-4 py-3 font-mono text-xs text-subtle">
                       #{order._id.slice(-8)}
@@ -129,7 +132,7 @@ export default function Orders() {
                       <p className="truncate text-xs text-subtle">{order.user?.email || ''}</p>
                     </td>
                     <td className="border-b border-line-soft px-4 py-3 font-medium">{order.courseTitle}</td>
-                    <td className="border-b border-line-soft px-4 py-3">
+                    <td className="hidden border-b border-line-soft px-4 py-3 md:table-cell">
                       {order.couponCode ? (
                         <div>
                           <Badge tone="brand">{order.couponCode}</Badge>
@@ -145,7 +148,7 @@ export default function Orders() {
                         <p className="text-xs text-subtle line-through">{formatInr(order.listAmountInr)}</p>
                       )}
                     </td>
-                    <td className="border-b border-line-soft px-4 py-3 text-muted">{formatDateTime(order.createdAt)}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{formatDateTime(order.createdAt)}</td>
                     <td className="border-b border-line-soft px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Badge tone={statusTone(order.status)}>{order.status}</Badge>
@@ -166,6 +169,9 @@ export default function Orders() {
               </tbody>
             </table>
           </div>
+        )}
+        {orders && orders.length > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
     </div>
