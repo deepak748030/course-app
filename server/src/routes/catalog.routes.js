@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getCourse, listCategories, listCourses } from '../controllers/catalog.controller.js';
+import { getCourse, listCategories, listCourses, relatedCourses } from '../controllers/catalog.controller.js';
 import { validateParams, validateQuery } from '../middleware/validate.js';
 
 const router = Router();
@@ -18,6 +18,7 @@ const idOrSlugParam = z.object({ idOrSlug: z.string().min(1).max(140) });
 
 router.get('/categories', listCategories);
 router.get('/courses', validateQuery(courseListQuery), listCourses);
+router.get('/courses/:idOrSlug/related', validateParams(idOrSlugParam), relatedCourses);
 router.get('/courses/:idOrSlug', validateParams(idOrSlugParam), getCourse);
 
 export default router;

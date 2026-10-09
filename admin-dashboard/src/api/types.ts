@@ -168,3 +168,32 @@ export interface UserDetail {
   enrollments: EnrollmentDetail[];
   orders: Order[];
 }
+
+// ---------- behaviour analytics ----------------------------------------------------
+export interface AnalyticsDay {
+  date: string;
+  label: string;
+  requests: number;
+  uniques: number;
+  courseViews: number;
+  checkouts: number;
+  lessonStarts: number;
+  purchases: number;
+  revenueInr: number;
+}
+
+export interface AnalyticsOverview {
+  periodDays: number;
+  kpis: {
+    requests: { total: number; today: number };
+    activeUsers: { dau: number; wau: number; mau: number };
+    signups: { total: number; today: number };
+    orders: { count: number; revenueInr: number; today: { count: number; revenueInr: number } };
+  };
+  daily: AnalyticsDay[];
+  funnel: { courseViews: number; checkoutStarted: number; ordersPaid: number; conversionPct: number };
+  peakHours: Array<{ hour: number; count: number }>;
+  topViewed: Array<{ id: string; slug: string; title: string; count: number }>;
+  topPurchased: Array<{ id: string; slug: string; title: string; count: number; revenueInr: number }>;
+  topSearches: Array<{ query: string; count: number }>;
+}

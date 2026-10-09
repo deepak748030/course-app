@@ -1,7 +1,10 @@
 /**
  * Catalog context — loads the live catalog once for the whole app and keeps it fresh.
  *
- * - Fetches on mount; screens gate on the status (loading / error-with-retry / ready).
+ * - Boots instantly from the on-device cache when one exists (the last good catalog),
+ *   then refreshes in the background with an If-None-Match round-trip — a 304 means
+ *   no payload at all crosses the wire.
+ * - Screens gate on the status (loading / error-with-retry / ready).
  * - Subscribes to the realtime `catalog.changed` event, so a publish or edit in the admin
  *   dashboard reaches open apps within a couple of seconds (refetch is debounced).
  * - `refresh()` is exposed for pull-style retries from error states.
@@ -22,7 +25,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { Button } from '@/components/ui';
 import { createStyles, colors, spacing, type } from '@/constants/theme';
-import { fetchCatalog, type CatalogData } from '@/services/catalogService';
+import {
+  readCatalogCache,
+  refreshCatalog,
+  writeCatalogCache,
+  type CatalogData,
+} from '@/services/catalogService';
 import { onCatalogChanged } from '@/services/realtime';
 import type { Category, Course } from '@/types';
 
@@ -44,11 +52,25 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<CatalogData>({ courses: [], categories: [] });
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const etagRef = useRef<string | null>(null);
+  const dataRef = useRef(data);
+  dataRef.current = data;
 
   const refresh = useCallback(async () => {
     try {
-      const next = await fetchCatalog();
-      setData(next);
+      const result = await refreshCatalog(etagRef.current);
+      if (result.notModified) {
+        // Nothing moved on the server — except categories, which always arrive fresh.
+        if (JSON.stringify(result.categories) !== JSON.stringify(dataRef.current.categories)) {
+          setData((current) => ({ ...current, categories: result.categories }));
+        }
+        setStatus('ready');
+        setError(null);
+        return;
+      }
+      etagRef.current = result.etag;
+      setData(result.data);
+      writeCatalogCache({ etag: result.etag, savedAt: Date.now(), data: result.data });
       setStatus('ready');
       setError(null);
     } catch (err) {
@@ -62,8 +84,22 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Boot: hydrate from the on-device cache for an instant first paint, then refresh
+  // in the background (304 when nothing changed, full payload when it did).
   useEffect(() => {
-    void refresh();
+    let cancelled = false;
+    void (async () => {
+      const cache = await readCatalogCache();
+      if (!cancelled && cache && cache.data.courses.length > 0) {
+        etagRef.current = cache.etag;
+        setData(cache.data);
+        setStatus('ready');
+      }
+      await refresh();
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [refresh]);
 
   // Admin publishes/edits land here in realtime — debounce bursts (a course edit can fire

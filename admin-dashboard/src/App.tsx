@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Reviews from './pages/Reviews';
 import Settings from './pages/Settings';
+import Analytics from './pages/Analytics';
 import Users from './pages/Users';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -32,6 +33,7 @@ export default function App() {
         }
       >
         <Route index element={<Dashboard />} />
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/courses" element={<Courses />} />
         <Route path="/categories" element={<Categories />} />
         <Route path="/users" element={<Users />} />

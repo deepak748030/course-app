@@ -6,6 +6,7 @@ import * as courses from '../controllers/admin/courses.controller.js';
 import * as orders from '../controllers/admin/orders.controller.js';
 import * as reviews from '../controllers/admin/reviews.controller.js';
 import * as settings from '../controllers/admin/settings.controller.js';
+import { overview as analyticsOverview } from '../controllers/admin/analytics.controller.js';
 import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
@@ -20,6 +21,10 @@ const booleanString = z.enum(['true', 'false']);
 
 // ---------- overview stats ---------------------------------------------------
 router.get('/stats/overview', overview);
+
+// ---------- behaviour analytics ------------------------------------------------
+const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(365).optional() });
+router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
 
 // ---------- courses ------------------------------------------------------------
 const ingredientSchema = z.object({

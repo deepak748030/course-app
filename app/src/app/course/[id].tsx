@@ -13,14 +13,14 @@ import {
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useMemo, useState, useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { AnimatedCart, AnimatedCheck, AnimatedIcon } from '@/components/animated-icons';
 import { OfferMark } from '@/components/offer-tag';
-import { LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
+import { CourseCard, LessonRow, ReviewCard, StickyBar, type LessonRowState } from '@/components/course-cards';
 import { StarsDisplay } from '@/components/rating-input';
 import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
@@ -28,6 +28,8 @@ import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, S
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseLessonGroups, discountPercent } from '@/lib/catalog';
 import { api, type ServerReview } from '@/services/api';
+import { mapCourse } from '@/services/catalogService';
+import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { formatDuration, formatInr } from '@/lib/format';
@@ -55,6 +57,28 @@ export default function CourseDetailsScreen() {
   const [paywallLesson, setPaywallLesson] = useState<Lesson | null>(null);
 
   const course = useMemo(() => byId(id), [byId, id]);
+
+  // Every landing on this page is one view for the academy's analytics.
+  useEffect(() => {
+    if (course) track('course_viewed', { courseId: course.remoteId });
+  }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Related courses (co-purchase, else same track) — powers the recommendation rail.
+  const [related, setRelated] = useState<Course[]>([]);
+  useEffect(() => {
+    if (!course) return;
+    let cancelled = false;
+    setRelated([]);
+    api
+      .relatedCourses(course.remoteId)
+      .then(({ courses: next }) => {
+        if (!cancelled) setRelated(next.map(mapCourse));
+      })
+      .catch(() => {}); // offline or empty: the rail simply stays hidden
+    return () => {
+      cancelled = true;
+    };
+  }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reviews live on the server — fetched per course page, not bundled.
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -269,7 +293,7 @@ export default function CourseDetailsScreen() {
           <SectionHeader
             style={styles.headInset}
             title={t("Reviews")}
-            subtitle={`${course.reviewCount.toLocaleString('en-IN')} sample reviews`}
+            subtitle={t('{n} reviews from learners', { n: course.reviewCount.toLocaleString('en-IN') })}
           />
         </View>
 
@@ -312,6 +336,22 @@ export default function CourseDetailsScreen() {
         </DataList>
         <Text style={[type.label, styles.sectionNote, { color: colors.textSubtle }]}>{t("Reviews from learners who own this course, synced from the academy.")}</Text>
 
+        {related.length > 0 ? (
+          <>
+            <View style={styles.rule} />
+            <View style={[styles.section, styles.sectionTight]}>
+              <SectionHeader style={styles.headInset} title={t("Learners also took")} />
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.relatedRail}>
+              {related.map((entry) => (
+                <CourseCard key={entry.id} course={entry} style={styles.relatedCard} />
+              ))}
+            </ScrollView>
+          </>
+        ) : null}
       </Screen>
 
       <StickyBar bottomInset={insets.bottom}>
@@ -504,6 +544,8 @@ function CurriculumSectionBlock({
 const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
+  relatedRail: { gap: spacing.md, paddingHorizontal: layout.screen, paddingBottom: spacing.sm },
+  relatedCard: { width: 230 },
   hero: { height: 240, backgroundColor: colors.player, overflow: 'hidden' },
   heroImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   heroBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: layout.screen },

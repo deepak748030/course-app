@@ -401,4 +401,6 @@ export const hi: Record<string, string> = {
   "Your orders live on the academy server. Check your connection and try again.": "आपके ऑर्डर अकादमी सर्वर पर हैं। कनेक्शन जाँचकर दोबारा कोशिश करें।",
   "and": "और",
   "{n} orders on your account": "आपके अकाउंट पर {n} ऑर्डर",
+  "Learners also took": "शिक्षार्थियों ने ये भी लिए",
+  "{n} reviews from learners": "शिक्षार्थियों की {n} समीक्षाएँ",
 };

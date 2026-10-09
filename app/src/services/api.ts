@@ -207,6 +207,12 @@ export const api = {
   courses: (query?: { q?: string; category?: string; level?: string }) =>
     request<{ courses: ServerCourse[] }>('/api/courses', { query }),
   course: (idOrSlug: string) => request<{ course: ServerCourse }>(`/api/courses/${idOrSlug}`),
+  relatedCourses: (idOrSlug: string) =>
+    request<{ courses: ServerCourse[] }>(`/api/courses/${idOrSlug}/related`),
+
+  // ---- analytics (fire-and-forget batch of behaviour events) ----
+  trackEvents: (events: { event: string; courseId?: string; meta?: Record<string, unknown>; at: number }[]) =>
+    request<{ ok: boolean }>('/api/analytics/events', { method: 'POST', body: { events } }),
 
   // ---- settings ----
   settings: () => request<{ settings: ServerSettings }>('/api/settings'),

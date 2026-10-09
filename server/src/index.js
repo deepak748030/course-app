@@ -1,4 +1,5 @@
 import http from 'node:http';
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
@@ -7,6 +8,7 @@ import { env, isProd } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { initializeRealtime } from './realtime/socket.js';
 import routes from './routes/index.js';
+import { requestCounter } from './services/analytics.js';
 import { uploadDir } from './services/uploads.js';
 
 const app = express();
@@ -24,8 +26,15 @@ app.use(
   })
 );
 
+// gzip every JSON payload: catalog responses shrink ~70%, which the app feels
+// directly on slow mobile connections.
+app.use(compression());
+
 app.use(express.json({ limit: '1mb' }));
 if (!isProd) app.use(morgan('dev'));
+
+// Count every /api hit for the daily request stats (in-memory, flushed to Mongo).
+app.use('/api', requestCounter);
 
 // Local fallback storage for image uploads (Cloudinary is used when configured).
 app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));

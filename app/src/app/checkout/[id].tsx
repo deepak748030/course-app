@@ -10,7 +10,7 @@ import {
   Tag,
   TriangleAlert,
 } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,6 +31,7 @@ import { createStyles, colors, layout, radius, spacing, tabularNums, type } from
 import { discountPercent, firstPlayableLesson } from '@/lib/catalog';
 import { purchaseTerms } from '@/data/content';
 import { ApiError, api } from '@/services/api';
+import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { demoPaymentService, demoScenarios, type DemoScenario } from '@/services/payments';
@@ -54,6 +55,11 @@ export default function CheckoutScreen() {
   const [couponInput, setCouponInput] = useState('');
   const [coupon, setCoupon] = useState<{ code: string; discountInr: number; percent: number | null } | null>(null);
   const [checkingCoupon, setCheckingCoupon] = useState(false);
+
+  // Reaching checkout is the funnel's key step — record it once per course.
+  useEffect(() => {
+    if (course) track('checkout_started', { courseId: course.remoteId });
+  }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [couponError, setCouponError] = useState<string | null>(null);
   const [scenario, setScenario] = useState<DemoScenario>('success');
   const [processing, setProcessing] = useState(false);

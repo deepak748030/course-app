@@ -9,7 +9,9 @@
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
 import { connectDb } from '../config/db.js';
+import { AnalyticsEvent } from '../models/AnalyticsEvent.js';
 import { Category } from '../models/Category.js';
+import { DailyStat } from '../models/DailyStat.js';
 import { Coupon } from '../models/Coupon.js';
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
@@ -692,6 +694,68 @@ async function run() {
     });
   }
   await Review.insertMany(reviews);
+
+  // ---- analytics history (last 60 days) ---------------------------------------------
+  // Reconstructs the behaviour trail the real app would have produced around the
+  // seeded orders: signups, course views, checkout starts, lesson activity, searches
+  // and the daily request rollup — so the dashboard analytics page has a real shape.
+  console.log('Generating analytics history…');
+  const events = [];
+  const pushEvent = (user, event, course, at, meta = {}) =>
+    events.push({ user, event, course, meta, createdAt: at, updatedAt: at });
+
+  for (const learner of learners) {
+    pushEvent(learner._id, 'signup', null, learner.createdAt);
+  }
+
+  for (const order of uniqueOrders) {
+    const at = order.createdAt;
+    const buyerViewAt = new Date(at.getTime() - randInt(2, 36) * 60 * 60 * 1000);
+    pushEvent(order.user, 'course_viewed', order.course, buyerViewAt);
+    // Extra eyes that did not convert make the funnel honest.
+    for (let v = 0; v < randInt(2, 6); v += 1) {
+      const visitor = pick(learners);
+      pushEvent(visitor._id, 'course_viewed', order.course, new Date(at.getTime() - randInt(4, 96) * 60 * 60 * 1000));
+    }
+    pushEvent(order.user, 'checkout_started', order.course, new Date(at.getTime() - randInt(10, 90) * 60 * 1000));
+    if (order.status === 'paid') {
+      pushEvent(order.user, 'order_paid', order.course, at, { amountInr: order.amountInr });
+    }
+  }
+
+  // Lesson activity from the seeded enrollments.
+  for (const enrollment of uniqueEnrollments) {
+    const course = courseDocs.find((c) => String(c._id) === String(enrollment.course));
+    if (!course) continue;
+    for (const lessonId of enrollment.completedLessons.slice(0, 6)) {
+      pushEvent(enrollment.user, 'lesson_started', course._id, new Date(enrollment.createdAt.getTime() + randInt(0, 20) * DAY));
+      pushEvent(enrollment.user, 'lesson_completed', course._id, new Date(enrollment.createdAt.getTime() + randInt(0, 20) * DAY), { lessonId });
+    }
+    pushEvent(enrollment.user, 'app_opened', null, new Date(enrollment.createdAt.getTime() - randInt(0, 4) * DAY));
+  }
+
+  // A scatter of searches, including some that never appear in the catalog.
+  const searchTerms = ['paneer', 'ghee', 'milk testing', 'cheese', 'curd', 'lactometer', 'butter', 'dahi', 'price', 'cream'];
+  for (let i = 0; i < 140; i += 1) {
+    pushEvent(pick(learners)._id, 'search', null, new Date(now - randInt(0, 59) * DAY - randInt(0, 20) * 60 * 60 * 1000), {
+      query: pick(searchTerms),
+    });
+  }
+
+  await AnalyticsEvent.insertMany(events);
+
+  // Daily request rollup: a gentle growth curve with weekly rhythm + noise.
+  const dailyStats = [];
+  for (let d = 59; d >= 0; d -= 1) {
+    const date = new Date(now - d * DAY);
+    const growth = 1 + (59 - d) * 0.012;
+    const weekly = date.getDay() === 0 ? 0.7 : date.getDay() === 6 ? 0.85 : 1;
+    dailyStats.push({
+      date: date.toISOString().slice(0, 10),
+      requests: Math.round((260 + rand() * 240) * growth * weekly),
+    });
+  }
+  await DailyStat.insertMany(dailyStats);
 
   console.log('Recomputing course ratings…');
   for (const course of courseDocs) {

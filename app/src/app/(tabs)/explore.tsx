@@ -29,6 +29,7 @@ import {
   type BrowseFilters,
 } from '@/lib/catalog';
 import { CatalogGate, useCatalog } from '@/services/catalog-context';
+import { track } from '@/services/analytics';
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
 
@@ -48,6 +49,14 @@ export default function ExploreScreen() {
   useEffect(() => {
     if (params.category) setFilters((prev) => ({ ...prev, categoryIds: [String(params.category)] }));
   }, [params.category]);
+
+  // What learners actually search for — debounced so typing one word is one event.
+  useEffect(() => {
+    const term = filters.query.trim();
+    if (term.length < 2) return;
+    const timer = setTimeout(() => track('search', { meta: { query: term } }), 1200);
+    return () => clearTimeout(timer);
+  }, [filters.query]);
 
   const results = useMemo(() => browseCourses(courses, filters), [filters, courses]);
 

@@ -10,6 +10,7 @@
 import { DemoApiError, demoRequest } from './demo';
 import type {
   AdminUser,
+  AnalyticsOverview,
   AppSettings,
   Category,
   Coupon,
@@ -165,6 +166,8 @@ export const api = {
   me: () => request<{ user: AdminUser }>('/auth/me'),
 
   overview: () => request<Overview>('/admin/stats/overview'),
+  analyticsOverview: (days: number) =>
+    request<AnalyticsOverview>('/admin/analytics/overview', { query: { days } }),
 
   listCourses: (params: { search?: string; category?: string; published?: string; sort?: string }) =>
     request<{ courses: Course[] }>('/admin/courses', { query: params }).then((r) => r.courses),

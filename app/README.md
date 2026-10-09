@@ -64,6 +64,21 @@ Coupons are validated by the server (`POST /api/coupons/validate`); the seeded c
 `WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off). A successful demo payment
 creates a real order and enrollment on the server.
 
+## Analytics and recommendations
+
+The app records anonymous behaviour events — app opens, course views, lesson starts/completions,
+checkout starts, searches — through `src/services/analytics.ts`. Events queue in memory and flush
+to the server in one batched POST every 15 seconds (or on backgrounding), fire-and-forget, so they
+never block the UI. The server aggregates them into the admin dashboard's Analytics page and uses
+co-purchase data to power the "Learners also took" rail on each course page.
+
+## Speed
+
+The catalog boots instantly from an on-device cache of the last good load; a background refetch
+then sends `If-None-Match`, so an unchanged catalog returns a 304 with no body. Server responses
+are gzip-compressed. Together these keep cold starts and catalog refreshes light on slow
+connections.
+
 ## Project structure
 
 ```text
@@ -86,7 +101,8 @@ src/
   lib/util.ts              haptics feedback
   media.ts                 the only place that maps data keys → bundled assets
   services/                api.ts (HTTP), realtime.ts (socket.io), catalogService.ts (server→app
-                           mapping), catalog-context.tsx (live catalog + gate), auth.ts, payments.ts
+                           mapping + offline cache), catalog-context.tsx (live catalog + gate),
+                           analytics.ts (batched behaviour events), auth.ts, payments.ts
   store.tsx                single context: session (server JWT), enrollments + progress hydrated
                            from the server and synced back, notes, saved, prefs
   types/index.ts           typed data models

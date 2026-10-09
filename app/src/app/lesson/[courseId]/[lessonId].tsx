@@ -66,6 +66,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { courseLessonGroups, nextLesson } from '@/lib/catalog';
+import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { CLIP_RENDITION, videos } from '@/media';
@@ -190,6 +191,7 @@ export default function LessonPlayerScreen() {
   // Move it to the incoming lesson's saved position whenever the lesson changes.
   useEffect(() => {
     if (!course || !lesson) return;
+    track('lesson_started', { courseId: course.remoteId, meta: { lessonId: lesson.id } });
     const target = lessonProgress(course.id, lesson.id).positionSec;
     lastSavedRef.current = target;
     setPosition(target);
@@ -305,6 +307,7 @@ export default function LessonPlayerScreen() {
   };
 
   const markComplete = (value: boolean) => {
+    if (value) track('lesson_completed', { courseId: course.remoteId, meta: { lessonId: lesson.id } });
     setLessonComplete(course, lesson.id, value);
     setLessonPosition(course, lesson.id, value ? 0 : position);
     if (value) feedback.success();

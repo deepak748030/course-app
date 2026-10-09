@@ -12,6 +12,10 @@ lucide icons.
 - **Dashboard** — revenue/enrollment/orders/new-learner KPI cards with period deltas,
   30-day revenue chart, 14-day enrollment chart, top courses, rating distribution donut,
   category breakdown, recent orders and sign-ups
+- **Analytics** — server behaviour data: API requests + unique learners per day
+  (7/30/90-day), DAU/WAU/MAU, purchase funnel (view → checkout → paid with conversion %),
+  activity by hour, most-viewed and most-purchased courses, and what learners search for.
+  Refreshes live on new orders/sign-ups
 - **Courses** — search/filter, publish toggle, full editor drawer (pricing, flags,
   outcomes, equipment and the complete section/lesson curriculum), delete with cascade
 - **Categories** — CRUD with icon picker and in-use protection

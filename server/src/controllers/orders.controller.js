@@ -2,6 +2,7 @@ import { Coupon } from '../models/Coupon.js';
 import { Course } from '../models/Course.js';
 import { Order } from '../models/Order.js';
 import { emitToAdmins, emitToUser } from '../realtime/socket.js';
+import { trackEvent } from '../services/analytics.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { grantEnrollment } from './shared.js';
 
@@ -48,6 +49,8 @@ export const createOrder = asyncHandler(async (req, res) => {
     await grantEnrollment(req.user._id, course._id);
     if (coupon) await Coupon.updateOne({ _id: coupon._id }, { $inc: { usedCount: 1 } });
     emitToUser(String(req.user._id), 'enrollment.granted', { courseId: String(course._id), title: course.title });
+    // Server-emitted: revenue-trusted conversion events the client cannot fake.
+    trackEvent({ userId: req.user._id, event: 'order_paid', courseId: course._id, meta: { amountInr: order.amountInr } });
   }
 
   emitToAdmins('order.created', {

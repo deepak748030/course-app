@@ -11,10 +11,16 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
+import { startAnalytics, track } from '@/services/analytics';
 import { CatalogProvider } from '@/services/catalog-context';
 import { StoreProvider, useStore } from '@/store';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Behaviour analytics: one 'app_opened' per launch, batched flushes after that.
+// Fire-and-forget — offline launches just queue until the server is reachable.
+startAnalytics();
+track('app_opened');
 
 // Runs before React mounts, because both of these are visible in the very first frame: on a
 // non-edge-to-edge Android window the status bar itself has to be painted, and on an edge-to-edge

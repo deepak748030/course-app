@@ -47,6 +47,7 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `GET` | `/api/categories` | catalog categories |
 | `GET` | `/api/courses` | published courses (`category`, `level`, `q`, `popular`, `beginner`) |
 | `GET` | `/api/courses/:idOrSlug` | course detail |
+| `GET` | `/api/courses/:idOrSlug/related` | recommendation rail — co-purchase first, then same track |
 | `GET` | `/api/settings` | app settings (maintenance mode, support, …) |
 | `POST` | `/api/auth/register` | create learner account |
 | `POST` | `/api/auth/login` | email + password → JWT |
@@ -59,12 +60,14 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `PATCH` | `/api/enrollments/:courseId/progress` | push completed lessons + resume position |
 | `GET` | `/api/uploads/policy` | which storage backend answers uploads |
 | `POST` | `/api/uploads` | multipart image upload (field `file`), admins → covers, learners → avatars |
+| `POST` | `/api/analytics/events` | batched behaviour events from the app (≤50 per call, anonymous allowed) |
 
 ### Admin (JWT + `role: admin`, all under `/api/admin`)
 
 | Area | Routes |
 | --- | --- |
 | Stats | `GET /stats/overview` — KPIs with deltas, revenue & enrollment series, top courses, rating distribution, category breakdown, recent activity |
+| Analytics | `GET /analytics/overview?days=30` — requests/uniques per day, DAU/WAU/MAU, funnel, peak hours, most viewed/purchased, top searches |
 | Courses | `GET/POST /courses`, `GET/PUT/DELETE /courses/:id`, `PATCH /courses/:id/publish` |
 | Categories | `GET/POST /categories`, `PUT/DELETE /categories/:id` |
 | Users | `GET /users`, `GET/PATCH/DELETE /users/:id` (block, role, cascade delete) |
@@ -97,6 +100,26 @@ and `admins` (role: admin). Events pushed today:
 set — the returned URL is the CDN delivery URL. Without Cloudinary the server falls
 back to local storage in `server/uploads`, served from `GET /uploads/*`, so the flow
 works in plain development too. `GET /api/uploads/policy` reports which backend is live.
+
+## Analytics & recommendations
+
+Every `/api` request is counted in memory and flushed to a per-day rollup
+(`DailyStat`) every 30 seconds — that is where "requests per day/week/month"
+comes from, at the cost of ~1 write per minute instead of one per hit.
+
+Behaviour events (`app_opened`, `course_viewed`, `lesson_started`,
+`checkout_started`, `search`…) arrive from the app in small batches via
+`POST /api/analytics/events`. Two events are **server-emitted so they cannot
+be faked**: `signup` (in register) and `order_paid` (when an order is paid).
+Events TTL out after ~13 months; monthly history stays available through the
+rollups, orders and users collections.
+
+Recommendations (`/api/courses/:idOrSlug/related`) rank by co-purchase from
+enrollments and fall back to the best of the same track — no external
+ML service needed.
+
+Responses are gzip-compressed (`compression`), and the app refetches the
+catalog with `If-None-Match`, so an unchanged catalog costs a 304 with no body.
 
 ## Project layout
 

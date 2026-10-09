@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { dbState } from '../config/db.js';
 import { dbGuard } from '../middleware/dbGuard.js';
 import adminRoutes from './admin.routes.js';
+import analyticsRoutes from './analytics.routes.js';
 import authRoutes from './auth.routes.js';
 import catalogRoutes from './catalog.routes.js';
 import couponsRoutes from './coupons.routes.js';
@@ -29,6 +30,7 @@ router.use(dbGuard);
 
 router.use('/auth', authRoutes);
 router.use('/', catalogRoutes); // /api/categories, /api/courses
+router.use('/analytics', analyticsRoutes); // /api/analytics/events
 router.use('/orders', ordersRoutes);
 router.use('/enrollments', enrollmentsRoutes);
 router.use('/users', usersRoutes);

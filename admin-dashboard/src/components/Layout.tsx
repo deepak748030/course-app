@@ -1,5 +1,6 @@
 import {
   BookOpen,
+  ChartColumn,
   LayoutDashboard,
   LogOut,
   RefreshCw,
@@ -23,6 +24,7 @@ import { initials } from './ui';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/analytics', label: 'Analytics', icon: ChartColumn },
   { to: '/courses', label: 'Courses', icon: BookOpen },
   { to: '/categories', label: 'Categories', icon: Shapes },
   { to: '/users', label: 'Learners', icon: Users },
@@ -34,6 +36,7 @@ const NAV = [
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/': { title: 'Dashboard', subtitle: 'How the academy is doing, at a glance' },
+  '/analytics': { title: 'Analytics', subtitle: 'Traffic, learners, funnel and what they search for' },
   '/courses': { title: 'Courses', subtitle: 'Create, price, publish and arrange the catalog' },
   '/categories': { title: 'Categories', subtitle: 'The tracks learners browse and filter by' },
   '/users': { title: 'Learners', subtitle: 'Accounts, access and spend' },

@@ -600,6 +600,124 @@ export class DemoApiError extends Error {
  * Handles the endpoints the dashboard uses, against the in-memory store.
  * Mirrors the Express route behaviour closely enough for the UI not to notice.
  */
+/**
+ * Demo-mode behaviour analytics. Derived from the same in-browser orders/users as
+ * the rest of the demo store, so the numbers stay coherent with the Orders page.
+ */
+function analyticsOverview(days: number) {
+  const clamp = Math.min(Math.max(days, 7), 365);
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const start = today.getTime() - (clamp - 1) * DAY;
+
+  const paid = db.orders.filter((o) => o.status === 'paid');
+  const paidByDay = new Map<string, { count: number; revenue: number }>();
+  for (const order of paid) {
+    const key = order.createdAt.slice(0, 10);
+    const entry = paidByDay.get(key) || { count: 0, revenue: 0 };
+    entry.count += 1;
+    entry.revenue += order.amountInr;
+    paidByDay.set(key, entry);
+  }
+
+  const daily = [] as Array<{
+    date: string; label: string; requests: number; uniques: number; courseViews: number;
+    checkouts: number; lessonStarts: number; purchases: number; revenueInr: number;
+  }>;
+  for (let i = 0; i < clamp; i += 1) {
+    const d = new Date(start + i * DAY);
+    const key = d.toISOString().slice(0, 10);
+    const growth = 1 + i * 0.012;
+    const weekly = d.getUTCDay() === 0 ? 0.7 : d.getUTCDay() === 6 ? 0.85 : 1;
+    const requests = Math.round((260 + rand() * 240) * growth * weekly);
+    const uniques = Math.round(requests * (0.22 + rand() * 0.1));
+    const od = paidByDay.get(key);
+    const purchases = od?.count || 0;
+    daily.push({
+      date: key,
+      label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+      requests,
+      uniques,
+      courseViews: Math.round(uniques * (1.6 + rand() * 0.8)),
+      checkouts: purchases + Math.round(purchases * (0.5 + rand() * 0.6)) + randInt(1, 4),
+      lessonStarts: Math.round(uniques * (1.1 + rand() * 0.7)),
+      purchases,
+      revenueInr: od?.revenue || 0,
+    });
+  }
+
+  const totals = daily.reduce(
+    (acc, row) => {
+      acc.requests += row.requests;
+      acc.courseViews += row.courseViews;
+      acc.checkouts += row.checkouts;
+      acc.purchases += row.purchases;
+      acc.revenueInr += row.revenueInr;
+      return acc;
+    },
+    { requests: 0, courseViews: 0, checkouts: 0, purchases: 0, revenueInr: 0 }
+  );
+
+  const last = daily[daily.length - 1];
+  const sumSince = (n: number) => daily.slice(-n).reduce((s, row) => s + row.uniques, 0);
+
+  const byCourse = new Map<string, { count: number; revenue: number; title: string }>();
+  const since = new Date(start).toISOString();
+  for (const order of paid.filter((o) => o.createdAt >= since)) {
+    const key = (order.course as { _id: string })._id;
+    const entry = byCourse.get(key) || { count: 0, revenue: 0, title: order.courseTitle };
+    entry.count += 1;
+    entry.revenue += order.amountInr;
+    byCourse.set(key, entry);
+  }
+  const topPurchased = [...byCourse.entries()]
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 5)
+    .map(([id, entry]) => ({ id, slug: id, title: entry.title, count: entry.count, revenueInr: entry.revenue }));
+  const topViewed = [...byCourse.entries()]
+    .map(([id, entry]) => ({ id, slug: id, title: entry.title, count: entry.count * randInt(7, 12) }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+
+  // Learn-hour shape: mornings and evenings, quiet overnight.
+  const peakHours = Array.from({ length: 24 }, (_, hour) => {
+    const morning = Math.exp(-((hour - 9) ** 2) / 8) * 46;
+    const evening = Math.exp(-((hour - 20) ** 2) / 6) * 64;
+    return { hour, count: Math.round((morning + evening) * (0.75 + rand() * 0.5)) };
+  });
+
+  const searchTerms: Array<[string, number]> = [
+    ['paneer', randInt(40, 70)], ['ghee', randInt(30, 55)], ['milk testing', randInt(22, 40)],
+    ['curd', randInt(18, 34)], ['cheese', randInt(14, 28)], ['lactometer', randInt(9, 20)],
+    ['dahi', randInt(8, 16)], ['cream', randInt(5, 12)],
+  ];
+
+  return {
+    periodDays: clamp,
+    kpis: {
+      requests: { total: totals.requests, today: last.requests },
+      activeUsers: { dau: last.uniques, wau: sumSince(7), mau: sumSince(30) },
+      signups: { total: Math.round(totals.requests * 0.021), today: randInt(1, 4) },
+      orders: {
+        count: totals.purchases,
+        revenueInr: totals.revenueInr,
+        today: { count: last.purchases, revenueInr: last.revenueInr },
+      },
+    },
+    daily,
+    funnel: {
+      courseViews: totals.courseViews,
+      checkoutStarted: totals.checkouts,
+      ordersPaid: totals.purchases,
+      conversionPct: totals.courseViews > 0 ? Math.round((totals.purchases / totals.courseViews) * 1000) / 10 : 0,
+    },
+    peakHours,
+    topViewed,
+    topPurchased,
+    topSearches: searchTerms.map(([query, count]) => ({ query, count })),
+  };
+}
+
 export function demoRequest(method: string, path: string, body?: unknown, query?: Record<string, string>): unknown {
   const [pathname, search] = path.split('?');
   const q: Record<string, string> = { ...(query || {}) };
@@ -622,6 +740,9 @@ export function demoRequest(method: string, path: string, body?: unknown, query?
 
   // ---- overview --------------------------------------------------------------
   if (method === 'GET' && pathname === '/admin/stats/overview') return overview();
+  if (method === 'GET' && pathname === '/admin/analytics/overview') {
+    return analyticsOverview(Number(q.days) || 30);
+  }
 
   // ---- courses ------------------------------------------------------------------
   if (pathname === '/admin/courses' && method === 'GET') {
