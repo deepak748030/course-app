@@ -50,14 +50,20 @@ function checkoutOptions(config: RazorpayOrderConfig) {
 
 /** Native SDK: opens Razorpay's checkout sheet and resolves with the signed payment. */
 async function openNativeCheckout(config: RazorpayOrderConfig): Promise<CheckoutSuccess> {
-  let RazorpayCheckout: { open(options: object): Promise<CheckoutSuccess> };
+  const unavailable = () =>
+    Object.assign(
+      new Error('Payments are not available in this app build. Install the latest development build to pay.'),
+      { code: 'unavailable' },
+    );
+  let RazorpayCheckout: { open?: (options: object) => Promise<CheckoutSuccess> } | null | undefined;
   try {
     RazorpayCheckout = (require('react-native-razorpay') as { default: typeof RazorpayCheckout }).default;
   } catch {
-    throw Object.assign(new Error('Payments need the app build with Razorpay. Open the development build to pay.'), {
-      code: 'unavailable',
-    });
+    throw unavailable();
   }
+  // The JS package loads even when its native half is not in this build (Expo Go, or a build made
+  // before the package was installed). In that case the native module is null and there is no open().
+  if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') throw unavailable();
   return RazorpayCheckout.open(checkoutOptions(config));
 }
 
