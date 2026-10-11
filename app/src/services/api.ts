@@ -265,8 +265,12 @@ export const api = {
       body: input,
     }),
   /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
-  lessonVideoUrl: (courseId: string, lessonId: string) =>
-    request<{ url: string; expiresIn: number }>(`/api/courses/${courseId}/lessons/${lessonId}/video`),
+  /** `quality` picks one uploaded version (360/480/720/1080); omitted = best available. */
+  lessonVideoUrl: (courseId: string, lessonId: string, quality?: string) =>
+    request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
+      `/api/courses/${courseId}/lessons/${lessonId}/video`,
+      { query: { quality } },
+    ),
   /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
   createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
     request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {

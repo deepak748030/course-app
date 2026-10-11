@@ -82,6 +82,9 @@ import { feedback } from '@/lib/util';
 type TabKey = 'overview' | 'recipe' | 'notes';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
+
+/** `720` → `720p`; a legacy single file has no size, so it is `Original`. */
+const qualityLabel = (quality: string) => (quality === 'original' ? 'Original' : `${quality}p`);
 const SAVE_INTERVAL_SEC = 10;
 /** How long the player controls stay on screen after they are called up. */
 const CONTROLS_HIDE_MS = 3000;
@@ -165,6 +168,13 @@ export default function LessonPlayerScreen() {
   /** Why the server refused the link (e.g. an expired session), shown instead of the generic line. */
   const [playbackReason, setPlaybackReason] = useState<string | null>(null);
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  /** Quality the learner picked; null = best available. */
+  const [quality, setQuality] = useState<string | null>(null);
+  /** Versions the server carries for this lesson, and the one actually streaming. */
+  const [qualities, setQualities] = useState<string[]>([]);
+  const [playingQuality, setPlayingQuality] = useState<string | null>(null);
+  /** Playhead to restore once a different quality has loaded. */
+  const resumeAtRef = useRef<number | null>(null);
   const needsPlaybackUrl = Boolean(unlocked && lesson?.hasCourseVideo);
   const courseRemoteId = course?.remoteId;
   const lessonRemoteId = lesson?.id;
@@ -175,9 +185,12 @@ export default function LessonPlayerScreen() {
     if (!needsPlaybackUrl || !courseRemoteId || !lessonRemoteId) return;
     let cancelled = false;
     api
-      .lessonVideoUrl(courseRemoteId, lessonRemoteId)
+      .lessonVideoUrl(courseRemoteId, lessonRemoteId, quality ?? undefined)
       .then((res) => {
-        if (!cancelled) setPlaybackUrl(res.url);
+        if (cancelled) return;
+        setPlaybackUrl(res.url);
+        setPlayingQuality(res.quality);
+        setQualities(res.qualities);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -188,7 +201,14 @@ export default function LessonPlayerScreen() {
     return () => {
       cancelled = true;
     };
-  }, [needsPlaybackUrl, courseRemoteId, lessonRemoteId, playbackAttempt]);
+  }, [needsPlaybackUrl, courseRemoteId, lessonRemoteId, playbackAttempt, quality]);
+
+  /** Switching version keeps the learner at the same moment instead of restarting the lesson. */
+  const chooseQuality = (next: string | null) => {
+    if (next === quality) return;
+    resumeAtRef.current = player.currentTime;
+    setQuality(next);
+  };
 
   /** The course video once its link is ready, otherwise the bundled demo clip. */
   const videoSource = !unlocked || !lesson
@@ -235,7 +255,7 @@ export default function LessonPlayerScreen() {
   const tracks = player.availableVideoTracks ?? [];
   const rendition = tracks[0] ?? null;
   const renditionSize = rendition?.size ?? { width: CLIP_RENDITION.width, height: CLIP_RENDITION.height };
-  const renditionLabel = `${renditionSize.height}p`;
+  const renditionLabel = playingQuality ? qualityLabel(playingQuality) : `${renditionSize.height}p`;
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
   const error = statusEvent?.error || playbackFailed;
@@ -244,6 +264,10 @@ export default function LessonPlayerScreen() {
 
   useEventListener(player, 'sourceLoad', ({ duration: loaded }) => {
     if (loaded > 0) setDuration(loaded);
+    if (resumeAtRef.current !== null) {
+      player.currentTime = resumeAtRef.current;
+      resumeAtRef.current = null;
+    }
   });
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
@@ -1000,11 +1024,50 @@ export default function LessonPlayerScreen() {
         }}
         title={t("Video quality")}
         subtitle={
-          tracks.length > 1
+          qualities.length > 0
+            ? `${qualities.length} versions uploaded for this lesson`
+            : tracks.length > 1
             ? `${tracks.length} renditions in this lesson`
             : 'This demo lesson ships a single rendition'
         }>
-        {(tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
+        {qualities.length > 0 ? (
+          <>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: quality === null }}
+              onPress={() => {
+                chooseQuality(null);
+                setQualityOpen(false);
+                showControls();
+              }}
+              style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
+              <View style={styles.flex}>
+                <Text style={[type.body, { color: colors.text }]}>{t('Best available')}</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>
+                  {quality === null && playingQuality ? `Playing ${qualityLabel(playingQuality)}` : t('Chosen automatically')}
+                </Text>
+              </View>
+              {quality === null ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+            </Pressable>
+            {qualities.map((q) => (
+              <Pressable
+                key={q}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: quality === q }}
+                accessibilityLabel={qualityLabel(q)}
+                onPress={() => {
+                  chooseQuality(q);
+                  setQualityOpen(false);
+                  showControls();
+                }}
+                style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
+                <Text style={[type.body, styles.flex, { color: colors.text }]}>{qualityLabel(q)}</Text>
+                {quality === q ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+              </Pressable>
+            ))}
+          </>
+        ) : null}
+        {(qualities.length > 0 ? [] : tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
           const active = rendition ? track.id === rendition.id : index === 0;
           const size = track.size;
           const bitrate = 'averageBitrate' in track ? track.averageBitrate : null;
@@ -1026,9 +1089,11 @@ export default function LessonPlayerScreen() {
           );
         })}
         {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
-        <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
-          {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
-        </Text>
+        {qualities.length === 0 ? (
+          <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
+            {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
+          </Text>
+        ) : null}
       </BottomSheet>
     </View>
   );
