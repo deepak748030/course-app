@@ -53,6 +53,19 @@ function checkoutOptions(config: RazorpayOrderConfig) {
   };
 }
 
+/**
+ * True only when the native Razorpay module is compiled into this app build. In Expo Go it is not,
+ * so the JS package exists but its native side is null.
+ */
+function nativeCheckoutAvailable(): boolean {
+  try {
+    const { NativeModules } = require('react-native') as typeof import('react-native');
+    return Boolean((NativeModules as Record<string, unknown>).RazorpayCheckout);
+  } catch {
+    return false;
+  }
+}
+
 /** Native SDK: opens Razorpay's checkout sheet and resolves with the signed payment. */
 async function openNativeCheckout(config: RazorpayOrderConfig): Promise<CheckoutSuccess> {
   const unavailable = () =>
@@ -68,8 +81,16 @@ async function openNativeCheckout(config: RazorpayOrderConfig): Promise<Checkout
   }
   // The JS package loads even when its native half is not in this build (Expo Go, or a build made
   // before the package was installed). In that case the native module is null and there is no open().
-  if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') throw unavailable();
-  return RazorpayCheckout.open(checkoutOptions(config));
+  if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function' || !nativeCheckoutAvailable()) {
+    throw unavailable();
+  }
+  try {
+    return await RazorpayCheckout.open(checkoutOptions(config));
+  } catch (err) {
+    // The library reads its null native module inside open(): that is a missing build, not a payment error.
+    if (err instanceof TypeError) throw unavailable();
+    throw err;
+  }
 }
 
 let scriptLoading: Promise<void> | null = null;
@@ -177,7 +198,11 @@ function describeFailure(err: unknown): string {
 
 export const razorpayPaymentService: PaymentService = {
   async pay({ courseId, couponCode, mode = 'web' }) {
-    if (typeof document === 'undefined' && mode === 'web') return payWithPaymentLink({ courseId, couponCode });
+    // Phone without the native SDK (Expo Go, or mode 'web'): pay through the hosted Payment Link.
+    const onPhone = typeof document === 'undefined';
+    if (onPhone && (mode === 'web' || !nativeCheckoutAvailable())) {
+      return payWithPaymentLink({ courseId, couponCode });
+    }
 
     let created: Awaited<ReturnType<typeof api.createRazorpayOrder>>;
     try {
