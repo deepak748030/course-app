@@ -11,6 +11,8 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
+import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, r2Configured } from '../services/r2.js';
+import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -25,6 +27,35 @@ router.get('/stats/overview', overview);
 // ---------- behaviour analytics ------------------------------------------------
 const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(365).optional() });
 router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
+
+// ---------- course videos (Cloudflare R2) -------------------------------------
+router.get('/uploads/video/status', (_req, res) => {
+  res.json({ configured: r2Configured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES) });
+});
+const videoUploadSchema = z.object({
+  courseId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
+  fileName: z.string().trim().min(1).max(200),
+  contentType: z.enum(['video/mp4', 'video/webm', 'video/quicktime']),
+  size: z.number().int().min(1).max(MAX_VIDEO_BYTES),
+});
+/** POST /api/admin/uploads/video — signs a direct-to-R2 upload for one lesson video. */
+router.post(
+  '/uploads/video',
+  validateBody(videoUploadSchema),
+  asyncHandler(async (req, res) => {
+    if (!r2Configured) {
+      throw new HttpError(503, 'Video storage is not set up. Add the R2_* settings on the server first.');
+    }
+    const { courseId, fileName, contentType, size } = req.body;
+    const upload = await createVideoUploadUrl({
+      courseKey: courseId || 'drafts',
+      fileName,
+      contentType,
+      size,
+    });
+    res.status(201).json(upload);
+  })
+);
 
 // ---------- courses ------------------------------------------------------------
 const ingredientSchema = z.object({
@@ -45,6 +76,12 @@ const lessonSchema = z.object({
   description: z.string().trim().max(2000).default(''),
   minutes: z.number().int().min(1).max(600),
   isPreview: z.boolean().default(false),
+  videoUrl: z
+    .string()
+    .trim()
+    .max(1000)
+    .refine((v) => v === '' || /^https:\/\//.test(v), 'Video URL must start with https://')
+    .default(''),
   recipe: recipeSchema.optional().nullable(),
 });
 const sectionSchema = z.object({
