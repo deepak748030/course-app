@@ -127,6 +127,11 @@ function readVideoDuration(file: File): Promise<number> {
   });
 }
 
+/** `4:05` style length taken from the video; the admin never types it. */
+function formatLength(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
 /** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
 const VIDEO_QUALITIES: VideoQuality[] = ['360', '480', '720', '1080'];
 
@@ -580,14 +585,15 @@ export default function Courses() {
                           placeholder="Lesson title"
                           className="h-9"
                         />
-                        <Input
-                          type="number"
-                          min={1}
-                          value={lesson.minutes}
-                          onChange={(e) => lessonOps.patch(j, { minutes: Number(e.target.value) })}
-                          className="h-9 w-20"
-                          title="Minutes"
-                        />
+                        <span
+                          title="Measured from the uploaded video"
+                          className="flex h-9 w-24 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 px-2 text-xs font-semibold tabular-nums text-muted">
+                          {lesson.durationSec
+                            ? formatLength(lesson.durationSec)
+                            : (lesson.videos?.length ?? 0) > 0
+                              ? 'Re-upload'
+                              : 'Upload video'}
+                        </span>
                         <LessonVideos
                           courseId={editing?._id}
                           value={lesson.videos ?? []}
