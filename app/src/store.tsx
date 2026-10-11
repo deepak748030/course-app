@@ -13,7 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
-import { api, type ServerSettings } from '@/services/api';
+import { api, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import type {
@@ -293,6 +293,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
+  }, []);
+
+  // A token the server no longer accepts ends the local session, so the user signs in again
+  // instead of hitting the same 401 on every payment or lesson request.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      void authService.clearSession();
+      setSession(null);
+    });
+    return () => setSessionExpiredHandler(null);
   }, []);
 
   // Session lifecycle: realtime socket + server hydration follow sign-in/sign-out.

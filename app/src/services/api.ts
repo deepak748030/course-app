@@ -32,6 +32,17 @@ export function setApiToken(token: string | null) {
   authToken = token;
 }
 
+let onSessionExpired: (() => void) | null = null;
+
+/**
+ * The store registers a handler that drops the local session when the server rejects the token
+ * (e.g. the account was removed or the database was reseeded). Without it the app keeps sending a
+ * dead token and every protected action fails with the same 401.
+ */
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  onSessionExpired = handler;
+}
+
 interface Options {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -76,6 +87,10 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
       details = data.details;
     } catch {
       /* non-JSON error body */
+    }
+    if (response.status === 401 && authToken && !path.includes('/otp/')) {
+      onSessionExpired?.();
+      message = 'Your session has expired. Please sign in again.';
     }
     throw new ApiError(response.status, message, details);
   }
