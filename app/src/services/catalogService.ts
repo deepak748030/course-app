@@ -65,7 +65,7 @@ export function mapCourse(server: ServerCourse): Course {
         minutes: lesson.minutes,
         isPreview: lesson.isPreview,
         video,
-        videoUrl: lesson.videoUrl || undefined,
+        hasCourseVideo: Boolean(lesson.videoKey),
         recipe: mapRecipe(lesson.recipe),
       });
     });

@@ -32,8 +32,8 @@ export interface Lesson {
   description: string;
   minutes: number;
   isPreview: boolean;
-  /** Public https URL of the uploaded course video (Backblaze B2). Empty = no video yet. */
-  videoUrl?: string;
+  /** Object key of the uploaded course video in the private B2 bucket. Empty = no video yet. */
+  videoKey?: string;
 }
 
 export interface Section {

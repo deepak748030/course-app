@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { getCourse, listCategories, listCourses, relatedCourses } from '../controllers/catalog.controller.js';
+import { getCourse, lessonVideoUrl, listCategories, listCourses, relatedCourses } from '../controllers/catalog.controller.js';
+import { requireAuth } from '../middleware/auth.js';
 import { validateParams, validateQuery } from '../middleware/validate.js';
 
 const router = Router();
@@ -20,5 +21,6 @@ router.get('/categories', listCategories);
 router.get('/courses', validateQuery(courseListQuery), listCourses);
 router.get('/courses/:idOrSlug/related', validateParams(idOrSlugParam), relatedCourses);
 router.get('/courses/:idOrSlug', validateParams(idOrSlugParam), getCourse);
+router.get('/courses/:courseId/lessons/:lessonId/video', requireAuth, lessonVideoUrl);
 
 export default router;

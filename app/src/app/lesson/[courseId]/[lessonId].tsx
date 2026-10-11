@@ -68,6 +68,7 @@ import { createStyles, colors, layout, radius, spacing, tabularNums, type } from
 import { courseLessonGroups, nextLesson } from '@/lib/catalog';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
+import { api } from '@/services/api';
 import { useT } from '@/i18n';
 import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
@@ -80,11 +81,6 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SAVE_INTERVAL_SEC = 10;
 /** How long the player controls stay on screen after they are called up. */
 const CONTROLS_HIDE_MS = 3000;
-
-/** The course video when the admin uploaded one, otherwise the bundled demo clip. */
-function lessonSource(lesson: { video: keyof typeof videos; videoUrl?: string }) {
-  return lesson.videoUrl ? { uri: lesson.videoUrl } : videos[lesson.video];
-}
 
 export default function LessonPlayerScreen() {
   const t = useT();
@@ -127,7 +123,41 @@ export default function LessonPlayerScreen() {
   const unlocked = Boolean(course && lesson && (isEnrolled(course.id) || lesson.isPreview));
   const storedPosition = course && lesson ? lessonProgress(course.id, lesson.id) : { positionSec: 0, completed: false };
 
-  const player = useVideoPlayer(unlocked && lesson ? lessonSource(lesson) : null, (instance) => {
+  /** Course videos are private: the server signs a short-lived link for this learner only. */
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  const needsPlaybackUrl = Boolean(unlocked && lesson?.hasCourseVideo);
+  const courseRemoteId = course?.remoteId;
+  const lessonRemoteId = lesson?.id;
+  useEffect(() => {
+    setPlaybackUrl(null);
+    setPlaybackFailed(false);
+    if (!needsPlaybackUrl || !courseRemoteId || !lessonRemoteId) return;
+    let cancelled = false;
+    api
+      .lessonVideoUrl(courseRemoteId, lessonRemoteId)
+      .then((res) => {
+        if (!cancelled) setPlaybackUrl(res.url);
+      })
+      .catch(() => {
+        if (!cancelled) setPlaybackFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [needsPlaybackUrl, courseRemoteId, lessonRemoteId, playbackAttempt]);
+
+  /** The course video once its link is ready, otherwise the bundled demo clip. */
+  const videoSource = !unlocked || !lesson
+    ? null
+    : lesson.hasCourseVideo
+      ? playbackUrl
+        ? { uri: playbackUrl }
+        : null
+      : videos[lesson.video];
+
+  const player = useVideoPlayer(videoSource, (instance) => {
     instance.timeUpdateEventInterval = 1;
     if (storedPosition.positionSec > 0) instance.currentTime = storedPosition.positionSec;
   });
@@ -175,7 +205,7 @@ export default function LessonPlayerScreen() {
   const renditionLabel = `${renditionSize.height}p`;
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
-  const error = statusEvent?.error;
+  const error = statusEvent?.error || playbackFailed;
   const [position, setPosition] = useState(storedPosition.positionSec);
   const [duration, setDuration] = useState(player.duration || 0);
 
@@ -376,7 +406,11 @@ export default function LessonPlayerScreen() {
                 variant="secondary"
                 fullWidth={false}
                 onPress={() => {
-                  player.replace(lessonSource(lesson));
+                  if (lesson.hasCourseVideo && !playbackUrl) {
+                    setPlaybackAttempt((n) => n + 1);
+                    return;
+                  }
+                  if (videoSource) player.replace(videoSource);
                   player.play();
                 }}
               />

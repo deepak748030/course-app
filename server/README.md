@@ -174,31 +174,54 @@ src/
 └── utils/               # HttpError, asyncHandler, token signing
 ```
 
-## Course videos on Backblaze B2 (free tier)
+## Course videos on Backblaze B2 (private bucket, free tier)
 
 Lesson videos are uploaded from the admin dashboard (Courses → lesson → **Upload video**). The
-browser sends the file straight to Backblaze B2 (S3-compatible API); the server only signs the
-upload. Free tier: 10 GB storage and a daily free download allowance.
+browser sends the file straight to the bucket. The bucket stays **private**: when a learner opens
+a lesson, the app asks the server for a short-lived link. The server gives that link only to
+enrolled learners (or for free-preview lessons). Free tier: 10 GB storage.
 
-1. In the B2 console, create a bucket (for example `ydu-course-videos`). Keep it **Public** so the
-   app can play the videos from their URLs.
-2. Open the bucket details and note:
-   - the **Endpoint** (for example `s3.us-west-004.backblazeb2.com`) → `B2_S3_ENDPOINT=https://<endpoint>`
-   - the friendly URL (`https://f<NNN>.backblazeb2.com/file/<bucket>`) → `B2_PUBLIC_BASE_URL`
-     (or your CDN domain instead).
-3. Bucket → **CORS Rules**, so the admin dashboard can upload. Replace the origin with your dashboard
-   URL (or `*` while testing):
+### Step 1: Backblaze B2 console
 
-   - Allowed origins: `https://your-admin-dashboard-url`
+1. **Buckets → Create a Bucket.** Name it, for example `ydu-course-videos`. Bucket Type: **Private**.
+2. Open the bucket. On the details page, copy the **Endpoint**, for example
+   `s3.us-west-004.backblazeb2.com`.
+3. Bucket → **CORS Rules** → add a rule so the admin dashboard can upload:
+   - Allowed origins: your admin dashboard URL (use `*` only while testing)
    - Allowed operations: `s3_put`, `s3_get`, `s3_head`
    - Allowed headers: `*`
    - Expose headers: `ETag`
    - Max age: `3600`
+4. **App Keys → Add a New Application Key**:
+   - Name: `ydu-server`
+   - Allow access to Bucket(s): only `ydu-course-videos`
+   - Type of access: Read and Write
+   - Capabilities: `listFiles`, `readFiles`, `writeFiles`
+   - Click create. Copy the **keyID** and the **applicationKey** now. The key is shown only once.
 
-4. App Keys → **Add a New Application Key**. Limit it to this bucket, with the capabilities
-   `listFiles`, `readFiles`, `writeFiles`. Put its **keyID** in `B2_KEY_ID` and its
-   **applicationKey** in `B2_APPLICATION_KEY` in `server/.env`. Never use the master key here.
+### Step 2: Where each value goes
 
-Videos up to 4 GB each. Uploaded videos are public URLs, so only put material there that is meant
-for learners to watch. Replacing or removing a video in the dashboard does not delete the old file
+| Value | Where you get it | Where you put it |
+| --- | --- | --- |
+| `B2_S3_ENDPOINT` | Bucket details → Endpoint, add `https://` | `server/.env` |
+| `B2_KEY_ID` | App Keys → keyID of the new key | `server/.env` |
+| `B2_APPLICATION_KEY` | App Keys → applicationKey (copied once) | `server/.env` |
+| `B2_BUCKET` | The bucket name you created | `server/.env` |
+
+Example `server/.env` lines (these are placeholders, use your own values):
+
+```
+B2_S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com
+B2_KEY_ID=<your keyID>
+B2_APPLICATION_KEY=<your applicationKey>
+B2_BUCKET=ydu-course-videos
+```
+
+- `server/.env` is git-ignored. Never commit it, and never paste these values in chat or in GitHub.
+- The **app** (`app/.env`) and the **admin dashboard** need no Backblaze values. The app only needs
+  `EXPO_PUBLIC_API_URL`, and the dashboard only talks to the server.
+- Restart the server after editing `.env`. Check `GET /api/admin/uploads/video/status` in the
+  admin session. It returns `"configured": true` when all four values are set.
+
+Videos up to 4 GB each. Replacing or removing a video in the dashboard does not delete the old file
 from the bucket.

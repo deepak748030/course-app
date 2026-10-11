@@ -115,7 +115,8 @@ export type ServerLesson = {
   title: string;
   description: string;
   /** Public https URL of the lesson video on Backblaze B2; empty = bundled demo clip. */
-  videoUrl?: string;
+  /** Object key of the course video in private storage; the app gets a signed link from the server. */
+  videoKey?: string;
   minutes: number;
   isPreview: boolean;
   recipe?: ServerRecipe | null;
@@ -248,6 +249,9 @@ export const api = {
       method: 'POST',
       body: input,
     }),
+  /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
+  lessonVideoUrl: (courseId: string, lessonId: string) =>
+    request<{ url: string; expiresIn: number }>(`/api/courses/${courseId}/lessons/${lessonId}/video`),
   /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
   createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
     request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {

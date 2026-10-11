@@ -133,8 +133,9 @@ export const videoStorageStatus = () =>
   request<{ configured: boolean; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
 
 /**
- * Uploads one lesson video straight from the browser to Backblaze B2. The server only signs a
- * short-lived PUT URL; the bytes never pass through the API. Resolves with the public video URL.
+ * Uploads one lesson video straight from the browser to the private Backblaze B2 bucket. The server
+ * only signs a short-lived PUT URL; the bytes never pass through the API. Resolves with the object
+ * key, which the lesson stores (the app gets a signed playback link from the server).
  */
 export async function uploadCourseVideo(
   file: File,
@@ -142,7 +143,7 @@ export async function uploadCourseVideo(
   onProgress: (percent: number) => void
 ): Promise<string> {
   if (demoMode) throw new ApiError(503, 'Video uploads need the real server — demo mode cannot store files.');
-  const signed = await request<{ uploadUrl: string; publicUrl: string }>('/admin/uploads/video', {
+  const signed = await request<{ uploadUrl: string; key: string }>('/admin/uploads/video', {
     method: 'POST',
     body: { courseId, fileName: file.name, contentType: file.type, size: file.size },
   });
@@ -161,7 +162,7 @@ export async function uploadCourseVideo(
       reject(new ApiError(0, 'Could not reach video storage. Check the B2 bucket CORS settings and your connection.'));
     xhr.send(file);
   });
-  return signed.publicUrl;
+  return signed.key;
 }
 
 /**

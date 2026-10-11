@@ -596,8 +596,8 @@ export default function Courses() {
                         />
                         <LessonVideo
                           courseId={editing?._id}
-                          value={lesson.videoUrl ?? ''}
-                          onChange={(url) => sectionOps.patchLesson(i, j, { videoUrl: url })}
+                          value={lesson.videoKey ?? ''}
+                          onChange={(key) => sectionOps.patchLesson(i, j, { videoKey: key })}
                         />
                         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
                           <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />

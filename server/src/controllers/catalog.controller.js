@@ -2,6 +2,7 @@ import { Category } from '../models/Category.js';
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
+import { PLAYBACK_TTL_SECONDS, createVideoPlaybackUrl } from '../services/videoStorage.js';
 
 /** GET /api/categories */
 export const listCategories = asyncHandler(async (_req, res) => {
@@ -62,6 +63,31 @@ export const getCourse = asyncHandler(async (req, res) => {
   res.json({
     course: { ...withDerived(course), enrollmentCount: enrollments?.count || 0 },
   });
+});
+
+/**
+ * GET /api/courses/:courseId/lessons/:lessonId/video — signed, short-lived link to a lesson video.
+ * Only enrolled learners get it; free-preview lessons are open to any signed-in learner.
+ */
+export const lessonVideoUrl = asyncHandler(async (req, res) => {
+  const { courseId, lessonId } = req.params;
+  if (!/^[a-f\d]{24}$/i.test(courseId) || !/^[a-f\d]{24}$/i.test(lessonId)) {
+    throw new HttpError(404, 'Lesson not found');
+  }
+
+  const course = await Course.findOne({ _id: courseId, published: true }).select('sections').lean();
+  if (!course) throw new HttpError(404, 'Course not found');
+  const lesson = course.sections.flatMap((section) => section.lessons).find((l) => String(l._id) === lessonId);
+  if (!lesson) throw new HttpError(404, 'Lesson not found');
+  if (!lesson.videoKey) throw new HttpError(404, 'This lesson has no course video');
+
+  if (!lesson.isPreview) {
+    const owned = await Enrollment.exists({ user: req.user._id, course: course._id });
+    if (!owned) throw new HttpError(403, 'Buy this course to watch this lesson');
+  }
+
+  const url = await createVideoPlaybackUrl(lesson.videoKey);
+  res.json({ url, expiresIn: PLAYBACK_TTL_SECONDS });
 });
 
 /**

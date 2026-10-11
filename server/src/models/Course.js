@@ -31,8 +31,8 @@ const lessonSchema = new Schema(
     minutes: { type: Number, required: true, min: 1, max: 600 },
     /** Free preview lesson — playable without purchase. */
     isPreview: { type: Boolean, default: false },
-    /** Public https URL of the lesson video (Backblaze B2). Empty = bundled demo clip. */
-    videoUrl: { type: String, default: '', trim: true, maxlength: 1000 },
+    /** Object key of the lesson video in the private B2 bucket. Empty = bundled demo clip. */
+    videoKey: { type: String, default: '', trim: true, maxlength: 300 },
     recipe: { type: recipeSchema },
   },
   { _id: true, timestamps: false }

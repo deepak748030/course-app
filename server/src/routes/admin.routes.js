@@ -76,11 +76,11 @@ const lessonSchema = z.object({
   description: z.string().trim().max(2000).default(''),
   minutes: z.number().int().min(1).max(600),
   isPreview: z.boolean().default(false),
-  videoUrl: z
+  videoKey: z
     .string()
     .trim()
-    .max(1000)
-    .refine((v) => v === '' || /^https:\/\//.test(v), 'Video URL must start with https://')
+    .max(300)
+    .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
     .default(''),
   recipe: recipeSchema.optional().nullable(),
 });

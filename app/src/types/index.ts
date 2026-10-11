@@ -33,8 +33,8 @@ export interface Lesson {
   minutes: number;
   isPreview: boolean;
   video: VideoKey;
-  /** Course video on Backblaze B2; when set it replaces the bundled demo clip. */
-  videoUrl?: string;
+  /** The course has its own video in private storage (fetched as a signed link); otherwise the demo clip plays. */
+  hasCourseVideo?: boolean;
   recipe?: Recipe;
 }
 
