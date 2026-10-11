@@ -162,6 +162,8 @@ export default function LessonPlayerScreen() {
   /** Course videos are private: the server signs a short-lived link for this learner only. */
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  /** Why the server refused the link (e.g. an expired session), shown instead of the generic line. */
+  const [playbackReason, setPlaybackReason] = useState<string | null>(null);
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
   const needsPlaybackUrl = Boolean(unlocked && lesson?.hasCourseVideo);
   const courseRemoteId = course?.remoteId;
@@ -169,6 +171,7 @@ export default function LessonPlayerScreen() {
   useEffect(() => {
     setPlaybackUrl(null);
     setPlaybackFailed(false);
+    setPlaybackReason(null);
     if (!needsPlaybackUrl || !courseRemoteId || !lessonRemoteId) return;
     let cancelled = false;
     api
@@ -176,8 +179,11 @@ export default function LessonPlayerScreen() {
       .then((res) => {
         if (!cancelled) setPlaybackUrl(res.url);
       })
-      .catch(() => {
-        if (!cancelled) setPlaybackFailed(true);
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setPlaybackFailed(true);
+          setPlaybackReason(err instanceof Error ? err.message : null);
+        }
       });
     return () => {
       cancelled = true;
@@ -484,7 +490,7 @@ export default function LessonPlayerScreen() {
           <View style={styles.centerOverlay}>
             <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
             <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
-              {t("This lesson video could not be played.")}
+              {playbackReason ?? t("This lesson video could not be played.")}
             </Text>
             <Button
               label={t("Try again")}
