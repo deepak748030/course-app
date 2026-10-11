@@ -197,7 +197,10 @@ async function findLinkPayment(link, order) {
       (entry) => entry.status === 'captured' && entry.notes?.orderId === String(order._id)
     );
   }
-  return payment ? { id: payment.id, amount: payment.amount, status: payment.status, method: payment.method } : null;
+  // Entries inside a payment link use `payment_id`; the payments API uses `id`.
+  return payment
+    ? { id: payment.payment_id || payment.id, amount: payment.amount, status: payment.status, method: payment.method }
+    : null;
 }
 
 /**
