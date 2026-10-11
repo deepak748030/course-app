@@ -173,3 +173,33 @@ src/
 ├── seed/seed.js         # deterministic dev seed
 └── utils/               # HttpError, asyncHandler, token signing
 ```
+
+## Course videos on Cloudflare R2 (free)
+
+Lesson videos are uploaded from the admin dashboard (Courses → lesson → **Upload video**). The
+browser sends the file straight to Cloudflare R2; the server only signs the upload. Free tier:
+10 GB storage and no egress fees.
+
+1. In the Cloudflare dashboard, create an R2 bucket (for example `ydu-course-videos`).
+2. Make it public: bucket → Settings → Public access → enable the `r2.dev` URL or attach a custom
+   domain. Put that https address in `R2_PUBLIC_BASE_URL` (no trailing slash).
+3. Bucket → Settings → CORS policy, so the admin dashboard can upload (replace the origin with your
+   dashboard URL, or `*` while testing):
+
+   ```json
+   [
+     {
+       "AllowedOrigins": ["https://your-admin-dashboard-url"],
+       "AllowedMethods": ["PUT", "GET", "HEAD"],
+       "AllowedHeaders": ["*"],
+       "ExposeHeaders": ["ETag"],
+       "MaxAgeSeconds": 3600
+     }
+   ]
+   ```
+
+4. Manage R2 → Create API token (Object Read & Write, this bucket only). Put the account id, access
+   key id, secret and bucket name into `server/.env` (see `.env.example`).
+
+Videos up to 4 GB each. Uploaded videos are public URLs, so only put demo or intended-for-all material
+there. Replacing or removing a video in the dashboard does not delete the old file from R2.

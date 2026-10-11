@@ -81,6 +81,11 @@ const SAVE_INTERVAL_SEC = 10;
 /** How long the player controls stay on screen after they are called up. */
 const CONTROLS_HIDE_MS = 3000;
 
+/** The course video when the admin uploaded one, otherwise the bundled demo clip. */
+function lessonSource(lesson: { video: keyof typeof videos; videoUrl?: string }) {
+  return lesson.videoUrl ? { uri: lesson.videoUrl } : videos[lesson.video];
+}
+
 export default function LessonPlayerScreen() {
   const t = useT();
 
@@ -122,7 +127,7 @@ export default function LessonPlayerScreen() {
   const unlocked = Boolean(course && lesson && (isEnrolled(course.id) || lesson.isPreview));
   const storedPosition = course && lesson ? lessonProgress(course.id, lesson.id) : { positionSec: 0, completed: false };
 
-  const player = useVideoPlayer(unlocked && lesson ? videos[lesson.video] : null, (instance) => {
+  const player = useVideoPlayer(unlocked && lesson ? lessonSource(lesson) : null, (instance) => {
     instance.timeUpdateEventInterval = 1;
     if (storedPosition.positionSec > 0) instance.currentTime = storedPosition.positionSec;
   });
@@ -371,7 +376,7 @@ export default function LessonPlayerScreen() {
                 variant="secondary"
                 fullWidth={false}
                 onPress={() => {
-                  player.replace(videos[lesson.video]);
+                  player.replace(lessonSource(lesson));
                   player.play();
                 }}
               />

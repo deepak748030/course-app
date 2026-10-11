@@ -32,6 +32,8 @@ export interface Lesson {
   description: string;
   minutes: number;
   isPreview: boolean;
+  /** Public https URL of the uploaded course video (Cloudflare R2). Empty = no video yet. */
+  videoUrl?: string;
 }
 
 export interface Section {

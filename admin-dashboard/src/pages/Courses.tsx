@@ -1,6 +1,6 @@
-import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, Video, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, uploadImage } from '../api/client';
+import { api, uploadCourseVideo, uploadImage } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Category, Course, Section } from '../api/types';
 import {
@@ -107,6 +107,75 @@ function payloadFromForm(form: FormState) {
     isBeginnerPick: form.isBeginnerPick,
     sections: form.sections,
   };
+}
+
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
+/** Per-lesson video control: uploads to Cloudflare R2 with progress, or shows the attached video. */
+function LessonVideo({
+  courseId,
+  value,
+  onChange,
+}: {
+  courseId?: string;
+  value: string;
+  onChange: (url: string) => void;
+}) {
+  const toast = useToast();
+  const [progress, setProgress] = useState<number | null>(null);
+
+  async function pick(file: File) {
+    if (!VIDEO_TYPES.includes(file.type)) {
+      toast('error', 'Use an MP4, WebM or MOV video.');
+      return;
+    }
+    setProgress(0);
+    try {
+      const url = await uploadCourseVideo(file, courseId, setProgress);
+      onChange(url);
+      toast('success', 'Video uploaded. Click Save changes to publish it to the app.');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Video upload failed');
+    } finally {
+      setProgress(null);
+    }
+  }
+
+  const busy = progress !== null;
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <label
+        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-line px-2.5 text-xs font-semibold ${
+          busy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand'
+        }`}
+        title={value ? 'Replace the lesson video' : 'Upload a lesson video'}
+      >
+        <input
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            e.target.value = '';
+            if (file) void pick(file);
+          }}
+        />
+        {busy ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
+        {busy ? `${progress}%` : value ? 'Replace video' : 'Upload video'}
+      </label>
+      {value && !busy && (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error"
+          title="Remove video"
+        >
+          <X size={13} />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default function Courses() {
@@ -524,6 +593,11 @@ export default function Courses() {
                           onChange={(e) => sectionOps.patchLesson(i, j, { minutes: Number(e.target.value) })}
                           className="h-9 w-20"
                           title="Minutes"
+                        />
+                        <LessonVideo
+                          courseId={editing?._id}
+                          value={lesson.videoUrl ?? ''}
+                          onChange={(url) => sectionOps.patchLesson(i, j, { videoUrl: url })}
                         />
                         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
                           <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />
