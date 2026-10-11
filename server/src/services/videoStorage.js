@@ -17,12 +17,35 @@ import { randomUUID } from 'node:crypto';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-const endpoint = (process.env.B2_S3_ENDPOINT || '').replace(/\/+$/, '');
+/**
+ * Accepts `s3.us-west-004.backblazeb2.com`, `https://s3.us-west-004.backblazeb2.com` or a value with a
+ * trailing bucket path, and reduces it to `https://<host>`. Anything else is reported as not configured.
+ */
+function normalizeEndpoint(raw) {
+  const value = String(raw || '').trim();
+  if (!value) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+    if (!/^s3\.[a-z0-9-]+\.backblazeb2\.com$/i.test(url.hostname)) return '';
+    return `https://${url.hostname}`;
+  } catch {
+    return '';
+  }
+}
+
+const endpoint = normalizeEndpoint(process.env.B2_S3_ENDPOINT);
 const bucket = process.env.B2_BUCKET || '';
 const accessKeyId = process.env.B2_KEY_ID || '';
 const secretAccessKey = process.env.B2_APPLICATION_KEY || '';
 
 export const videoStorageConfigured = Boolean(endpoint && bucket && accessKeyId && secretAccessKey);
+
+/** Human-readable reason when storage is not usable (used in the 503 message). */
+export function videoStorageProblem() {
+  if (videoStorageConfigured) return null;
+  if (!endpoint && process.env.B2_S3_ENDPOINT) return 'B2_S3_ENDPOINT must look like s3.us-west-004.backblazeb2.com';
+  return 'Set B2_S3_ENDPOINT, B2_KEY_ID, B2_APPLICATION_KEY and B2_BUCKET in server/.env, then restart the server';
+}
 
 /** Allowed video types and the file extension each one must end with. */
 export const VIDEO_TYPES = {

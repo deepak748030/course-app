@@ -11,7 +11,7 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, videoStorageConfigured } from '../services/videoStorage.js';
+import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -44,15 +44,21 @@ router.post(
   validateBody(videoUploadSchema),
   asyncHandler(async (req, res) => {
     if (!videoStorageConfigured) {
-      throw new HttpError(503, 'Video storage is not set up. Add the B2_* settings on the server first.');
+      throw new HttpError(503, `Video storage is not set up: ${videoStorageProblem()}.`);
     }
     const { courseId, fileName, contentType, size } = req.body;
-    const upload = await createVideoUploadUrl({
-      courseKey: courseId || 'drafts',
-      fileName,
-      contentType,
-      size,
-    });
+    let upload;
+    try {
+      upload = await createVideoUploadUrl({
+        courseKey: courseId || 'drafts',
+        fileName,
+        contentType,
+        size,
+      });
+    } catch (err) {
+      console.error('[uploads] could not sign video upload:', err?.message || err);
+      throw new HttpError(503, 'Could not prepare the video upload. Check the B2_* values in server/.env.');
+    }
     res.status(201).json(upload);
   })
 );
