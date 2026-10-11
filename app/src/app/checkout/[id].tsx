@@ -10,9 +10,10 @@ import {
   ShieldCheck,
   Tag,
   TriangleAlert,
+  X,
 } from 'lucide-react-native';
-import { useMemo, useState, useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedCart, AnimatedIcon } from '@/components/animated-icons';
@@ -35,7 +36,7 @@ import { ApiError, api } from '@/services/api';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
-import { razorpayPaymentService } from '@/services/payments';
+import { razorpayPaymentService, type PaymentPage } from '@/services/payments';
 import { useStore } from '@/store';
 import { formatDuration, formatInr } from '@/lib/format';
 import { feedback } from '@/lib/util';
@@ -48,6 +49,20 @@ export default function CheckoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  /** Razorpay's hosted payment page, shown inside the app (WebView) while the purchase is in progress. */
+  const [paymentPage, setPaymentPage] = useState<{ url: string; finish: () => void } | null>(null);
+  const openPaymentPage = useCallback((url: string): PaymentPage => {
+    let resolveClosed: () => void = () => {};
+    const closed = new Promise<void>((resolve) => {
+      resolveClosed = resolve;
+    });
+    const finish = () => {
+      setPaymentPage(null);
+      resolveClosed();
+    };
+    setPaymentPage({ url, finish });
+    return { closed, close: finish };
+  }, []);
   const { isEnrolled, addEnrollment, settings } = useStore();
   const { byId } = useCatalog();
 
@@ -118,6 +133,7 @@ export default function CheckoutScreen() {
       courseId: course.remoteId,
       couponCode: coupon?.code,
       mode: settings?.checkoutMode ?? 'web',
+      openPaymentPage,
     });
     setProcessing(false);
 
@@ -294,6 +310,36 @@ export default function CheckoutScreen() {
         </Text>
       </Screen>
 
+      <Modal
+        visible={paymentPage !== null && WebView !== null}
+        animationType="slide"
+        onRequestClose={() => paymentPage?.finish()}>
+        {paymentPage && WebView ? (
+          <View style={[styles.paymentPage, { paddingTop: insets.top }]}>
+            <View style={styles.paymentHead}>
+              <Text style={[type.bodyStrong, styles.flex]}>{t('Checkout')}</Text>
+              <Pressable onPress={() => paymentPage.finish()} hitSlop={12} accessibilityLabel={t('Close')}>
+                <X size={22} color={colors.text} />
+              </Pressable>
+            </View>
+            <WebView
+              source={{ uri: paymentPage.url }}
+              startInLoadingState
+              javaScriptEnabled
+              domStorageEnabled
+              // Razorpay opens UPI and bank apps through their own schemes (upi://, intent://, phonepe://).
+              // The WebView cannot load those, so they are handed to the phone instead.
+              onShouldStartLoadWithRequest={(request) => {
+                if (/^https?:\/\//i.test(request.url) || request.url === 'about:blank') return true;
+                Linking.openURL(request.url).catch(() => {});
+                return false;
+              }}
+              style={styles.flex}
+            />
+          </View>
+        ) : null}
+      </Modal>
+
       <StickyBar bottomInset={insets.bottom}>
         {enrolled ? (
           <>
@@ -350,6 +396,9 @@ export default function CheckoutScreen() {
     </View>
   );
 }
+
+const WebView =
+  Platform.OS === 'web' ? null : (require('react-native-webview') as typeof import('react-native-webview')).WebView;
 
 const styles = createStyles(() => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
@@ -430,4 +479,14 @@ const styles = createStyles(() => StyleSheet.create({
   noticeHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 
   disclaimer: { paddingHorizontal: layout.screen },
+  paymentPage: { flex: 1, backgroundColor: colors.background },
+  paymentHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: layout.screen,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
+  },
 }));
