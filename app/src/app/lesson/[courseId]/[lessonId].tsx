@@ -1,4 +1,6 @@
 import { useEvent, useEventListener } from 'expo';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
@@ -16,6 +18,7 @@ import {
   ListVideo,
   Lock,
   Maximize2,
+  Minimize2,
   Minus,
   Pause,
   Play,
@@ -31,6 +34,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -81,6 +85,38 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SAVE_INTERVAL_SEC = 10;
 /** How long the player controls stay on screen after they are called up. */
 const CONTROLS_HIDE_MS = 3000;
+
+/**
+ * Every player control's size, derived from the picture's height. `safe` is the notch and home-indicator
+ * inset: only the fullscreen picture needs it, because its controls sit on the screen edges.
+ */
+function playerMetrics(videoHeight: number, safe: { top: number; bottom: number }) {
+  const playerScale = Math.max(0.8, Math.min(1, videoHeight / 236));
+  const overlayPad = Math.round(spacing.sm * playerScale); // 6..8
+  const blockGap = Math.max(2, Math.round((spacing.xs / 2) * playerScale)); // 3..4
+  const trackHeight = Math.round(20 * playerScale); // 16..20
+  const actionHeight = Math.round(40 * playerScale); // 32..40, hit-slopped to 44
+  const timelineHeight = Math.max(trackHeight, spacing.lg);
+  const topBlockHeight = layout.touchTarget + overlayPad * 2 + safe.top;
+  const bottomBlockHeight = actionHeight + blockGap + timelineHeight + overlayPad + safe.bottom;
+  const freeBandHeight = Math.max(44, videoHeight - topBlockHeight - bottomBlockHeight);
+  const playSize = Math.round(Math.min(64, freeBandHeight - 4));
+  const skipSize = Math.max(44, Math.min(52, Math.round(playSize * 0.8)));
+  const largeGlyph = playSize >= 56;
+  return {
+    playerScale,
+    overlayPad,
+    blockGap,
+    trackHeight,
+    actionHeight,
+    timelineHeight,
+    topBlockHeight,
+    bottomBlockHeight,
+    playSize,
+    skipSize,
+    largeGlyph,
+  };
+}
 
 export default function LessonPlayerScreen() {
   const t = useT();
@@ -153,16 +189,17 @@ export default function LessonPlayerScreen() {
     ? null
     : lesson.hasCourseVideo
       ? playbackUrl
-        ? { uri: playbackUrl }
+        ? { uri: playbackUrl, useCaching: true }
         : null
       : videos[lesson.video];
 
   const player = useVideoPlayer(videoSource, (instance) => {
     instance.timeUpdateEventInterval = 1;
+    // Keep ~10 seconds buffered ahead of the playhead; start as soon as a little is ready.
+    instance.bufferOptions = { preferredForwardBufferDuration: 10, minBufferForPlayback: 2, waitsToMinimizeStalling: true };
     if (storedPosition.positionSec > 0) instance.currentTime = storedPosition.positionSec;
   });
 
-  const videoRef = useRef<VideoView>(null);
   const lastSavedRef = useRef(storedPosition.positionSec);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Bumped by `showControls` so the peek effect restarts the three-second window. */
@@ -175,21 +212,11 @@ export default function LessonPlayerScreen() {
    * and the play button takes exactly the free band between the top row and the transport, which is
    * why nothing ever lands on the scrubber, the speed row or the two timers.
    */
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const [measuredVideoHeight, setMeasuredVideoHeight] = useState(0);
   const videoHeight = measuredVideoHeight || Math.round((windowWidth * 9) / 16);
-  const playerScale = Math.max(0.8, Math.min(1, videoHeight / 236));
-  const overlayPad = Math.round(spacing.sm * playerScale);          // 6..8
-  const blockGap = Math.max(2, Math.round((spacing.xs / 2) * playerScale)); // 3..4
-  const trackHeight = Math.round(20 * playerScale);                 // 16..20
-  const actionHeight = Math.round(40 * playerScale);                // 32..40, hit-slopped to 44
-  const timelineHeight = Math.max(trackHeight, spacing.lg);
-  const topBlockHeight = layout.touchTarget + overlayPad * 2;
-  const bottomBlockHeight = actionHeight + blockGap + timelineHeight + overlayPad;
-  const freeBandHeight = Math.max(44, videoHeight - topBlockHeight - bottomBlockHeight);
-  const playSize = Math.round(Math.min(64, freeBandHeight - 4));
-  const skipSize = Math.max(44, Math.min(52, Math.round(playSize * 0.8)));
-  const largeGlyph = playSize >= 56;
+  const [fullscreenOpen, setFullscreenOpen] = useState(false);
+  const [fullscreenHeight, setFullscreenHeight] = useState(0);
 
   const { isPlaying } = useEvent(player, 'playingChange', { isPlaying: player.playing });
   const mutedEvent = useEvent(player, 'mutedChange', { muted: player.muted });
@@ -283,6 +310,16 @@ export default function LessonPlayerScreen() {
     if (course && lesson) setLessonPosition(course, lesson.id, 0);
   });
 
+  // Leaving the lesson always gives the screen back to portrait.
+  useEffect(
+    () => () => {
+      if (Platform.OS !== 'web') {
+        void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      }
+    },
+    []
+  );
+
   if (!course || !lesson) {
     return (
       <Screen header={<AppBar onBack={() => router.replace('/learning')} />}>
@@ -355,247 +392,323 @@ export default function LessonPlayerScreen() {
     return 'available';
   };
 
+  /** Rotates the screen for the picture: a wide video goes landscape, a tall one stays portrait. */
+  const enterFullscreen = () => {
+    feedback.tap();
+    const portrait = renditionSize.height > renditionSize.width;
+    setFullscreenOpen(true);
+    showControls();
+    if (Platform.OS !== 'web') {
+      void ScreenOrientation.lockAsync(
+        portrait ? ScreenOrientation.OrientationLock.PORTRAIT_UP : ScreenOrientation.OrientationLock.LANDSCAPE
+      ).catch(() => {});
+    }
+  };
+
+  const exitFullscreen = () => {
+    setFullscreenOpen(false);
+    showControls();
+    if (Platform.OS !== 'web') {
+      void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    }
+  };
+
+  /** Sheets open under the fullscreen picture, so from fullscreen the picture steps back first. */
+  const openFromPlayer = (open: (value: boolean) => void) => {
+    if (fullscreenOpen) exitFullscreen();
+    open(true);
+  };
+
+  /**
+   * The picture and its controls. The same markup is drawn inline and in the fullscreen modal; only the
+   * size it is laid out for differs. While the lesson loads, only the spinner shows and every control waits.
+   */
+  const renderSurface = (height: number, fullscreen: boolean) => {
+    const {
+      playerScale,
+      overlayPad,
+      blockGap,
+      trackHeight,
+      actionHeight,
+      topBlockHeight,
+      bottomBlockHeight,
+      playSize,
+      skipSize,
+      largeGlyph,
+    } = playerMetrics(height, fullscreen ? { top: insets.top, bottom: insets.bottom } : { top: 0, bottom: 0 });
+    const safeTop = fullscreen ? insets.top : 0;
+    const safeBottom = fullscreen ? insets.bottom : 0;
+    const sideTop = fullscreen
+      ? { paddingLeft: layout.screen + insets.left, paddingRight: layout.screen + insets.right }
+      : null;
+    const sideBottom = fullscreen
+      ? { paddingLeft: layout.section + insets.left, paddingRight: layout.section + insets.right }
+      : null;
+    const chromeVisible = controlsVisible && !error && status !== 'loading';
+    const hit = { top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs };
+    const FullscreenIcon = fullscreen ? Minimize2 : Maximize2;
+    const leave = () => {
+      if (fullscreen) {
+        exitFullscreen();
+        return;
+      }
+      if (router.canGoBack()) router.back();
+      else router.replace('/learning');
+    };
+
+    return (
+      <>
+        <VideoView
+          player={player}
+          style={styles.video}
+          nativeControls={false}
+          contentFit="contain"
+          surfaceType="textureView"
+        />
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("Show player controls")}
+          accessibilityHint={t("They hide again a few seconds after the lesson starts playing")}
+          onPress={showControls}
+          style={StyleSheet.absoluteFill}
+        />
+
+        {status === 'loading' ? (
+          <View style={[styles.centerOverlay, styles.noTouch]}>
+            <ActivityIndicator color={colors.onPlayer} />
+            <Text style={[type.label, { color: colors.onPlayerMuted }]}>{t("Loading lesson\u2026")}</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.centerOverlay}>
+            <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
+            <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
+              {t("This lesson video could not be played.")}
+            </Text>
+            <Button
+              label={t("Try again")}
+              variant="secondary"
+              fullWidth={false}
+              onPress={() => {
+                if (lesson.hasCourseVideo && !playbackUrl) {
+                  setPlaybackAttempt((n) => n + 1);
+                  return;
+                }
+                if (videoSource) player.replace(videoSource);
+                player.play();
+              }}
+            />
+          </View>
+        ) : null}
+
+        {chromeVisible ? (
+          <Animated.View
+            entering={FadeIn.duration(160)}
+            exiting={FadeOut.duration(140)}
+            style={[StyleSheet.absoluteFill, styles.boxNone]}>
+            {/* Two short gradients so white glyphs stay readable on a bright frame. */}
+            <LinearGradient
+              colors={[colors.scrim, 'transparent']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={[styles.topScrim, styles.noTouch, { height: topBlockHeight + spacing.lg }]}
+            />
+            <LinearGradient
+              colors={['transparent', colors.scrim]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={[styles.bottomScrim, styles.noTouch, { height: bottomBlockHeight + spacing.lg }]}
+            />
+
+            <View
+              style={[
+                styles.playerTop,
+                { paddingTop: overlayPad + safeTop, paddingBottom: overlayPad, minHeight: topBlockHeight },
+                sideTop,
+              ]}>
+              <IconButton
+                icon={ArrowLeft}
+                variant="onImage"
+                accessibilityLabel={fullscreen ? t("Exit fullscreen") : t("Leave the lesson")}
+                onPress={leave}
+              />
+              <View style={styles.playerTitleWrap}>
+                <Text style={[type.label, { color: colors.onPlayerMuted }]} numberOfLines={1}>
+                  {course.title}
+                </Text>
+                <Text style={[type.bodyStrong, { color: colors.onPlayer }]} numberOfLines={1}>
+                  {lesson.title}
+                </Text>
+              </View>
+              <IconButton
+                icon={Clapperboard}
+                variant="onImage"
+                accessibilityLabel={t("Open lesson list")}
+                onPress={() => openFromPlayer(setLessonListOpen)}
+              />
+            </View>
+
+            <View
+              style={[
+                styles.playerCenter,
+                styles.boxNone,
+                { top: topBlockHeight, bottom: bottomBlockHeight, gap: Math.round(spacing.xl * playerScale) },
+              ]}>
+              <IconButton
+                icon={SkipBack}
+                variant="onImage"
+                size={skipSize}
+                iconSize={largeGlyph ? 24 : 20}
+                accessibilityLabel={t("Go back 15 seconds")}
+                onPress={() => seekTo(position - 15)}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
+                onPress={togglePlay}
+                style={[styles.playButton, { width: playSize, height: playSize }]}>
+                {isPlaying ? (
+                  <Pause size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                ) : (
+                  <Play size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                )}
+              </Pressable>
+              <IconButton
+                icon={SkipForward}
+                variant="onImage"
+                size={skipSize}
+                iconSize={largeGlyph ? 24 : 20}
+                accessibilityLabel={t("Go forward 15 seconds")}
+                onPress={() => seekTo(position + 15)}
+              />
+            </View>
+
+            <View
+              style={[
+                styles.playerBottom,
+                { paddingBottom: overlayPad + safeBottom, gap: blockGap },
+                sideBottom,
+              ]}>
+              {/* Speed and fullscreen are for a lesson that is under way; before the first play
+                  their band is reserved but empty, so the timeline and the play button hold their place. */}
+              {hasStarted ? (
+                <Animated.View
+                  entering={FadeIn.duration(160)}
+                  style={[styles.playerActions, { minHeight: actionHeight }]}>
+                  <View style={[styles.actionGroup, { gap: overlayPad }]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
+                      hitSlop={hit}
+                      onPress={() => openFromPlayer(setSpeedOpen)}
+                      style={styles.playerAction}>
+                      <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>
+                        {player.playbackRate}×
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Video quality, currently ${renditionLabel}`}
+                      accessibilityHint={
+                        tracks.length > 1
+                          ? `${tracks.length} renditions available`
+                          : 'This demo clip ships one rendition'
+                      }
+                      hitSlop={hit}
+                      onPress={() => openFromPlayer(setQualityOpen)}
+                      style={styles.playerAction}>
+                      <Hd size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{renditionLabel}</Text>
+                    </Pressable>
+                  </View>
+                  <View style={[styles.actionGroup, { gap: overlayPad }]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={muted ? 'Turn lesson sound on' : 'Mute lesson sound'}
+                      hitSlop={hit}
+                      onPress={() => {
+                        feedback.tap();
+                        player.muted = !muted;
+                        showControls();
+                      }}
+                      style={styles.playerAction}>
+                      {muted ? (
+                        <VolumeX size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      ) : (
+                        <Volume2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      )}
+                      <Text style={[type.label, { color: colors.onPlayer }]}>{muted ? 'Unmute' : 'Mute'}</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={fullscreen ? t("Exit fullscreen") : t("Play in fullscreen")}
+                      hitSlop={hit}
+                      onPress={fullscreen ? exitFullscreen : enterFullscreen}
+                      style={styles.playerAction}>
+                      <FullscreenIcon size={15} color={colors.onPlayer} strokeWidth={1.9} />
+                      <Text style={[type.label, { color: colors.onPlayer }]}>
+                        {fullscreen ? t("Exit fullscreen") : t("Fullscreen")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </Animated.View>
+              ) : (
+                <View style={[styles.playerActions, { minHeight: actionHeight }]} />
+              )}
+              {/* Timeline between the two times: the track is shorter than the picture, so the
+                  start and end numbers own the ends of the row. */}
+              <View style={[styles.timeRow, { gap: overlayPad }]}>
+                <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
+                  {formatClock(position)}
+                </Text>
+                <SeekBar
+                  progress={progressPercent}
+                  onSeek={(ratio) => seekTo(ratio * duration)}
+                  accessibilityLabel={t("Seek within the lesson")}
+                  style={{ height: trackHeight }}
+                />
+                <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
+                  {formatClock(duration)}
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+        ) : null}
+      </>
+    );
+  };
+
   return (
     <View style={styles.root}>
       <AppStatusBar />
 
       {/* Player. The system bar strip is left to the app background and the video sits below it.
-          Everything else floats over the picture, so the dark area is exactly the 16:9 video and
-          nothing hangs under it: play/pause and the skip buttons in the free band in the middle,
-          then — in the order asked for — the speed and fullscreen row and the timeline, with the
-          start and end times owning the ends of its row. The rows are sized from the surface height
-          (see `videoHeight` above) so they stay clear of each other on every screen. Before the
-          lesson starts playing only the short transport is on screen; speed and fullscreen join it
-          once there is something to watch, and from then on the controls peek for three seconds at
-          a time. */}
+          The controls float over the picture; the picture is 16:9 inline and fills the screen in
+          fullscreen (see `renderSurface`). */}
       <View style={[styles.playerWrap, { paddingTop: insets.top }]}>
         <View
           style={styles.playerSurface}
           onLayout={(event: LayoutChangeEvent) => setMeasuredVideoHeight(event.nativeEvent.layout.height)}>
-          <VideoView
-            ref={videoRef}
-            player={player}
-            style={styles.video}
-            nativeControls={false}
-            contentFit="contain"
-            fullscreenOptions={{ enable: true }}
-            surfaceType="textureView"
-          />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Show player controls")}
-            accessibilityHint={t("They hide again a few seconds after the lesson starts playing")}
-            onPress={showControls}
-            style={StyleSheet.absoluteFill}
-          />
-
-          {status === 'loading' ? (
-            <View style={[styles.centerOverlay, styles.noTouch]}>
-              <ActivityIndicator color={colors.onPlayer} />
-              <Text style={[type.label, { color: colors.onPlayerMuted }]}>{t("Loading lesson\u2026")}</Text>
-            </View>
-          ) : null}
-
-          {error ? (
-            <View style={styles.centerOverlay}>
-              <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
-              <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>{t("This lesson video could not be played.")}</Text>
-              <Button
-                label={t("Try again")}
-                variant="secondary"
-                fullWidth={false}
-                onPress={() => {
-                  if (lesson.hasCourseVideo && !playbackUrl) {
-                    setPlaybackAttempt((n) => n + 1);
-                    return;
-                  }
-                  if (videoSource) player.replace(videoSource);
-                  player.play();
-                }}
-              />
-            </View>
-          ) : null}
-
-          {controlsVisible && !error ? (
-            <Animated.View
-              entering={FadeIn.duration(160)}
-              exiting={FadeOut.duration(140)}
-              style={[StyleSheet.absoluteFill, styles.boxNone]}>
-              {/* Two short gradients so white glyphs stay readable on a bright frame. */}
-              <LinearGradient
-                colors={[colors.scrim, 'transparent']}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={[styles.topScrim, styles.noTouch, { height: topBlockHeight + spacing.lg }]}
-              />
-              <LinearGradient
-                colors={['transparent', colors.scrim]}
-                start={{ x: 0.5, y: 0 }}
-                end={{ x: 0.5, y: 1 }}
-                style={[styles.bottomScrim, styles.noTouch, { height: bottomBlockHeight + spacing.lg }]}
-              />
-
-              <View
-                style={[
-                  styles.playerTop,
-                  { paddingTop: overlayPad, paddingBottom: overlayPad, minHeight: topBlockHeight },
-                ]}>
-                <IconButton
-                  icon={ArrowLeft}
-                  variant="onImage"
-                  accessibilityLabel={t("Leave the lesson")}
-                  onPress={() => (router.canGoBack() ? router.back() : router.replace('/learning'))}
-                />
-                <View style={styles.playerTitleWrap}>
-                  <Text style={[type.label, { color: colors.onPlayerMuted }]} numberOfLines={1}>
-                    {course.title}
-                  </Text>
-                  <Text style={[type.bodyStrong, { color: colors.onPlayer }]} numberOfLines={1}>
-                    {lesson.title}
-                  </Text>
-                </View>
-                <IconButton
-                  icon={Clapperboard}
-                  variant="onImage"
-                  accessibilityLabel={t("Open lesson list")}
-                  onPress={() => setLessonListOpen(true)}
-                />
-              </View>
-
-              <View
-                style={[
-                  styles.playerCenter,
-                  styles.boxNone,
-                  { top: topBlockHeight, bottom: bottomBlockHeight, gap: Math.round(spacing.xl * playerScale) },
-                ]}>
-                <IconButton
-                  icon={SkipBack}
-                  variant="onImage"
-                  size={skipSize}
-                  iconSize={largeGlyph ? 24 : 20}
-                  accessibilityLabel={t("Go back 15 seconds")}
-                  onPress={() => seekTo(position - 15)}
-                />
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
-                  onPress={togglePlay}
-                  style={[styles.playButton, { width: playSize, height: playSize }]}>
-                  {isPlaying ? (
-                    <Pause
-                      size={largeGlyph ? 30 : 24}
-                      color={colors.onPlayer}
-                      strokeWidth={1.8}
-                      fill={colors.onPlayer}
-                    />
-                  ) : (
-                    <Play
-                      size={largeGlyph ? 30 : 24}
-                      color={colors.onPlayer}
-                      strokeWidth={1.8}
-                      fill={colors.onPlayer}
-                    />
-                  )}
-                </Pressable>
-                <IconButton
-                  icon={SkipForward}
-                  variant="onImage"
-                  size={skipSize}
-                  iconSize={largeGlyph ? 24 : 20}
-                  accessibilityLabel={t("Go forward 15 seconds")}
-                  onPress={() => seekTo(position + 15)}
-                />
-              </View>
-
-              <View style={[styles.playerBottom, { paddingBottom: overlayPad, gap: blockGap }]}>
-                {/* Speed and fullscreen are for a lesson that is under way; before the first play
-                    their band is reserved but empty, so the timeline and the play button hold
-                    their place and the row can slide in without shifting anything. */}
-                {hasStarted ? (
-                  <Animated.View
-                    entering={FadeIn.duration(160)}
-                    style={[styles.playerActions, { minHeight: actionHeight }]}>
-                    <View style={[styles.actionGroup, { gap: overlayPad }]}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Playback speed, currently ${player.playbackRate} times`}
-                      hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                      onPress={() => setSpeedOpen(true)}
-                      style={styles.playerAction}>
-                        <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>
-                          {player.playbackRate}×
-                        </Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Video quality, currently ${renditionLabel}`}
-                        accessibilityHint={
-                          tracks.length > 1
-                            ? `${tracks.length} renditions available`
-                            : 'This demo clip ships one rendition'
-                        }
-                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                        onPress={() => setQualityOpen(true)}
-                        style={styles.playerAction}>
-                        <Hd size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{renditionLabel}</Text>
-                      </Pressable>
-                    </View>
-                    <View style={[styles.actionGroup, { gap: overlayPad }]}>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={muted ? 'Turn lesson sound on' : 'Mute lesson sound'}
-                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                        onPress={() => {
-                          feedback.tap();
-                          player.muted = !muted;
-                          showControls();
-                        }}
-                        style={styles.playerAction}>
-                        {muted ? (
-                          <VolumeX size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        ) : (
-                          <Volume2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        )}
-                        <Text style={[type.label, { color: colors.onPlayer }]}>{muted ? 'Unmute' : 'Mute'}</Text>
-                      </Pressable>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={t("Play in fullscreen")}
-                        hitSlop={{ top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs }}
-                        onPress={() => void videoRef.current?.enterFullscreen()}
-                        style={styles.playerAction}>
-                        <Maximize2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                        <Text style={[type.label, { color: colors.onPlayer }]}>{t("Fullscreen")}</Text>
-                      </Pressable>
-                    </View>
-                  </Animated.View>
-                ) : (
-                  <View style={[styles.playerActions, { minHeight: actionHeight }]} />
-                )}
-                {/* Timeline between the two times: the track is shorter than the picture, so the
-                    start and end numbers own the ends of the row. */}
-                <View style={[styles.timeRow, { gap: overlayPad }]}>
-                  <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
-                    {formatClock(position)}
-                  </Text>
-                  <SeekBar
-                    progress={progressPercent}
-                    onSeek={(ratio) => seekTo(ratio * duration)}
-                    accessibilityLabel={t("Seek within the lesson")}
-                    style={{ height: trackHeight }}
-                  />
-                  <Text style={[type.label, tabularNums, styles.timeText, { color: colors.onPlayer }]}>
-                    {formatClock(duration)}
-                  </Text>
-                </View>
-              </View>
-            </Animated.View>
-          ) : null}
+          {renderSurface(videoHeight, false)}
         </View>
       </View>
+
+      <Modal
+        visible={fullscreenOpen}
+        animationType="fade"
+        supportedOrientations={['portrait', 'landscape']}
+        statusBarTranslucent
+        onRequestClose={exitFullscreen}>
+        <View
+          style={styles.fullscreenRoot}
+          onLayout={(event: LayoutChangeEvent) => setFullscreenHeight(event.nativeEvent.layout.height)}>
+          <StatusBar hidden />
+          {renderSurface(fullscreenHeight || windowHeight, true)}
+        </View>
+      </Modal>
 
       <KeyboardAvoidingView
         style={[styles.flex, styles.clipPanel]}
@@ -1001,6 +1114,7 @@ const styles = createStyles(() => StyleSheet.create({
   /* Android would otherwise let the panel's content scroll up over the video (see <Screen>). */
   clipPanel: { overflow: 'hidden' },
   playerWrap: { backgroundColor: colors.background },
+  fullscreenRoot: { flex: 1, backgroundColor: colors.player, overflow: 'hidden' },
   /** The picture, and the whole dark area: nothing is painted below it. */
   playerSurface: { aspectRatio: 16 / 9, backgroundColor: colors.player, overflow: 'hidden' },
   video: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.player },

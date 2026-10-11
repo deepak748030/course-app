@@ -1,3 +1,4 @@
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
@@ -122,7 +123,16 @@ function SplashGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** The app stays portrait; only the lesson player's fullscreen may rotate the screen. */
+function usePortraitLock() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+  }, []);
+}
+
 export default function RootLayout() {
+  usePortraitLock();
   // Bundled locally, two weights only. Not awaited: failing to load them degrades the
   // typeface, it never blocks the app.
   useFonts({

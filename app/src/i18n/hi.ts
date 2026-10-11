@@ -173,6 +173,7 @@ export const hi: Record<string, string> = {
   'Go forward 15 seconds': '15 सेकंड आगे',
   'Play in fullscreen': 'फ़ुलस्क्रीन में चलाएँ',
   'Fullscreen': 'फ़ुलस्क्रीन',
+  'Exit fullscreen': 'फ़ुलस्क्रीन बंद करें',
   'Seek within the lesson': 'लेसन में आगे-पीछे जाएँ',
   'Free preview': 'मुफ़्त झलक',
   'Completed': 'पूरा हुआ',

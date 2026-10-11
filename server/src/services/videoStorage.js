@@ -129,8 +129,14 @@ export async function storeVideo({ courseKey, filePath, fileName, contentType, s
   return key;
 }
 
-/** Signs a temporary GET URL for one stored video. The bucket itself stays private. */
+/**
+ * Signs a temporary GET URL for one stored video. The bucket itself stays private.
+ * The signing time is snapped to 6-hour windows and the link lasts two windows, so a lesson gets the
+ * same URL for the whole window. The app caches video by URL; a changing URL would throw that cache away.
+ */
+const PLAYBACK_WINDOW_SECONDS = 6 * 60 * 60;
 export async function createVideoPlaybackUrl(key) {
   const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-  return getSignedUrl(s3(), command, { expiresIn: PLAYBACK_TTL_SECONDS });
+  const signingDate = new Date(Math.floor(Date.now() / 1000 / PLAYBACK_WINDOW_SECONDS) * PLAYBACK_WINDOW_SECONDS * 1000);
+  return getSignedUrl(s3(), command, { expiresIn: PLAYBACK_WINDOW_SECONDS * 2, signingDate });
 }

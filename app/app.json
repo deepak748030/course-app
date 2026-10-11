@@ -3,7 +3,7 @@
     "name": "YDU Academy",
     "slug": "courses-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/logo.png",
     "scheme": "coursesapp",
     "userInterfaceStyle": "light",
