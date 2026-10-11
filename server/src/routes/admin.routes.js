@@ -1,4 +1,7 @@
+import fs from 'node:fs';
+import os from 'node:os';
 import { Router } from 'express';
+import multer from 'multer';
 import { z } from 'zod';
 import * as categories from '../controllers/admin/categories.controller.js';
 import * as coupons from '../controllers/admin/coupons.controller.js';
@@ -11,7 +14,7 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
+import { MAX_VIDEO_BYTES, VIDEO_TYPES, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -28,38 +31,69 @@ router.get('/stats/overview', overview);
 const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(365).optional() });
 router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
 
-// ---------- course videos (Backblaze B2) -------------------------------------
+// ---------- course videos (Backblaze B2, private bucket) -----------------------
 router.get('/uploads/video/status', (_req, res) => {
   res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES) });
 });
-const videoUploadSchema = z.object({
-  courseId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
-  fileName: z.string().trim().min(1).max(200),
-  contentType: z.enum(['video/mp4', 'video/webm', 'video/quicktime']),
-  size: z.number().int().min(1).max(MAX_VIDEO_BYTES),
+
+// Videos are written to a temp file first, then streamed to B2. Multer's limit stops oversize files.
+const videoUpload = multer({
+  storage: multer.diskStorage({ destination: os.tmpdir() }),
+  limits: { fileSize: MAX_VIDEO_BYTES, files: 1 },
+  fileFilter(_req, file, cb) {
+    if (VIDEO_TYPES[file.mimetype]) cb(null, true);
+    else cb(new HttpError(415, 'Only MP4, WebM or MOV videos are allowed'));
+  },
 });
-/** POST /api/admin/uploads/video — signs a direct-to-B2 upload for one lesson video. */
+
+function handleVideoUpload(req, res, next) {
+  videoUpload.single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return next(new HttpError(413, 'This video is larger than the 4 GB limit'));
+    }
+    return next(err instanceof HttpError ? err : new HttpError(400, err.message || 'Upload failed'));
+  });
+}
+
+/**
+ * POST /api/admin/uploads/video — multipart field `file` (+ optional `courseId`).
+ * Streams the video to the private bucket and returns the object key the lesson stores.
+ */
 router.post(
   '/uploads/video',
-  validateBody(videoUploadSchema),
+  (req, _res, next) => {
+    req.setTimeout(0); // large videos take a while over slow connections
+    next();
+  },
+  handleVideoUpload,
   asyncHandler(async (req, res) => {
-    if (!videoStorageConfigured) {
-      throw new HttpError(503, `Video storage is not set up: ${videoStorageProblem()}.`);
-    }
-    const { courseId, fileName, contentType, size } = req.body;
-    let upload;
+    const file = req.file;
+    const cleanup = () => file && fs.promises.rm(file.path, { force: true }).catch(() => {});
     try {
-      upload = await createVideoUploadUrl({
-        courseKey: courseId || 'drafts',
-        fileName,
-        contentType,
-        size,
-      });
-    } catch (err) {
-      console.error('[uploads] could not sign video upload:', err?.message || err);
-      throw new HttpError(503, 'Could not prepare the video upload. Check the B2_* values in server/.env.');
+      if (!file) throw new HttpError(400, 'Send a video in the "file" field');
+      if (!videoStorageConfigured) {
+        throw new HttpError(503, `Video storage is not set up: ${videoStorageProblem()}.`);
+      }
+      const courseId = typeof req.body.courseId === 'string' ? req.body.courseId : '';
+      const courseKey = /^[a-f\d]{24}$/i.test(courseId) ? courseId : 'drafts';
+      let key;
+      try {
+        key = await storeVideo({
+          courseKey,
+          filePath: file.path,
+          fileName: file.originalname,
+          contentType: file.mimetype,
+          size: file.size,
+        });
+      } catch (err) {
+        console.error('[uploads] could not store video in B2:', err?.message || err);
+        throw new HttpError(503, 'Could not store the video in Backblaze B2. Check the B2_* values in server/.env.');
+      }
+      res.status(201).json({ key, size: file.size, contentType: file.mimetype });
+    } finally {
+      await cleanup();
     }
-    res.status(201).json(upload);
   })
 );
 

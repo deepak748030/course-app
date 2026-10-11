@@ -133,9 +133,9 @@ export const videoStorageStatus = () =>
   request<{ configured: boolean; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
 
 /**
- * Uploads one lesson video straight from the browser to the private Backblaze B2 bucket. The server
- * only signs a short-lived PUT URL; the bytes never pass through the API. Resolves with the object
- * key, which the lesson stores (the app gets a signed playback link from the server).
+ * Uploads one lesson video to the server, which streams it into the private Backblaze B2 bucket.
+ * Resolves with the object key, which the lesson stores (the app gets a signed playback link).
+ * `onProgress` reports the browser → server upload; the server's own B2 step follows it.
  */
 export async function uploadCourseVideo(
   file: File,
@@ -143,26 +143,31 @@ export async function uploadCourseVideo(
   onProgress: (percent: number) => void
 ): Promise<string> {
   if (demoMode) throw new ApiError(503, 'Video uploads need the real server — demo mode cannot store files.');
-  const signed = await request<{ uploadUrl: string; key: string }>('/admin/uploads/video', {
-    method: 'POST',
-    body: { courseId, fileName: file.name, contentType: file.type, size: file.size },
-  });
-  await new Promise<void>((resolve, reject) => {
+  const body = new FormData();
+  body.append('file', file);
+  if (courseId) body.append('courseId', courseId);
+
+  return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('PUT', signed.uploadUrl);
-    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.open('POST', '/api/admin/uploads/video');
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
     };
-    xhr.onload = () =>
-      xhr.status >= 200 && xhr.status < 300
-        ? resolve()
-        : reject(new ApiError(xhr.status, 'Video storage rejected the upload. Check the B2 bucket CORS settings.'));
-    xhr.onerror = () =>
-      reject(new ApiError(0, 'Could not reach video storage. Check the B2 bucket CORS settings and your connection.'));
-    xhr.send(file);
+    xhr.onload = () => {
+      let data: { key?: string; error?: string } = {};
+      try {
+        data = JSON.parse(xhr.responseText || '{}');
+      } catch {
+        /* not json */
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data.key) resolve(data.key);
+      else reject(new ApiError(xhr.status, data.error || `Video upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'Could not reach the server for the video upload.'));
+    xhr.send(body);
   });
-  return signed.key;
 }
 
 /**
