@@ -2,7 +2,7 @@ import { Category } from '../models/Category.js';
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
-import { PLAYBACK_TTL_SECONDS, createVideoPlaybackUrl } from '../services/videoStorage.js';
+import { PLAYBACK_TTL_SECONDS, createVideoPlaybackUrl, lessonVideos, pickLessonVideo } from '../services/videoStorage.js';
 
 /** GET /api/categories */
 export const listCategories = asyncHandler(async (_req, res) => {
@@ -79,15 +79,23 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
   if (!course) throw new HttpError(404, 'Course not found');
   const lesson = course.sections.flatMap((section) => section.lessons).find((l) => String(l._id) === lessonId);
   if (!lesson) throw new HttpError(404, 'Lesson not found');
-  if (!lesson.videoKey) throw new HttpError(404, 'This lesson has no course video');
+  const videos = lessonVideos(lesson);
+  if (!videos.length) throw new HttpError(404, 'This lesson has no course video');
 
   if (!lesson.isPreview) {
     const owned = await Enrollment.exists({ user: req.user._id, course: course._id });
     if (!owned) throw new HttpError(403, 'Buy this course to watch this lesson');
   }
 
-  const url = await createVideoPlaybackUrl(lesson.videoKey);
-  res.json({ url, expiresIn: PLAYBACK_TTL_SECONDS });
+  // ?quality=720 picks that version (or the closest lower one); without it the best available plays.
+  const chosen = pickLessonVideo(lesson, typeof req.query.quality === 'string' ? req.query.quality : '');
+  const url = await createVideoPlaybackUrl(chosen.key);
+  res.json({
+    url,
+    expiresIn: PLAYBACK_TTL_SECONDS,
+    quality: chosen.quality,
+    qualities: videos.map((v) => v.quality),
+  });
 });
 
 /**

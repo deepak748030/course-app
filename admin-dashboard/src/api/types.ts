@@ -34,6 +34,15 @@ export interface Lesson {
   isPreview: boolean;
   /** Object key of the uploaded course video in the private B2 bucket. Empty = no video yet. */
   videoKey?: string;
+  /** Encoded versions of the lesson video, one per quality. */
+  videos?: LessonVideo[];
+}
+
+export type VideoQuality = '360' | '480' | '720' | '1080';
+
+export interface LessonVideo {
+  quality: VideoQuality;
+  videoKey: string;
 }
 
 export interface Section {

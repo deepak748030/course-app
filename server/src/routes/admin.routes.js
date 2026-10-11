@@ -14,7 +14,7 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_TYPES, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
+import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -33,7 +33,7 @@ router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOv
 
 // ---------- course videos (Backblaze B2, private bucket) -----------------------
 router.get('/uploads/video/status', (_req, res) => {
-  res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES) });
+  res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES), qualities: VIDEO_QUALITIES });
 });
 
 // Videos are written to a temp file first, then streamed to B2. Multer's limit stops oversize files.
@@ -77,6 +77,10 @@ router.post(
       }
       const courseId = typeof req.body.courseId === 'string' ? req.body.courseId : '';
       const courseKey = /^[a-f\d]{24}$/i.test(courseId) ? courseId : 'drafts';
+      const quality = typeof req.body.quality === 'string' ? req.body.quality : '';
+      if (!VIDEO_QUALITIES.includes(quality)) {
+        throw new HttpError(400, 'Choose the video quality: 360, 480, 720 or 1080');
+      }
       let key;
       try {
         key = await storeVideo({
@@ -85,12 +89,13 @@ router.post(
           fileName: file.originalname,
           contentType: file.mimetype,
           size: file.size,
+          quality,
         });
       } catch (err) {
         console.error('[uploads] could not store video in B2:', err?.message || err);
         throw new HttpError(503, 'Could not store the video in Backblaze B2. Check the B2_* values in server/.env.');
       }
-      res.status(201).json({ key, size: file.size, contentType: file.mimetype });
+      res.status(201).json({ key, quality, size: file.size, contentType: file.mimetype });
     } finally {
       await cleanup();
     }
@@ -111,19 +116,30 @@ const recipeSchema = z.object({
   steps: z.array(z.string().trim().max(500)).max(40).default([]),
   tips: z.array(z.string().trim().max(280)).max(20).default([]),
 });
-const lessonSchema = z.object({
-  title: z.string().trim().min(1).max(140),
-  description: z.string().trim().max(2000).default(''),
-  minutes: z.number().int().min(1).max(600),
-  isPreview: z.boolean().default(false),
-  videoKey: z
-    .string()
-    .trim()
-    .max(300)
-    .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
-    .default(''),
-  recipe: recipeSchema.optional().nullable(),
+const lessonVideoSchema = z.object({
+  quality: z.enum(['360', '480', '720', '1080']),
+  videoKey: z.string().trim().max(300).regex(/^courses\/[\w./-]+$/, 'Invalid video key'),
 });
+const lessonSchema = z
+  .object({
+    title: z.string().trim().min(1).max(140),
+    description: z.string().trim().max(2000).default(''),
+    minutes: z.number().int().min(1).max(600),
+    isPreview: z.boolean().default(false),
+    videoKey: z
+      .string()
+      .trim()
+      .max(300)
+      .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
+      .default(''),
+    videos: z.array(lessonVideoSchema).max(4).default([]),
+    recipe: recipeSchema.optional().nullable(),
+  })
+  .transform((lesson) => {
+    // Best available quality also goes in `videoKey` so older app builds keep playing.
+    const best = [...lesson.videos].sort((a, b) => Number(b.quality) - Number(a.quality))[0];
+    return { ...lesson, videoKey: best ? best.videoKey : lesson.videoKey };
+  });
 const sectionSchema = z.object({
   title: z.string().trim().min(1).max(140),
   summary: z.string().trim().max(1000).default(''),

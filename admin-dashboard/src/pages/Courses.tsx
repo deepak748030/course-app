@@ -2,7 +2,7 @@ import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, Video,
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, uploadCourseVideo, uploadImage } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
-import type { Category, Course, Section } from '../api/types';
+import type { Category, Course, LessonVideo, Section, VideoQuality } from '../api/types';
 import {
   Badge,
   Button,
@@ -112,68 +112,84 @@ function payloadFromForm(form: FormState) {
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
 /** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
-function LessonVideo({
+const VIDEO_QUALITIES: VideoQuality[] = ['360', '480', '720', '1080'];
+
+/** One upload slot per quality. Each quality is its own file in the private bucket. */
+function LessonVideos({
   courseId,
   value,
   onChange,
 }: {
   courseId?: string;
-  value: string;
-  onChange: (url: string) => void;
+  value: LessonVideo[];
+  onChange: (videos: LessonVideo[]) => void;
 }) {
   const toast = useToast();
-  const [progress, setProgress] = useState<number | null>(null);
+  const [busy, setBusy] = useState<{ quality: VideoQuality; progress: number } | null>(null);
 
-  async function pick(file: File) {
+  async function pick(quality: VideoQuality, file: File) {
     if (!VIDEO_TYPES.includes(file.type)) {
       toast('error', 'Use an MP4, WebM or MOV video.');
       return;
     }
-    setProgress(0);
+    setBusy({ quality, progress: 0 });
     try {
-      const url = await uploadCourseVideo(file, courseId, setProgress);
-      onChange(url);
-      toast('success', 'Video uploaded. Click Save changes to publish it to the app.');
+      const key = await uploadCourseVideo(file, courseId, quality, (progress) => setBusy({ quality, progress }));
+      onChange([...value.filter((v) => v.quality !== quality), { quality, videoKey: key }]);
+      toast('success', `${quality}p video uploaded. Click Save changes to publish it to the app.`);
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Video upload failed');
     } finally {
-      setProgress(null);
+      setBusy(null);
     }
   }
 
-  const busy = progress !== null;
+  const anyBusy = busy !== null;
   return (
-    <div className="flex shrink-0 items-center gap-1">
-      <label
-        className={`inline-flex h-9 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-md border border-line px-2.5 text-xs font-semibold ${
-          busy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand'
-        }`}
-        title={value ? 'Replace the lesson video' : 'Upload a lesson video'}
-      >
-        <input
-          type="file"
-          accept="video/mp4,video/webm,video/quicktime"
-          className="hidden"
-          disabled={busy}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) void pick(file);
-          }}
-        />
-        {busy ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
-        {busy ? `${progress}%` : value ? 'Replace video' : 'Upload video'}
-      </label>
-      {value && !busy && (
-        <button
-          type="button"
-          onClick={() => onChange('')}
-          className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error"
-          title="Remove video"
-        >
-          <X size={13} />
-        </button>
-      )}
+    <div className="flex flex-wrap items-center gap-1.5">
+      {VIDEO_QUALITIES.map((quality) => {
+        const uploaded = value.some((v) => v.quality === quality);
+        const uploading = busy?.quality === quality;
+        return (
+          <div
+            key={quality}
+            className={`inline-flex h-9 items-center gap-0.5 rounded-md border px-0.5 text-xs font-semibold ${
+              uploaded ? 'border-success bg-success-soft text-success' : 'border-line text-muted'
+            }`}
+          >
+            <label
+              className={`inline-flex h-8 cursor-pointer items-center gap-1 whitespace-nowrap rounded px-2 ${
+                anyBusy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand'
+              }`}
+              title={uploaded ? `Replace the ${quality}p video` : `Upload the ${quality}p video`}
+            >
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                className="hidden"
+                disabled={anyBusy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void pick(quality, file);
+                }}
+              />
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
+              {uploading ? `${busy?.progress ?? 0}%` : `${quality}p`}
+            </label>
+            {uploaded && !anyBusy && (
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((v) => v.quality !== quality))}
+                className="rounded p-1 hover:bg-error-soft hover:text-error"
+                title={`Remove the ${quality}p video`}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -579,7 +595,7 @@ export default function Courses() {
                   />
                   <div className="mt-3 space-y-2">
                     {section.lessons.map((lesson, j) => (
-                      <div key={j} className="flex items-center gap-2">
+                      <div key={j} className="flex flex-wrap items-center gap-2">
                         <Input
                           value={lesson.title}
                           onChange={(e) => sectionOps.patchLesson(i, j, { title: e.target.value })}
@@ -594,10 +610,10 @@ export default function Courses() {
                           className="h-9 w-20"
                           title="Minutes"
                         />
-                        <LessonVideo
+                        <LessonVideos
                           courseId={editing?._id}
-                          value={lesson.videoKey ?? ''}
-                          onChange={(key) => sectionOps.patchLesson(i, j, { videoKey: key })}
+                          value={lesson.videos ?? []}
+                          onChange={(videos) => sectionOps.patchLesson(i, j, { videos, videoKey: '' })}
                         />
                         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
                           <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />

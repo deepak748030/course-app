@@ -140,12 +140,14 @@ export const videoStorageStatus = () =>
 export async function uploadCourseVideo(
   file: File,
   courseId: string | undefined,
+  quality: string,
   onProgress: (percent: number) => void
 ): Promise<string> {
   if (demoMode) throw new ApiError(503, 'Video uploads need the real server — demo mode cannot store files.');
   const body = new FormData();
   body.append('file', file);
   if (courseId) body.append('courseId', courseId);
+  body.append('quality', quality);
 
   return new Promise<string>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
