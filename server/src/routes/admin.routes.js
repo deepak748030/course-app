@@ -141,11 +141,6 @@ const lessonSchema = z
     const best = [...lesson.videos].sort((a, b) => Number(b.quality) - Number(a.quality))[0];
     return { ...lesson, videoKey: best ? best.videoKey : lesson.videoKey };
   });
-const sectionSchema = z.object({
-  title: z.string().trim().min(1).max(140),
-  summary: z.string().trim().max(1000).default(''),
-  lessons: z.array(lessonSchema).default([]),
-});
 const courseSchema = z.object({
   title: z.string().trim().min(2).max(140),
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{2,80}$/).optional(),
@@ -163,7 +158,7 @@ const courseSchema = z.object({
   outcomes: z.array(z.string().trim().max(280)).max(20).default([]),
   equipment: z.array(z.string().trim().max(280)).max(20).default([]),
   audience: z.string().trim().max(500).default(''),
-  sections: z.array(sectionSchema).default([]),
+  lessons: z.array(lessonSchema).default([]),
 });
 
 const courseListQuery = z.object({

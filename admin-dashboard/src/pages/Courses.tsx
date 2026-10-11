@@ -2,7 +2,7 @@ import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, Video,
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, uploadCourseVideo, uploadImage } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
-import type { Category, Course, LessonVideo, Section, VideoQuality } from '../api/types';
+import type { Category, Course, Lesson, LessonVideo, VideoQuality } from '../api/types';
 import {
   Badge,
   Button,
@@ -42,7 +42,7 @@ type FormState = {
   published: boolean;
   isPopular: boolean;
   isBeginnerPick: boolean;
-  sections: Section[];
+  lessons: Lesson[];
 };
 
 const emptyForm: FormState = {
@@ -62,7 +62,7 @@ const emptyForm: FormState = {
   published: false,
   isPopular: false,
   isBeginnerPick: false,
-  sections: [],
+  lessons: [],
 };
 
 function formFromCourse(course: Course): FormState {
@@ -83,7 +83,7 @@ function formFromCourse(course: Course): FormState {
     published: course.published,
     isPopular: course.isPopular,
     isBeginnerPick: course.isBeginnerPick,
-    sections: JSON.parse(JSON.stringify(course.sections)),
+    lessons: JSON.parse(JSON.stringify(course.lessons)),
   };
 }
 
@@ -105,7 +105,7 @@ function payloadFromForm(form: FormState) {
     published: form.published,
     isPopular: form.isPopular,
     isBeginnerPick: form.isBeginnerPick,
-    sections: form.sections,
+    lessons: form.lessons,
   };
 }
 
@@ -308,33 +308,14 @@ export default function Courses() {
     }
   }
 
-  const sectionOps = useMemo(
+  const lessonOps = useMemo(
     () => ({
-      add: () => set('sections', [...form.sections, { title: '', summary: '', lessons: [] }]),
-      remove: (i: number) => set('sections', form.sections.filter((_, idx) => idx !== i)),
-      patch: (i: number, patch: Partial<Section>) =>
-        set('sections', form.sections.map((s, idx) => (idx === i ? { ...s, ...patch } : s))),
-      addLesson: (i: number) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) =>
-            idx === i ? { ...s, lessons: [...s.lessons, { title: '', description: '', minutes: 10, isPreview: false }] } : s
-          )
-        ),
-      removeLesson: (i: number, j: number) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) => (idx === i ? { ...s, lessons: s.lessons.filter((_, l) => l !== j) } : s))
-        ),
-      patchLesson: (i: number, j: number, patch: Partial<Section['lessons'][number]>) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) =>
-            idx === i ? { ...s, lessons: s.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson)) } : s
-          )
-        ),
+      add: () => set('lessons', [...form.lessons, { title: '', description: '', minutes: 10, isPreview: false }]),
+      remove: (j: number) => set('lessons', form.lessons.filter((_, l) => l !== j)),
+      patch: (j: number, patch: Partial<Lesson>) =>
+        set('lessons', form.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson))),
     }),
-    [form.sections]
+    [form.lessons]
   );
 
   return (
@@ -395,7 +376,7 @@ export default function Courses() {
                               {course.isBeginnerPick && <Badge tone="success">Beginner pick</Badge>}
                             </div>
                             <p className="truncate text-xs text-subtle">
-                              /{course.slug} · {course.sections.reduce((s, x) => s + x.lessons.length, 0)} lessons · {course.language}
+                              /{course.slug} · {course.lessons.length} lessons · {course.language}
                             </p>
                           </div>
                         </div>
@@ -579,43 +560,23 @@ export default function Courses() {
             </Field>
           </div>
 
-          {/* curriculum */}
+          {/* lessons */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-sm font-semibold">Curriculum</h4>
-              <Button size="sm" variant="outline" icon={Plus} onClick={sectionOps.add}>Add section</Button>
+              <h4 className="text-sm font-semibold">Lessons</h4>
+              <Button size="sm" variant="outline" icon={Plus} onClick={lessonOps.add}>Add lesson</Button>
             </div>
-            <div className="space-y-3">
-              {form.sections.length === 0 && (
+            <div className="space-y-2">
+              {form.lessons.length === 0 && (
                 <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[13px] text-subtle">
-                  No sections yet — add sections and lessons to build the course.
+                  No lessons yet — add lessons to build the course.
                 </p>
               )}
-              {form.sections.map((section, i) => (
-                <div key={i} className="rounded-xl border border-line p-4">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={section.title}
-                      onChange={(e) => sectionOps.patch(i, { title: e.target.value })}
-                      placeholder={`Section ${i + 1} title`}
-                      className="font-semibold"
-                    />
-                    <button onClick={() => sectionOps.remove(i)} className="shrink-0 rounded-md p-2 text-subtle hover:bg-error-soft hover:text-error">
-                      <X size={15} />
-                    </button>
-                  </div>
-                  <Input
-                    value={section.summary}
-                    onChange={(e) => sectionOps.patch(i, { summary: e.target.value })}
-                    placeholder="Short section summary"
-                    className="mt-2"
-                  />
-                  <div className="mt-3 space-y-2">
-                    {section.lessons.map((lesson, j) => (
-                      <div key={j} className="flex flex-wrap items-center gap-2">
+                    {form.lessons.map((lesson, j) => (
+                  <div key={j} className="flex flex-wrap items-center gap-2">
                         <Input
                           value={lesson.title}
-                          onChange={(e) => sectionOps.patchLesson(i, j, { title: e.target.value })}
+                          onChange={(e) => lessonOps.patch(j, { title: e.target.value })}
                           placeholder="Lesson title"
                           className="h-9"
                         />
@@ -623,7 +584,7 @@ export default function Courses() {
                           type="number"
                           min={1}
                           value={lesson.minutes}
-                          onChange={(e) => sectionOps.patchLesson(i, j, { minutes: Number(e.target.value) })}
+                          onChange={(e) => lessonOps.patch(j, { minutes: Number(e.target.value) })}
                           className="h-9 w-20"
                           title="Minutes"
                         />
@@ -631,7 +592,7 @@ export default function Courses() {
                           courseId={editing?._id}
                           value={lesson.videos ?? []}
                           onChange={(videos, durationSec) =>
-                            sectionOps.patchLesson(i, j, {
+                            lessonOps.patch(j, {
                               videos,
                               videoKey: '',
                               // The real length replaces the typed minutes, so course totals match the video.
@@ -640,18 +601,14 @@ export default function Courses() {
                           }
                         />
                         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
-                          <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />
+                          <Toggle checked={lesson.isPreview} onChange={(v) => lessonOps.patch(j, { isPreview: v })} label="Free preview" />
                           Preview
                         </label>
-                        <button onClick={() => sectionOps.removeLesson(i, j)} className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error">
+                        <button onClick={() => lessonOps.remove(j)} className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error">
                           <X size={14} />
                         </button>
                       </div>
                     ))}
-                    <Button size="sm" variant="ghost" icon={Plus} onClick={() => sectionOps.addLesson(i)}>Add lesson</Button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

@@ -8,7 +8,7 @@ import { HttpError, asyncHandler } from '../utils/http.js';
  */
 export const myEnrollments = asyncHandler(async (req, res) => {
   const enrollments = await Enrollment.find({ user: req.user._id })
-    .populate('course', 'slug title promise coverUrl category level priceInr sections')
+    .populate('course', 'slug title promise coverUrl category level priceInr lessons')
     .sort({ createdAt: -1 })
     .lean();
   res.json({ enrollments });

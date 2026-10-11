@@ -86,10 +86,10 @@ const courseSeeds: CourseSeed[] = [
     audience: 'New dairy owners and milk-collection staff.',
     outcomes: ['Judge milk quality on arrival', 'Take fat, SNF and lactometer readings', 'Chill a batch fast enough to hold shelf life'],
     equipment: ['Calibrated lactometer', 'Milk fat tester', 'Probe thermometer'],
-    sections: [
-      { title: 'Milk on arrival', summary: 'The reception routine.', lessons: [L('The reception check, step by step', 14, true), L('Fat, SNF and what they decide', 16), L('Reading a lactometer correctly', 12)] },
-      { title: 'Cold chain', summary: 'Warm can to chilled bulk.', lessons: [L('The chilling curve', 18), L('Storing and transporting a batch', 15)] },
-      { title: 'Testing and hygiene', summary: 'The small lab routine.', lessons: [L('Common adulteration tests', 18), L('Cleaning a milk line', 15), L('Running a small lab bench', 20)] },
+    lessons: [
+      L('The reception check, step by step', 14, true), L('Fat, SNF and what they decide', 16), L('Reading a lactometer correctly', 12),
+      L('The chilling curve', 18), L('Storing and transporting a batch', 15),
+      L('Common adulteration tests', 18), L('Cleaning a milk line', 15), L('Running a small lab bench', 20),
     ],
   },
   {
@@ -109,10 +109,10 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Sweet-shop and dairy kitchen teams.',
     outcomes: ['Coagulate at the right strength', 'Press a block with even body', 'Cost a paneer batch into a per-kilo price'],
     equipment: ['Heavy-bottom pan', 'Muslin cloth and press'],
-    sections: [
-      { title: 'Before the first batch', summary: 'Recipes and milk choice.', lessons: [L('Reading a recipe like a dairy hand', 13, true), L('Choosing milk for yield', 17), L('Acid strength and temperature', 11, true)] },
-      { title: 'Your first paneer', summary: 'Coagulation to pressing.', lessons: [L('Making a clean paneer block', 22), L('Cutting, cooling and storing', 21), L('A soft chhana make', 16)] },
-      { title: 'Yield, quality and cost', summary: 'Batch to sellable product.', lessons: [L('Diagnosing a failed batch', 19), L('Packing and shelf life', 17), L('Costing a paneer batch', 15)] },
+    lessons: [
+      L('Reading a recipe like a dairy hand', 13, true), L('Choosing milk for yield', 17), L('Acid strength and temperature', 11, true),
+      L('Making a clean paneer block', 22), L('Cutting, cooling and storing', 21), L('A soft chhana make', 16),
+      L('Diagnosing a failed batch', 19), L('Packing and shelf life', 17), L('Costing a paneer batch', 15),
     ],
   },
   {
@@ -132,10 +132,10 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Home producers and small dairies.',
     outcomes: ['Handle starter cultures reliably', 'Set curd to the same firmness daily', 'Diagnose fermentation faults'],
     equipment: ['Incubator or warm space', 'Thermometer', 'Food-grade culture'],
-    sections: [
-      { title: 'Culture', summary: 'The living ingredient.', lessons: [L('Cultures and how they behave', 14, true), L('Handling and storing a starter', 12)] },
-      { title: 'Setting curd', summary: 'Boiled milk to reliable set.', lessons: [L('The daily curd set', 19), L('In-cup setting', 16), L('Hung curd and thick products', 15)] },
-      { title: 'Drinks and desserts', summary: 'Set into product line.', lessons: [L('Lassi, chaas and mattha', 14), L('A simple mishti base', 18), L('Diagnosing fermentation faults', 16)] },
+    lessons: [
+      L('Cultures and how they behave', 14, true), L('Handling and storing a starter', 12),
+      L('The daily curd set', 19), L('In-cup setting', 16), L('Hung curd and thick products', 15),
+      L('Lassi, chaas and mattha', 14), L('A simple mishti base', 18), L('Diagnosing fermentation faults', 16),
     ],
   },
   {
@@ -155,10 +155,10 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Home producers and small shops.',
     outcomes: ['Separate cream at the right fat level', 'Churn clean white butter', 'Take ghee through every stage'],
     equipment: ['Cream separator', 'Churn or mixer', 'Heavy kadhai'],
-    sections: [
-      { title: 'Cream', summary: 'Where quality starts.', lessons: [L('Collecting and separating cream', 15, true), L('Ripening for flavour', 13)] },
-      { title: 'Butter', summary: 'Churning and washing.', lessons: [L('Churning a clean white butter', 18), L('Salted and cultured butters', 14)] },
-      { title: 'Ghee', summary: 'Reading the pot.', lessons: [L('Simmering to the golden stage', 20), L('Straining, storing and jar-filling', 12)] },
+    lessons: [
+      L('Collecting and separating cream', 15, true), L('Ripening for flavour', 13),
+      L('Churning a clean white butter', 18), L('Salted and cultured butters', 14),
+      L('Simmering to the golden stage', 20), L('Straining, storing and jar-filling', 12),
     ],
   },
   {
@@ -178,10 +178,10 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Dessert makers starting a frozen line.',
     outcomes: ['Build a balanced mix', 'Keep ice crystals small', 'Cost a frozen line'],
     equipment: ['Moulds or matkas', '−18 °C freezer'],
-    sections: [
-      { title: 'The mix', summary: 'Balance first.', lessons: [L('Fat, sugar and solids in balance', 17), L('Kulfi base, reduced properly', 16)] },
-      { title: 'Freezing', summary: 'Slow versus fast.', lessons: [L('Matka kulfi the traditional way', 19), L('Small-batch freezer ice cream', 18)] },
-      { title: 'Cold chain and costing', summary: 'Freezer to shop.', lessons: [L('Storage, transport and display', 14), L('Costing a frozen line', 13)] },
+    lessons: [
+      L('Fat, sugar and solids in balance', 17), L('Kulfi base, reduced properly', 16),
+      L('Matka kulfi the traditional way', 19), L('Small-batch freezer ice cream', 18),
+      L('Storage, transport and display', 14), L('Costing a frozen line', 13),
     ],
   },
   {
@@ -201,9 +201,9 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Producers moving into cheese.',
     outcomes: ['Set and cut a rennet curd', 'Press, salt and dry a wheel', 'Run a short affinage'],
     equipment: ['Moulds and press', 'pH strips', 'Cool ripening space'],
-    sections: [
-      { title: 'The cheese room', summary: 'Hygiene before the vat.', lessons: [L('Layout, drains and workflow', 15), L('Cultures and rennet', 14)] },
-      { title: 'A pressed cheese', summary: 'Vat to wheel.', lessons: [L('Setting, cutting and cooking the curd', 24), L('Pressing and salting', 18), L('Affinage for small producers', 16)] },
+    lessons: [
+      L('Layout, drains and workflow', 15), L('Cultures and rennet', 14),
+      L('Setting, cutting and cooking the curd', 24), L('Pressing and salting', 18), L('Affinage for small producers', 16),
     ],
   },
   {
@@ -223,9 +223,9 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Farm owners supplying dairies.',
     outcomes: ['Choose suited animals', 'Run a clean milking routine', 'Spot mastitis early'],
     equipment: ['Clean milking area', 'Strip cup', 'Feed store'],
-    sections: [
-      { title: 'Animals and feeding', summary: 'Feed decides milk.', lessons: [L('Choosing your animals', 16), L('Rations and green fodder', 19)] },
-      { title: 'Milking and health', summary: 'A reliable routine.', lessons: [L('The milking routine', 15), L('Mastitis prevention', 17), L('Farm records that pay', 12)] },
+    lessons: [
+      L('Choosing your animals', 16), L('Rations and green fodder', 19),
+      L('The milking routine', 15), L('Mastitis prevention', 17), L('Farm records that pay', 12),
     ],
   },
   {
@@ -245,9 +245,9 @@ const courseSeeds: CourseSeed[] = [
     audience: 'Owners who need the selling side to work.',
     outcomes: ['Get FSSAI registration yourself', 'Price from the batch sheet', 'Read a one-page profit sheet'],
     equipment: ['Weighing scale', 'Rate board', 'One notebook'],
-    sections: [
-      { title: 'Licences and setup', summary: 'Legal first.', lessons: [L('FSSAI registration step by step', 16), L('Labelling and claims', 12)] },
-      { title: 'Money', summary: 'Pricing and credit.', lessons: [L('Pricing from the batch sheet', 18), L('Credit, ledgers and collections', 14), L('The monthly one-pager', 11)] },
+    lessons: [
+      L('FSSAI registration step by step', 16), L('Labelling and claims', 12),
+      L('Pricing from the batch sheet', 18), L('Credit, ledgers and collections', 14), L('The monthly one-pager', 11),
     ],
   },
 ];
@@ -283,14 +283,9 @@ function buildDb(): DemoDb {
 
   const courses: Course[] = courseSeeds.map((seed) => {
     const { categoryId, ...rest } = seed;
-    const sections = seed.sections.map((s) => ({
-      ...s,
-      _id: hexId('sec'),
-      lessons: s.lessons.map((l) => ({ ...l, _id: hexId('les') })),
-    }));
     return {
       ...rest,
-      sections,
+      lessons: seed.lessons.map((l) => ({ ...l, _id: hexId('les') })),
       _id: hexId('c04'),
       category: catBySlug.get(categoryId)!,
       rating: 0,
@@ -366,7 +361,7 @@ function buildDb(): DemoDb {
 
     if (status === 'paid' && !enrolledKeys.has(key)) {
       enrolledKeys.add(key);
-      const lessonTotal = course.sections.reduce((sum, s) => sum + s.lessons.length, 0);
+      const lessonTotal = course.lessons.length;
       enrollments.push({
         _id: hexId('e01'),
         userId: user._id,
@@ -587,7 +582,7 @@ function withEnrollmentCounts<T extends { _id: string }>(courses: (T & Partial<C
   return courses.map((course) => ({
     ...course,
     enrollmentCount: db.enrollments.filter((e) => e.courseId === course._id).length,
-    lessonCount: (course.sections || []).reduce((sum, s) => sum + s.lessons.length, 0),
+    lessonCount: (course.lessons || []).length,
   }));
 }
 
@@ -788,7 +783,7 @@ export function demoRequest(method: string, path: string, body?: unknown, query?
       outcomes: b.outcomes || [],
       equipment: b.equipment || [],
       audience: b.audience || '',
-      sections: b.sections || [],
+      lessons: b.lessons || [],
       createdAt: new Date().toISOString(),
     };
     db.courses.unshift(course);

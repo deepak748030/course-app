@@ -92,33 +92,15 @@ const courses = [
       'A milk fat tester or a gerber centrifuge',
       'A probe thermometer reading 0 to 100 °C',
     ],
-    sections: [
-      {
-        title: 'Milk on arrival',
-        summary: 'The reception routine that decides everything downstream.',
-        lessons: [
-          lesson('The reception check, step by step', 14, 'Smell, temperature, visual check and when to reject a can outright.', true),
-          lesson('Fat, SNF and what they decide', 16, 'Why the two numbers set your price and your yield.'),
-          lesson('Reading a lactometer correctly', 12, 'Temperature correction and the mistakes that shift the reading.'),
-        ],
-      },
-      {
-        title: 'Cold chain',
-        summary: 'From warm can to chilled bulk without losing shelf life.',
-        lessons: [
-          lesson('The chilling curve', 18, 'How fast milk must fall through the danger zone.'),
-          lesson('Storing and transporting a batch', 15, 'Holding times, can hygiene and the delivery window.'),
-        ],
-      },
-      {
-        title: 'Testing and hygiene',
-        summary: 'The small lab routine that keeps adulteration out.',
-        lessons: [
-          lesson('Common adulteration tests', 18, 'Starch, water, detergent and urea — the four tests to run on any doubtful can.'),
-          lesson('Cleaning a milk line', 15, 'Rinse, caustic, rinse, acid, rinse — and verifying the result.'),
-          lesson('Running a small lab bench', 20, 'Sample labels, glassware discipline and a daily record sheet.'),
-        ],
-      },
+    lessons: [
+      lesson('The reception check, step by step', 14, 'Smell, temperature, visual check and when to reject a can outright.', true),
+      lesson('Fat, SNF and what they decide', 16, 'Why the two numbers set your price and your yield.'),
+      lesson('Reading a lactometer correctly', 12, 'Temperature correction and the mistakes that shift the reading.'),
+      lesson('The chilling curve', 18, 'How fast milk must fall through the danger zone.'),
+      lesson('Storing and transporting a batch', 15, 'Holding times, can hygiene and the delivery window.'),
+      lesson('Common adulteration tests', 18, 'Starch, water, detergent and urea — the four tests to run on any doubtful can.'),
+      lesson('Cleaning a milk line', 15, 'Rinse, caustic, rinse, acid, rinse — and verifying the result.'),
+      lesson('Running a small lab bench', 20, 'Sample labels, glassware discipline and a daily record sheet.'),
     ],
   },
   {
@@ -142,58 +124,40 @@ const courses = [
       'Cost a paneer batch into a per-kilo price',
     ],
     equipment: ['A 10–20 litre heavy-bottom pan', 'Muslin cloth and a paneer press', 'A probe thermometer'],
-    sections: [
-      {
-        title: 'Before the first batch',
-        summary: 'Reading recipes and choosing milk for yield.',
-        lessons: [
-          lesson('Reading a recipe like a dairy hand', 13, 'Batch sizes, temperatures and why a make-sheet beats memory.', true),
-          lesson('Choosing milk for yield', 17, 'Fat, SNF and how much a litre really gives you — measured, not guessed.'),
-          lesson('Acid strength and temperature', 11, 'Citric, lactic and vinegar at working strength, side by side on camera.', true),
-        ],
-      },
-      {
-        title: 'Your first paneer',
-        summary: 'The full make, coagulation to pressing.',
-        lessons: [
-          lesson(
-            'Making a clean paneer block',
-            22,
-            'Coagulation, whey drain and pressing in one continuous make.',
-            false,
-            recipe(
-              'Standard paneer batch',
-              4,
-              15,
-              40,
-              [
-                { item: 'Full-cream milk', quantity: '10 L' },
-                { item: 'Citric acid (1% solution)', quantity: '180 ml' },
-                { item: 'Salt', quantity: '10 g' },
-              ],
-              [
-                'Heat the milk to 82 °C, stirring gently to prevent scorching.',
-                'Cut the heat and bring it down to 72 °C before coagulation.',
-                'Add the acid solution in three passes, stirring each for 30 seconds.',
-                'Rest 5 minutes, then strain through muslin and rinse the curd.',
-                'Press under 8 kg for 20 minutes, then chill the block in cold water.',
-              ],
-              ['Do not over-stir after the curd forms — the grains stay softer.', 'Chill the block before cutting for clean cubes.']
-            )
-          ),
-          lesson('Cutting, cooling and storing', 21, 'Block sizes, cube cutting, brine holding and shelf life.'),
-          lesson('A soft chhana make', 16, 'The same milk, less pressing — the base for sandesh and rasgulla.'),
-        ],
-      },
-      {
-        title: 'Yield, quality and cost',
-        summary: 'Turning the batch into a sellable, priced product.',
-        lessons: [
-          lesson('Diagnosing a failed batch', 19, 'Crumbly, rubbery, sour, or short on weight — causes and fixes.'),
-          lesson('Packing and shelf life', 17, 'Cold water holding, vacuum pouches and honest date labels.'),
-          lesson('Costing a paneer batch', 15, 'Milk, acid, gas, labour and losses into a per-kilo cost.'),
-        ],
-      },
+    lessons: [
+      lesson('Reading a recipe like a dairy hand', 13, 'Batch sizes, temperatures and why a make-sheet beats memory.', true),
+      lesson('Choosing milk for yield', 17, 'Fat, SNF and how much a litre really gives you — measured, not guessed.'),
+      lesson('Acid strength and temperature', 11, 'Citric, lactic and vinegar at working strength, side by side on camera.', true),
+      lesson(
+        'Making a clean paneer block',
+        22,
+        'Coagulation, whey drain and pressing in one continuous make.',
+        false,
+        recipe(
+          'Standard paneer batch',
+          4,
+          15,
+          40,
+          [
+            { item: 'Full-cream milk', quantity: '10 L' },
+            { item: 'Citric acid (1% solution)', quantity: '180 ml' },
+            { item: 'Salt', quantity: '10 g' },
+          ],
+          [
+            'Heat the milk to 82 °C, stirring gently to prevent scorching.',
+            'Cut the heat and bring it down to 72 °C before coagulation.',
+            'Add the acid solution in three passes, stirring each for 30 seconds.',
+            'Rest 5 minutes, then strain through muslin and rinse the curd.',
+            'Press under 8 kg for 20 minutes, then chill the block in cold water.',
+          ],
+          ['Do not over-stir after the curd forms — the grains stay softer.', 'Chill the block before cutting for clean cubes.']
+        )
+      ),
+      lesson('Cutting, cooling and storing', 21, 'Block sizes, cube cutting, brine holding and shelf life.'),
+      lesson('A soft chhana make', 16, 'The same milk, less pressing — the base for sandesh and rasgulla.'),
+      lesson('Diagnosing a failed batch', 19, 'Crumbly, rubbery, sour, or short on weight — causes and fixes.'),
+      lesson('Packing and shelf life', 17, 'Cold water holding, vacuum pouches and honest date labels.'),
+      lesson('Costing a paneer batch', 15, 'Milk, acid, gas, labour and losses into a per-kilo cost.'),
     ],
   },
   {
@@ -217,33 +181,15 @@ const courses = [
       'Diagnose thin, slimy, gassy or sour ferments',
     ],
     equipment: ['An incubator or warm holding space', 'A thermometer', 'Food-grade culture'],
-    sections: [
-      {
-        title: 'Culture',
-        summary: 'The living ingredient behind every ferment.',
-        lessons: [
-          lesson('Cultures and how they behave', 14, 'Mesophilic and thermophilic cultures and what each does to body and sourness.', true),
-          lesson('Handling and storing a starter', 12, 'Portioning, freezing, and how many generations a culture stays reliable.'),
-        ],
-      },
-      {
-        title: 'Setting curd',
-        summary: 'From boiled milk to a set you can rely on.',
-        lessons: [
-          lesson('The daily curd set', 19, 'Temperatures, inoculation and the holding window that sets it right.'),
-          lesson('In-cup setting', 16, 'Filling, incubation and cooling cups so the surface stays flat.'),
-          lesson('Hung curd and thick products', 15, 'Draining whey for shrikhand, labneh and dip bases.'),
-        ],
-      },
-      {
-        title: 'Drinks and desserts',
-        summary: 'Turning the set into a product line.',
-        lessons: [
-          lesson('Lassi, chaas and mattha', 14, 'Dilution ratios, salt and spice — keeping them from splitting.'),
-          lesson('A simple mishti base', 18, 'Sweetening after the set without turning the batch grainy.'),
-          lesson('Diagnosing fermentation faults', 16, 'Thin, slimy, gassy, sour and separated curd — and the record that shows why.'),
-        ],
-      },
+    lessons: [
+      lesson('Cultures and how they behave', 14, 'Mesophilic and thermophilic cultures and what each does to body and sourness.', true),
+      lesson('Handling and storing a starter', 12, 'Portioning, freezing, and how many generations a culture stays reliable.'),
+      lesson('The daily curd set', 19, 'Temperatures, inoculation and the holding window that sets it right.'),
+      lesson('In-cup setting', 16, 'Filling, incubation and cooling cups so the surface stays flat.'),
+      lesson('Hung curd and thick products', 15, 'Draining whey for shrikhand, labneh and dip bases.'),
+      lesson('Lassi, chaas and mattha', 14, 'Dilution ratios, salt and spice — keeping them from splitting.'),
+      lesson('A simple mishti base', 18, 'Sweetening after the set without turning the batch grainy.'),
+      lesson('Diagnosing fermentation faults', 16, 'Thin, slimy, gassy, sour and separated curd — and the record that shows why.'),
     ],
   },
   {
@@ -267,53 +213,35 @@ const courses = [
       'Take ghee through every stage without scorching',
     ],
     equipment: ['A cream separator or wide settling pans', 'A churn or stand mixer', 'A heavy kadhai'],
-    sections: [
-      {
-        title: 'Cream',
-        summary: 'Where butter and ghee quality actually starts.',
-        lessons: [
-          lesson('Collecting and separating cream', 15, 'Gravity versus mechanical separation, and the fat level each gives you.', true),
-          lesson('Ripening for flavour', 13, 'How long to hold cream, at what temperature, and when ripening turns to spoiling.'),
-        ],
-      },
-      {
-        title: 'Butter',
-        summary: 'Churning, washing and salting a small batch.',
-        lessons: [
-          lesson(
-            'Churning a clean white butter',
-            18,
-            'Temperature, timing and the wash that keeps it sweet.',
-            false,
-            recipe(
-              'White butter from 2 litres of cream',
-              2,
-              20,
-              30,
-              [
-                { item: 'Ripened cream (30% fat)', quantity: '2 L' },
-                { item: 'Chilled water for washing', quantity: '3 L' },
-              ],
-              [
-                'Chill the cream to 12 °C before churning.',
-                'Churn until the grains separate cleanly from the buttermilk.',
-                'Wash the grains twice in chilled water until it runs clear.',
-                'Work the butter gently to a smooth, dry finish.',
-              ],
-              ['Warmer cream churns faster but gives softer butter.', 'Keep the last wash water as sweet as the first.']
-            )
-          ),
-          lesson('Salted, cultured and flavoured butters', 14, 'Working salt evenly and keeping flavours true.'),
-        ],
-      },
-      {
-        title: 'Ghee',
-        summary: 'The stages every batch passes through — and how to read them.',
-        lessons: [
-          lesson('Simmering to the golden stage', 20, 'Foam, crackle and clarity: reading the pot instead of the clock.'),
-          lesson('Straining, storing and jar-filling', 12, 'Clean jars, honest cooling and the shelf life you can promise.'),
-        ],
-      },
+    lessons: [
+      lesson('Collecting and separating cream', 15, 'Gravity versus mechanical separation, and the fat level each gives you.', true),
+      lesson('Ripening for flavour', 13, 'How long to hold cream, at what temperature, and when ripening turns to spoiling.'),
+      lesson(
+        'Churning a clean white butter',
+        18,
+        'Temperature, timing and the wash that keeps it sweet.',
+        false,
+        recipe(
+          'White butter from 2 litres of cream',
+          2,
+          20,
+          30,
+          [
+            { item: 'Ripened cream (30% fat)', quantity: '2 L' },
+            { item: 'Chilled water for washing', quantity: '3 L' },
+          ],
+          [
+            'Chill the cream to 12 °C before churning.',
+            'Churn until the grains separate cleanly from the buttermilk.',
+            'Wash the grains twice in chilled water until it runs clear.',
+            'Work the butter gently to a smooth, dry finish.',
+          ],
+          ['Warmer cream churns faster but gives softer butter.', 'Keep the last wash water as sweet as the first.']
+        )
+      ),
+      lesson('Salted, cultured and flavoured butters', 14, 'Working salt evenly and keeping flavours true.'),
+      lesson('Simmering to the golden stage', 20, 'Foam, crackle and clarity: reading the pot instead of the clock.'),
+      lesson('Straining, storing and jar-filling', 12, 'Clean jars, honest cooling and the shelf life you can promise.'),
     ],
   },
   {
@@ -335,31 +263,13 @@ const courses = [
       'Cost a frozen line and price a single serving',
     ],
     equipment: ['Moulds, matkas or a shallow freezer tray', 'A freezer that holds −18 °C or colder'],
-    sections: [
-      {
-        title: 'The mix',
-        summary: 'Balance first — texture follows.',
-        lessons: [
-          lesson('Fat, sugar and solids in balance', 17, 'Why crystal size is decided before anything freezes.'),
-          lesson('Kulfi base, reduced properly', 16, 'The reduction that gives kulfi its cooked-milk body.'),
-        ],
-      },
-      {
-        title: 'Freezing',
-        summary: 'Slow versus fast, moulds versus matkas.',
-        lessons: [
-          lesson('Matka kulfi the traditional way', 19, 'Sealing, packing and the slow freeze that makes it matte and dense.'),
-          lesson('Small-batch freezer ice cream', 18, 'Overrun, draw temperature and hardening without crystals.'),
-        ],
-      },
-      {
-        title: 'Cold chain and costing',
-        summary: 'From freezer to shop without quality loss.',
-        lessons: [
-          lesson('Storage, transport and display', 14, 'The melt-and-refreeze cycle and how to never run it.'),
-          lesson('Costing a frozen line', 13, 'Electricity and losses into a per-serving price.'),
-        ],
-      },
+    lessons: [
+      lesson('Fat, sugar and solids in balance', 17, 'Why crystal size is decided before anything freezes.'),
+      lesson('Kulfi base, reduced properly', 16, 'The reduction that gives kulfi its cooked-milk body.'),
+      lesson('Matka kulfi the traditional way', 19, 'Sealing, packing and the slow freeze that makes it matte and dense.'),
+      lesson('Small-batch freezer ice cream', 18, 'Overrun, draw temperature and hardening without crystals.'),
+      lesson('Storage, transport and display', 14, 'The melt-and-refreeze cycle and how to never run it.'),
+      lesson('Costing a frozen line', 13, 'Electricity and losses into a per-serving price.'),
     ],
   },
   {
@@ -382,24 +292,12 @@ const courses = [
       'Keep a cheese room audit-ready',
     ],
     equipment: ['Cheese moulds and a press', 'pH strips or meter', 'A cool, humid ripening space'],
-    sections: [
-      {
-        title: 'The cheese room',
-        summary: 'Hygiene and layout before the first vat.',
-        lessons: [
-          lesson('Layout, drains and workflow', 15, 'One-way flow so clean milk never meets whey.'),
-          lesson('Cultures and rennet', 14, 'Choosing the pair that matches your milk.'),
-        ],
-      },
-      {
-        title: 'A pressed cheese',
-        summary: 'From vat to wheel in one make day.',
-        lessons: [
-          lesson('Setting, cutting and cooking the curd', 24, 'The make, with pH checks at every step.'),
-          lesson('Pressing and salting', 18, 'Pressure schedules and the brine that seasons evenly.'),
-          lesson('Affinage for small producers', 16, 'Turning, brushing and when a wheel is ready.'),
-        ],
-      },
+    lessons: [
+      lesson('Layout, drains and workflow', 15, 'One-way flow so clean milk never meets whey.'),
+      lesson('Cultures and rennet', 14, 'Choosing the pair that matches your milk.'),
+      lesson('Setting, cutting and cooking the curd', 24, 'The make, with pH checks at every step.'),
+      lesson('Pressing and salting', 18, 'Pressure schedules and the brine that seasons evenly.'),
+      lesson('Affinage for small producers', 16, 'Turning, brushing and when a wheel is ready.'),
     ],
   },
   {
@@ -421,24 +319,12 @@ const courses = [
       'Spot mastitis early and act correctly',
     ],
     equipment: ['A milking area with clean water', 'Strip cup and dip solution', 'Basic feed store'],
-    sections: [
-      {
-        title: 'Animals and feeding',
-        summary: 'The feed plan decides the milk.',
-        lessons: [
-          lesson('Choosing your animals', 16, 'Breed, body condition and what a good buyer checks.'),
-          lesson('Rations and green fodder', 19, 'Balancing dry and green feed through the seasons.'),
-        ],
-      },
-      {
-        title: 'Milking and health',
-        summary: 'A routine the herd can rely on.',
-        lessons: [
-          lesson('The milking routine', 15, 'Order, hygiene and the checks before the cluster goes on.'),
-          lesson('Mastitis prevention', 17, 'Strip cup, dipping and the dry-cow programme.'),
-          lesson('Farm records that pay', 12, 'Yield, heat and health logs in one notebook system.'),
-        ],
-      },
+    lessons: [
+      lesson('Choosing your animals', 16, 'Breed, body condition and what a good buyer checks.'),
+      lesson('Rations and green fodder', 19, 'Balancing dry and green feed through the seasons.'),
+      lesson('The milking routine', 15, 'Order, hygiene and the checks before the cluster goes on.'),
+      lesson('Mastitis prevention', 17, 'Strip cup, dipping and the dry-cow programme.'),
+      lesson('Farm records that pay', 12, 'Yield, heat and health logs in one notebook system.'),
     ],
   },
   {
@@ -461,24 +347,12 @@ const courses = [
       'Read a one-page monthly profit sheet',
     ],
     equipment: ['A weighing scale', 'A rate board', 'One notebook or spreadsheet'],
-    sections: [
-      {
-        title: 'Licences and setup',
-        summary: 'Legal before the first sale.',
-        lessons: [
-          lesson('FSSAI registration step by step', 16, 'Documents, fees and renewal — done yourself.'),
-          lesson('Labelling and claims', 12, 'What a dairy label may and may not say.'),
-        ],
-      },
-      {
-        title: 'Money',
-        summary: 'The pricing and credit discipline.',
-        lessons: [
-          lesson('Pricing from the batch sheet', 18, 'Every rupee of a batch onto a per-kilo price.'),
-          lesson('Credit, ledgers and collections', 14, 'Keeping khata credit from eating the margin.'),
-          lesson('The monthly one-pager', 11, 'Six numbers that tell you the truth about the month.'),
-        ],
-      },
+    lessons: [
+      lesson('FSSAI registration step by step', 16, 'Documents, fees and renewal — done yourself.'),
+      lesson('Labelling and claims', 12, 'What a dairy label may and may not say.'),
+      lesson('Pricing from the batch sheet', 18, 'Every rupee of a batch onto a per-kilo price.'),
+      lesson('Credit, ledgers and collections', 14, 'Keeping khata credit from eating the margin.'),
+      lesson('The monthly one-pager', 11, 'Six numbers that tell you the truth about the month.'),
     ],
   },
 ];
@@ -660,8 +534,7 @@ async function run() {
       enrollments.push({
         user: learner._id,
         course: course._id,
-        completedLessons: course.sections
-          .flatMap((s) => s.lessons)
+        completedLessons: course.lessons
           .slice(0, randInt(0, 12))
           .map((l) => String(l._id)),
         createdAt,

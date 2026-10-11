@@ -28,7 +28,7 @@ import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseLessonGroups, discountPercent } from '@/lib/catalog';
+import { discountPercent } from '@/lib/catalog';
 import { api, type ServerReview } from '@/services/api';
 import { mapCourse } from '@/services/catalogService';
 import { track } from '@/services/analytics';
@@ -38,14 +38,10 @@ import { formatDuration, formatInr, lessonLength } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
 
-/** `3 sections · 8 lessons`, or `2 sections + 2 standalone · 10 lessons` for a mixed course. */
+/** `8 lessons · 2h 15m` */
 function curriculumSummary(course: Course): string {
-  const standalone = course.lessons.filter((lesson) => lesson.sectionId === null).length;
-  const parts: string[] = [];
-  if (course.sections.length > 0) parts.push(`${course.sections.length} sections`);
-  if (standalone > 0) parts.push(course.sections.length > 0 ? `${standalone} standalone` : 'no sections');
-  parts.push(`${course.lessonCount} lessons`);
-  return parts.join(' · ');
+  const minutes = course.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
+  return `${course.lessonCount} lessons · ${formatDuration(minutes)}`;
 }
 
 export default function CourseDetailsScreen() {
@@ -269,19 +265,17 @@ export default function CourseDetailsScreen() {
             subtitle={curriculumSummary(course)}
           />
           <View style={styles.curriculum}>
-            {courseLessonGroups(course).map((group, index) => (
-              <CurriculumSectionBlock
-                key={group.id}
-                index={index + 1}
-                title={group.title}
-                summary={group.summary}
-                unnumbered={group.standalone}
-                lessons={group.lessons}
-                stateFor={stateFor}
-                onOpen={openLesson}
-                locked={!enrolled}
-              />
-            ))}
+            <DataList>
+              {course.lessons.map((lesson, lessonIndex) => (
+                <LessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  index={lessonIndex + 1}
+                  state={stateFor(lesson)}
+                  onPress={() => openLesson(lesson)}
+                />
+              ))}
+            </DataList>
           </View>
         </View>
 
@@ -463,78 +457,6 @@ function FactItem({ icon, label }: { icon: LucideIcon; label: string }) {
         <AnimatedIcon icon={icon} size={15} color={colors.gold} motion="pulse" />
       </View>
       <Text style={[type.label, { color: colors.text }]}>{label}</Text>
-    </View>
-  );
-}
-
-/** Section block: number + title row, then lesson rows with dividers. */
-function CurriculumSectionBlock({
-  index,
-  title,
-  summary,
-  unnumbered = false,
-  lessons,
-  stateFor,
-  onOpen,
-  locked,
-}: {
-  index: number;
-  title: string;
-  summary?: string;
-  /** Standalone lessons: the tile keeps its place in the list but carries no number. */
-  unnumbered?: boolean;
-  lessons: Lesson[];
-  stateFor: (lesson: Lesson) => LessonRowState;
-  onOpen: (lesson: Lesson) => void;
-  locked: boolean;
-}) {
-  const [open, setOpen] = useState(index === 1);
-  const minutes = lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
-
-  return (
-    <View style={styles.curriculumBlock}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        accessibilityLabel={`${unnumbered ? title : `Section ${index}, ${title}`}. ${lessons.length} lessons, ${formatDuration(minutes)}`}
-        onPress={() => setOpen((value) => !value)}
-        style={({ pressed }) => [styles.curriculumHeader, pressed && { opacity: 0.75 }]}>
-        <View style={styles.sectionIndex}>
-          {unnumbered ? (
-            <ListVideo size={16} color={colors.accentText} strokeWidth={2} />
-          ) : (
-            <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>
-              {String(index).padStart(2, '0')}
-            </Text>
-          )}
-        </View>
-        <View style={styles.flex}>
-          <Text style={[type.bodyStrong, { color: colors.text }]}>{title}</Text>
-          {summary ? (
-            <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={2}>
-              {summary}
-            </Text>
-          ) : null}
-          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>
-            {lessons.length} lessons · {formatDuration(minutes)}
-            {locked ? ' · previews marked free' : ''}
-          </Text>
-        </View>
-      </Pressable>
-
-      {open ? (
-        <DataList>
-          {lessons.map((lesson, lessonIndex) => (
-            <LessonRow
-              key={lesson.id}
-              lesson={lesson}
-              index={lessonIndex + 1}
-              state={stateFor(lesson)}
-              onPress={() => onOpen(lesson)}
-            />
-          ))}
-        </DataList>
-      ) : null}
     </View>
   );
 }

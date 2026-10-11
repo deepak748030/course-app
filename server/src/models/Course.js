@@ -51,15 +51,6 @@ const lessonSchema = new Schema(
   { _id: true, timestamps: false }
 );
 
-const sectionSchema = new Schema(
-  {
-    title: { type: String, required: true, trim: true, maxlength: 140 },
-    summary: { type: String, default: '', trim: true },
-    lessons: { type: [lessonSchema], default: [] },
-  },
-  { _id: true, timestamps: false }
-);
-
 const courseSchema = new Schema(
   {
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
@@ -82,7 +73,8 @@ const courseSchema = new Schema(
     outcomes: { type: [String], default: [] },
     equipment: { type: [String], default: [] },
     audience: { type: String, default: '', trim: true },
-    sections: { type: [sectionSchema], default: [] },
+    /** The course curriculum, in order. */
+    lessons: { type: [lessonSchema], default: [] },
   },
   {
     timestamps: true,
@@ -92,14 +84,11 @@ const courseSchema = new Schema(
 );
 
 courseSchema.virtual('lessonCount').get(function lessonCount() {
-  return this.sections.reduce((sum, section) => sum + section.lessons.length, 0);
+  return this.lessons.length;
 });
 
 courseSchema.virtual('totalMinutes').get(function totalMinutes() {
-  return this.sections.reduce(
-    (sum, section) => sum + section.lessons.reduce((s, lesson) => s + lesson.minutes, 0),
-    0
-  );
+  return this.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
 });
 
 /*
@@ -116,3 +105,19 @@ courseSchema.index(
 );
 
 export const Course = mongoose.model('Course', courseSchema);
+
+/**
+ * One-time move for courses saved before sections were removed: their lessons are appended to the
+ * flat `lessons` list (in section order) and the `sections` field is dropped. Safe to run on every boot.
+ */
+export async function flattenLegacySections() {
+  const collection = mongoose.connection.db.collection('courses');
+  const legacy = await collection.find({ sections: { $exists: true } }).toArray();
+  for (const doc of legacy) {
+    const fromSections = (doc.sections || []).flatMap((section) => section.lessons || []);
+    const lessons = [...(doc.lessons || []), ...fromSections];
+    await collection.updateOne({ _id: doc._id }, { $set: { lessons }, $unset: { sections: '' } });
+  }
+  if (legacy.length) console.log(`[db] moved lessons out of sections for ${legacy.length} course(s)`);
+  return legacy.length;
+}

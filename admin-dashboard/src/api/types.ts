@@ -47,12 +47,6 @@ export interface LessonVideo {
   videoKey: string;
 }
 
-export interface Section {
-  _id?: string;
-  title: string;
-  summary: string;
-  lessons: Lesson[];
-}
 
 export interface Course {
   _id: string;
@@ -74,7 +68,7 @@ export interface Course {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: Section[];
+  lessons: Lesson[];
   createdAt?: string;
   enrollmentCount?: number;
   lessonCount?: number;

@@ -35,7 +35,7 @@ export function coverSource(coverUrl: string) {
 /** Any media URL (banner image, cover) as an expo-image source, with the shared fallback. */
 export const mediaSource = coverSource;
 
-function mapRecipe(server: ServerCourse['sections'][number]['lessons'][number]['recipe']): Recipe | undefined {
+function mapRecipe(server: ServerCourse['lessons'][number]['recipe']): Recipe | undefined {
   if (!server) return undefined;
   return {
     id: server.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -53,25 +53,18 @@ export function mapCourse(server: ServerCourse): Course {
   const categorySlug = typeof server.category === 'string' ? '' : server.category.slug;
   const video: VideoKey = CATEGORY_CLIP[categorySlug] ?? 'curd-ferments';
 
-  const lessons: Lesson[] = [];
-  const sections = server.sections.map((section) => {
-    section.lessons.forEach((lesson) => {
-      lessons.push({
-        id: lesson._id,
-        courseId: server.slug,
-        sectionId: section._id,
-        title: lesson.title,
-        description: lesson.description,
-        minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
-        seconds: lesson.durationSec || undefined,
-        isPreview: lesson.isPreview,
-        video,
-        hasCourseVideo: Boolean(lesson.videoKey),
-        recipe: mapRecipe(lesson.recipe),
-      });
-    });
-    return { id: section._id, title: section.title, summary: section.summary };
-  });
+  const lessons: Lesson[] = server.lessons.map((lesson) => ({
+    id: lesson._id,
+    courseId: server.slug,
+    title: lesson.title,
+    description: lesson.description,
+    minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
+    seconds: lesson.durationSec || undefined,
+    isPreview: lesson.isPreview,
+    video,
+    hasCourseVideo: Boolean(lesson.videoKey),
+    recipe: mapRecipe(lesson.recipe),
+  }));
 
   return {
     id: server.slug,
@@ -93,7 +86,6 @@ export function mapCourse(server: ServerCourse): Course {
     outcomes: server.outcomes,
     equipment: server.equipment,
     audience: server.audience,
-    sections,
     lessons,
     reviews: [],
     isPopular: server.isPopular,

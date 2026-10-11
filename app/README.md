@@ -264,14 +264,11 @@ The UI follows the project's design rules document and is generated from one tok
   controls (reset demo data, log out) and nothing else: the Account block, the Payments block with the
   payment-security row and the Policies block are gone, because the account details live on Profile and
   every policy has one home there. No screen lost a destination — each row moved, it was not deleted.
-- **A course can be built from sections, from standalone lessons, or both.** `Lesson.sectionId` is now
-  `Id | null`, the seed accepts `directLessons`, and `courseLessonGroups(course)` turns a course into
-  the blocks the screens render — the authored sections in order, then one *unnumbered* group for
-  lessons created without a section. Selling Your Dairy exercises both: its three sections plus two
-  standalone lessons (`Choosing what not to sell`, `A one-page price list for your counter`) and a
-  curriculum header that reads `3 sections · 2 standalone · 10 lessons`. The course page, the lesson
-  player's “All lessons in this course” sheet and `scripts/selfcheck.ts` (which now asserts the mixed
-  case exists and that the groups cover every lesson exactly once) all read the same helper.
+- **A course is a flat list of lessons.** Sections were removed: `Course.lessons[]` is the whole curriculum,
+  with no `sectionId`. `catalogService.mapCourse` maps it straight to `Course.lessons`, the course page
+  and the player's “All lessons in this course” sheet render one numbered list, and the header reads
+  `N lessons · total time`. Courses saved with the old section shape are flattened on server boot
+  (`flattenLegacySections` in `server/src/models/Course.js`). `scripts/selfcheck.ts` covers the flat mapping.
 - **Two themes, switchable from Profile.** `src/constants/theme.ts` holds two palettes — white + yellow
   (the default, and the original look, unchanged) and white + deep green — and `THEMES` is the picker's
   list. Both are white-surface: only the accent, the tinted block and the text tones differ, so layout,
@@ -370,10 +367,8 @@ onboarding completion and app preferences are kept.
   unlocked on this device · 1 transaction · Milk Foundations · Sample account · Included`, and with a
   seeded demo purchase reads `₹2,699 paid · 2 courses unlocked · ₹1,300 saved against list prices` and a
   row carrying `14 Feb 2026 · YDU10 applied`, `Demo purchase`, `Saved ₹1,300`, `₹2,699` and the struck
-  `₹3,999`. The mixed curriculum shows as `3 sections · 2 standalone · 10 lessons` on
-  Selling Your Dairy with an unnumbered `Standalone lessons` block (`2 lessons · 26m`), while a
-  section-only course still reads `1. Milk on arrival / 2. Cold chain / 3. Testing and hygiene` in the
-  player's lesson sheet. This is a DOM check, not a visual one.
+  `₹3,999`. The curriculum is a single flat list of lessons (sections were removed). This is a DOM
+  check, not a visual one.
 - The home carousel and the save burst were read back from the exported web bundle in JSDOM
   (`/tmp/domtest/mote-probe.mjs`, `snap-check.mjs`, `saves-probe.mjs` at 390x844): the banner reports
   *Featured courses, 3 banners*, three 390px slides with the milk-foundations, paneer-craft and

@@ -122,7 +122,6 @@ export type ServerLesson = {
   isPreview: boolean;
   recipe?: ServerRecipe | null;
 };
-export type ServerSection = { _id: string; title: string; summary: string; lessons: ServerLesson[] };
 
 export type ServerCourse = {
   _id: string;
@@ -144,7 +143,7 @@ export type ServerCourse = {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: ServerSection[];
+  lessons: ServerLesson[];
   lessonCount: number;
   totalMinutes: number;
   hours?: number;

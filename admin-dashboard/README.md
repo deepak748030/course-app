@@ -17,7 +17,7 @@ lucide icons.
   activity by hour, most-viewed and most-purchased courses, and what learners search for.
   Refreshes live on new orders/sign-ups
 - **Courses** — search/filter, publish toggle, full editor drawer (pricing, flags,
-  outcomes, equipment and the complete section/lesson curriculum), delete with cascade
+  outcomes, equipment and the complete lesson curriculum), delete with cascade
 - **Categories** — CRUD with icon picker and in-use protection
 - **Learners** — search, block/unblock, promote to admin, spend + enrollment counts, delete
 - **Orders** — status tabs, search, totals, mark paid/pending/refunded (access granted or

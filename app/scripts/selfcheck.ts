@@ -112,7 +112,7 @@ check('timeOfDayGreeting covers the day', () => {
 
 check('the server catalog maps onto the app types coherently', async () => {
   const { mapCourse } = await import('../src/services/catalogService');
-  const { courseLessonGroups, discountPercent, firstPlayableLesson, nextLesson } = await import('../src/lib/catalog');
+  const { discountPercent, firstPlayableLesson, nextLesson } = await import('../src/lib/catalog');
 
   const fixture = {
     _id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
@@ -134,17 +134,13 @@ check('the server catalog maps onto the app types coherently', async () => {
     outcomes: ['Judge milk quality'],
     equipment: ['Lactometer'],
     audience: 'Dairy owners',
-    sections: [
-      { _id: 's1', title: 'Milk on arrival', summary: 'Reception.', lessons: [
-        { _id: 'l1', title: 'The reception check', description: '', minutes: 14, isPreview: true, recipe: null },
-        { _id: 'l2', title: 'Fat and SNF', description: '', minutes: 16, isPreview: false, recipe: null },
-      ]},
-      { _id: 's2', title: 'Cold chain', summary: 'Chilling.', lessons: [
-        { _id: 'l3', title: 'The chilling curve', description: '', minutes: 18, isPreview: false, recipe: {
-          title: 'Bulk chill batch', servings: 2, prepMinutes: 5, cookMinutes: 0,
-          ingredients: [{ item: 'Milk', quantity: '10 L' }], steps: ['Chill fast.'], tips: ['Watch the curve.'],
-        }},
-      ]},
+    lessons: [
+      { _id: 'l1', title: 'The reception check', description: '', minutes: 14, isPreview: true, recipe: null },
+      { _id: 'l2', title: 'Fat and SNF', description: '', minutes: 16, isPreview: false, recipe: null },
+      { _id: 'l3', title: 'The chilling curve', description: '', minutes: 18, isPreview: false, recipe: {
+        title: 'Bulk chill batch', servings: 2, prepMinutes: 5, cookMinutes: 0,
+        ingredients: [{ item: 'Milk', quantity: '10 L' }], steps: ['Chill fast.'], tips: ['Watch the curve.'],
+      }},
     ],
     lessonCount: 3,
     totalMinutes: 48,
@@ -159,8 +155,7 @@ check('the server catalog maps onto the app types coherently', async () => {
   assert.equal(firstPlayableLesson(course).id, 'l1', 'the preview lesson leads');
   assert.equal(nextLesson(course, 'l1')?.id, 'l2', 'next-lesson navigation works on mapped lessons');
 
-  const groups = courseLessonGroups(course);
-  assert.equal(groups.flatMap((group) => group.lessons).length, course.lessons.length, 'groups cover every lesson');
+  assert.equal(course.lessons.length, 3, 'every lesson comes through as one flat curriculum');
   const ids = course.lessons.map((lesson) => lesson.id);
   assert.equal(new Set(ids).size, ids.length, 'lesson ids stay unique through the mapping');
   assert.ok(course.lessons.every((lesson) => lesson.recipe === undefined || lesson.recipe.steps.length > 0),
@@ -178,7 +173,7 @@ check('search, filters and sorting act on any catalog', async () => {
       level: 'Beginner', language: 'English', priceInr, listPriceInr: null, published: true,
       isPopular: false, isBeginnerPick: false, rating: 4.5, reviewCount: 10,
       outcomes: [], equipment: [], audience: '',
-      sections: [{ _id: 's', title: 'One', summary: '', lessons: [{ _id: `${slug}-l1`, title: 'A lesson', description: '', minutes, isPreview: false, recipe: null }] }],
+      lessons: [{ _id: `${slug}-l1`, title: 'A lesson', description: '', minutes, isPreview: false, recipe: null }],
       lessonCount: 1, totalMinutes: minutes,
       ...extra,
     } as never);

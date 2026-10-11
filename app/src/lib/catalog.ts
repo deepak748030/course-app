@@ -6,49 +6,6 @@
 import type { Course, Id, Lesson } from '@/types';
 
 /**
- * One block of a course's curriculum: either an authored section or — when a lesson was created
- * without one — a single unnumbered group of standalone lessons.
- */
-export interface LessonGroup {
-  id: Id;
-  title: string;
-  summary?: string;
-  /** True for the group that holds lessons outside every section. */
-  standalone: boolean;
-  lessons: Lesson[];
-}
-
-/**
- * The curriculum as the screens render it: the sections in authored order, then one group for the
- * lessons that belong to no section. A course may use sections only, standalone lessons only, or both.
- */
-export function courseLessonGroups(course: Course): LessonGroup[] {
-  const groups: LessonGroup[] = course.sections.map((section) => ({
-    id: section.id,
-    title: section.title,
-    summary: section.summary,
-    standalone: false,
-    lessons: course.lessons.filter((lesson) => lesson.sectionId === section.id),
-  }));
-
-  const standalone = course.lessons.filter((lesson) => lesson.sectionId === null);
-  if (standalone.length > 0) {
-    groups.push({
-      id: `${course.id}-standalone`,
-      title: course.sections.length > 0 ? 'Standalone lessons' : 'Lessons',
-      summary:
-        course.sections.length > 0
-          ? 'Lessons created without a section — open them in any order.'
-          : undefined,
-      standalone: true,
-      lessons: standalone,
-    });
-  }
-
-  return groups;
-}
-
-/**
  * Percent off when the catalog models a real discount, else null. Derived so a price change
  * can never disagree with the badge that advertises it.
  */

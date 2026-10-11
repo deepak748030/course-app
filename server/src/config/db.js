@@ -36,6 +36,8 @@ export async function connectDb({ retries = 10, delayMs = 3000 } = {}) {
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
       await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 5000 });
+      const { flattenLegacySections } = await import('../models/Course.js');
+      await flattenLegacySections().catch((err) => console.error('[db] section migration failed:', err.message));
       return true;
     } catch (err) {
       console.warn(`[db] connect attempt ${attempt}/${retries} failed: ${err.message}`);

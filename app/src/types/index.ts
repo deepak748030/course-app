@@ -26,8 +26,6 @@ export interface Recipe {
 export interface Lesson {
   id: Id;
   courseId: Id;
-  /** The section this lesson belongs to, or `null` when it was authored as a standalone lesson. */
-  sectionId: Id | null;
   title: string;
   description: string;
   minutes: number;
@@ -38,12 +36,6 @@ export interface Lesson {
   /** The course has its own video in private storage (fetched as a signed link); otherwise the demo clip plays. */
   hasCourseVideo?: boolean;
   recipe?: Recipe;
-}
-
-export interface CurriculumSection {
-  id: Id;
-  title: string;
-  summary: string;
 }
 
 export interface Review {
@@ -95,7 +87,6 @@ export interface Course {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: CurriculumSection[];
   lessons: Lesson[];
   reviews: Review[];
   isPopular?: boolean;

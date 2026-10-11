@@ -12,11 +12,8 @@ export const listCategories = asyncHandler(async (_req, res) => {
 
 /** Attach the derived lesson/hour counts a lean document does not carry. */
 function withDerived(course) {
-  const lessonCount = course.sections.reduce((sum, s) => sum + s.lessons.length, 0);
-  const totalMinutes = course.sections.reduce(
-    (sum, s) => sum + s.lessons.reduce((m, l) => m + l.minutes, 0),
-    0
-  );
+  const lessonCount = course.lessons.length;
+  const totalMinutes = course.lessons.reduce((sum, l) => sum + l.minutes, 0);
   return { ...course, lessonCount, totalMinutes, hours: Math.round((totalMinutes / 60) * 10) / 10 };
 }
 
@@ -75,9 +72,9 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
     throw new HttpError(404, 'Lesson not found');
   }
 
-  const course = await Course.findOne({ _id: courseId, published: true }).select('sections').lean();
+  const course = await Course.findOne({ _id: courseId, published: true }).select('lessons').lean();
   if (!course) throw new HttpError(404, 'Course not found');
-  const lesson = course.sections.flatMap((section) => section.lessons).find((l) => String(l._id) === lessonId);
+  const lesson = course.lessons.find((l) => String(l._id) === lessonId);
   if (!lesson) throw new HttpError(404, 'Lesson not found');
   const videos = lessonVideos(lesson);
   if (!videos.length) throw new HttpError(404, 'This lesson has no course video');

@@ -69,7 +69,7 @@ import {
   scrollClip,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { courseLessonGroups, nextLesson } from '@/lib/catalog';
+import { nextLesson } from '@/lib/catalog';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { api } from '@/services/api';
@@ -355,7 +355,6 @@ export default function LessonPlayerScreen() {
   const baseServings = recipe?.servings ?? 1;
   const currentServings = servings ?? baseServings;
   const factor = currentServings / baseServings;
-  const currentSection = course.sections.find((section) => section.id === lesson.sectionId);
   const lessonNumber = course.lessons.findIndex((item) => item.id === lesson.id) + 1;
 
   const seekTo = (seconds: number) => {
@@ -725,7 +724,7 @@ export default function LessonPlayerScreen() {
           <View style={styles.lessonHead}>
             <View style={styles.kickerRow}>
               <Text style={[type.overline, styles.flex, { color: colors.textSubtle }]} numberOfLines={1}>
-                {currentSection?.title ?? course.title}
+                {course.title}
               </Text>
               {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" icon={CirclePlay} /> : null}
             </View>
@@ -949,24 +948,17 @@ export default function LessonPlayerScreen() {
         title={t("Lessons")}
         subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
         scrollable>
-        {courseLessonGroups(course).map((group, index) => (
-          <View key={group.id} style={styles.sheetSection}>
-            <Text style={[type.labelStrong, { color: colors.text }]}>
-              {group.standalone ? t(group.title) : `${index + 1}. ${t(group.title)}`}
-            </Text>
-            <DataList>
-              {group.lessons.map((entry, lessonIndex) => (
-                  <LessonRow
-                    key={entry.id}
-                    lesson={entry}
-                    index={lessonIndex + 1}
-                    state={stateFor(entry.id)}
-                    onPress={() => goToLesson(entry.id)}
-                  />
-                ))}
-            </DataList>
-          </View>
-        ))}
+        <DataList>
+          {course.lessons.map((entry, lessonIndex) => (
+            <LessonRow
+              key={entry.id}
+              lesson={entry}
+              index={lessonIndex + 1}
+              state={stateFor(entry.id)}
+              onPress={() => goToLesson(entry.id)}
+            />
+          ))}
+        </DataList>
       </BottomSheet>
 
       <BottomSheet
