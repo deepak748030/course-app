@@ -27,13 +27,29 @@ export function razorpayClient() {
  * 401 means the server's key id/secret are wrong; other errors carry Razorpay's own description.
  */
 export function razorpayFailure(err) {
-  console.error('[payments] Razorpay request failed:', err?.statusCode, err?.error || err?.message || err);
-  if (err?.statusCode === 401) {
+  // The SDK reports Razorpay's HTTP answer as { statusCode, error }. When the request never got an
+  // answer (DNS, firewall, no internet on the server), the SDK fails with a plain error instead.
+  const status = typeof err?.statusCode === 'number' ? err.statusCode : null;
+  const description = err?.error?.description;
+  const code = err?.code || err?.cause?.code || null;
+  console.error('[payments] Razorpay request failed:', {
+    status,
+    description,
+    code,
+    message: err?.message,
+  });
+
+  if (status === 401) {
     return new HttpError(503, 'Payments are not set up correctly on the server (Razorpay keys rejected).');
   }
-  const description = err?.error?.description;
   if (description) return new HttpError(502, `Razorpay could not process this payment: ${description}`);
-  return new HttpError(502, 'Razorpay is unreachable right now. Please try again in a moment.');
+  if (status !== null) {
+    return new HttpError(502, `Razorpay answered with an error (HTTP ${status}). Check the server log for details.`);
+  }
+  return new HttpError(
+    502,
+    `The server could not reach Razorpay${code ? ` (${code})` : ''}. Check the server's internet connection and try again.`
+  );
 }
 
 /**
