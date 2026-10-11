@@ -24,6 +24,15 @@ const recipeSchema = new Schema(
   { _id: false }
 );
 
+/** One encoded version of a lesson video. Each quality is its own private B2 object. */
+const lessonVideoSchema = new Schema(
+  {
+    quality: { type: String, enum: ['360', '480', '720', '1080'], required: true },
+    videoKey: { type: String, required: true, trim: true, maxlength: 300 },
+  },
+  { _id: false }
+);
+
 const lessonSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 140 },
@@ -33,6 +42,8 @@ const lessonSchema = new Schema(
     isPreview: { type: Boolean, default: false },
     /** Object key of the lesson video in the private B2 bucket. Empty = bundled demo clip. */
     videoKey: { type: String, default: '', trim: true, maxlength: 300 },
+    /** Qualities (360/480/720/1080). `videoKey` mirrors the best one, for older app builds. */
+    videos: { type: [lessonVideoSchema], default: [] },
     recipe: { type: recipeSchema },
   },
   { _id: true, timestamps: false }

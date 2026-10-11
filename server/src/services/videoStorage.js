@@ -79,18 +79,44 @@ function s3() {
   return client;
 }
 
-function buildVideoKey({ courseKey, fileName, contentType }) {
+function buildVideoKey({ courseKey, fileName, contentType, quality }) {
   const ext = VIDEO_TYPES[contentType];
   const base = fileName.replace(/\.[a-z0-9]+$/i, '').replace(/[^a-zA-Z0-9_-]+/g, '-').slice(0, 60) || 'lesson';
-  return `courses/${courseKey}/${randomUUID()}-${base}.${ext}`;
+  const label = quality ? `${quality}p-` : '';
+  return `courses/${courseKey}/${randomUUID()}-${label}${base}.${ext}`;
+}
+
+/** Available lesson video qualities, highest first in the admin UI. */
+export const VIDEO_QUALITIES = ['360', '480', '720', '1080'];
+
+/**
+ * A lesson's playable videos, best quality first. Lessons that were uploaded before qualities existed
+ * keep their single `videoKey` and are returned as quality 'original'.
+ */
+export function lessonVideos(lesson) {
+  const list = (lesson?.videos || [])
+    .filter((v) => v?.videoKey && VIDEO_QUALITIES.includes(String(v.quality)))
+    .map((v) => ({ quality: String(v.quality), key: v.videoKey }))
+    .sort((a, b) => Number(b.quality) - Number(a.quality));
+  if (!list.length && lesson?.videoKey) return [{ quality: 'original', key: lesson.videoKey }];
+  return list;
+}
+
+/** Picks the requested quality, or the closest lower one that exists. No request = best available. */
+export function pickLessonVideo(lesson, quality) {
+  const list = lessonVideos(lesson);
+  if (!list.length) return null;
+  if (!quality || !VIDEO_QUALITIES.includes(String(quality))) return list[0];
+  const want = Number(quality);
+  return list.find((v) => Number(v.quality) <= want) || list[list.length - 1];
 }
 
 /**
  * Streams a video file from local disk into the private bucket. Returns the object key, which the
  * lesson stores. The caller is responsible for deleting the local temp file afterwards.
  */
-export async function storeVideo({ courseKey, filePath, fileName, contentType, size }) {
-  const key = buildVideoKey({ courseKey, fileName, contentType });
+export async function storeVideo({ courseKey, filePath, fileName, contentType, size, quality }) {
+  const key = buildVideoKey({ courseKey, fileName, contentType, quality });
   await s3().send(
     new PutObjectCommand({
       Bucket: bucket,
