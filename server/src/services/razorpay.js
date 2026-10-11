@@ -14,6 +14,16 @@ export const paymentsConfigured = () => Boolean(env.razorpayKeyId && env.razorpa
 /** Public key id the app opens Checkout with. Never the secret. */
 export const publicKeyId = () => env.razorpayKeyId;
 
+/**
+ * The learner's mobile number in Razorpay's +91 format, so checkout can fill it in and hide the field.
+ * Returns undefined when the stored number is not a valid Indian mobile number.
+ */
+export function checkoutContact(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  const national = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits;
+  return /^[6-9]\d{9}$/.test(national) ? `+91${national}` : undefined;
+}
+
 export function razorpayClient() {
   if (!paymentsConfigured()) {
     throw new HttpError(503, 'Payments are not configured on this server yet.');

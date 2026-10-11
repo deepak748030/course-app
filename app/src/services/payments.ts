@@ -1,17 +1,18 @@
 /**
  * Payment service — Razorpay Checkout.
  *
- * Flow: the server prices the course and opens a Razorpay order, the Razorpay SDK collects the
- * payment in its own sheet, and the server verifies the signed result before the course unlocks.
- * Card, UPI and bank details are entered in Razorpay's checkout and never reach this app or the
- * academy server.
+ * Flow: the server prices the course and opens a Razorpay order, Razorpay's checkout collects the
+ * payment, and the server verifies the signed result before the course unlocks. Card, UPI and bank
+ * details are entered in Razorpay's checkout and never reach this app or the academy server.
  *
- * - Web: Razorpay's `checkout.js`, which opens the same modal inside the page. No WebView.
- * - iOS / Android, mode 'web' (default): the server creates a Razorpay Payment Link and the phone
- *   opens Razorpay's hosted page in the system browser. Works in Expo Go. No WebView.
- * - iOS / Android, mode 'sdk': the native `react-native-razorpay` SDK (needs a development build).
+ * Every checkout shows only UPI (with its QR code) and the learner's mobile number is filled in from
+ * their profile, so they are not asked for it again.
+ *
+ * - Web: Razorpay's `checkout.js`, which opens the same modal inside the page.
+ * - iOS / Android, mode 'web' (default) or no native SDK (Expo Go): the same `checkout.js` runs inside
+ *   an in-app WebView, so the payment never leaves the app.
+ * - iOS / Android, mode 'sdk' with the native module: the `react-native-razorpay` SDK sheet.
  */
-
 
 import { ApiError, api, type RazorpayOrderConfig } from '@/services/api';
 
@@ -20,38 +21,43 @@ export type PaymentResult =
   | { status: 'failed'; reason: string }
   | { status: 'cancelled' };
 
-/** A payment page the checkout screen shows inside the app. `closed` resolves when the user closes it. */
-export type PaymentPage = { closed: Promise<void>; close: () => void };
+/** What the in-app checkout page reports back: the signed payment, a dismissal, or a failure. */
+export type CheckoutOutcome =
+  | { type: 'success'; razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }
+  | { type: 'dismissed' }
+  | { type: 'failed'; description?: string };
 
 export interface PaymentService {
   /**
    * Runs the whole purchase: create the order, collect payment, verify it on the server.
-   * `openPaymentPage` shows Razorpay's hosted page inside the app (WebView) when the phone has no
-   * native SDK.
+   * `openPaymentPage` shows the checkout HTML inside the app (WebView) and resolves with the outcome.
    */
   pay(input: {
     courseId: string;
     couponCode?: string;
     mode?: 'web' | 'sdk';
-    openPaymentPage?: (url: string) => PaymentPage;
+    openPaymentPage?: (html: string) => Promise<CheckoutOutcome>;
   }): Promise<PaymentResult>;
 }
 
 /** Razorpay's error code for "the user closed the sheet" (PAYMENT_CANCELLED). */
 const RAZORPAY_PAYMENT_CANCELLED = 2;
 const CHECKOUT_SCRIPT_URL = 'https://checkout.razorpay.com/v1/checkout.js';
-/** How long the app waits for the hosted payment page before asking the user to try again. */
-const LINK_WAIT_MS = 5 * 60 * 1000;
-const LINK_POLL_MS = 3000;
+const CHECKOUT_BASE_URL = 'https://checkout.razorpay.com';
 
-type CheckoutSuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
 type CheckoutError = { code?: number | string; description?: string };
+type CheckoutSuccess = { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string };
 
 type WebRazorpay = new (options: Record<string, unknown>) => {
   on(event: 'payment.failed', handler: (response: { error?: CheckoutError }) => void): void;
   open(): void;
 };
 
+/**
+ * Razorpay options shared by every checkout surface. UPI is the only payment block (its QR code is
+ * part of it), so no card, netbanking or wallet is offered. The contact field is hidden and filled
+ * from the learner's profile, so the mobile number is never asked again.
+ */
 function checkoutOptions(config: RazorpayOrderConfig) {
   return {
     key: config.keyId,
@@ -61,6 +67,17 @@ function checkoutOptions(config: RazorpayOrderConfig) {
     description: config.description,
     order_id: config.orderId,
     prefill: config.prefill,
+    hidden: { contact: Boolean(config.prefill.contact), email: Boolean(config.prefill.email) },
+    method: { upi: true, qr: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false },
+    config: {
+      display: {
+        blocks: {
+          upi: { name: 'Pay using UPI or QR code', instruments: [{ method: 'upi' }, { method: 'qr' }] },
+        },
+        sequence: ['block.upi'],
+        preferences: { show_default_blocks: false },
+      },
+    },
     theme: { color: '#0B5C1E' },
   };
 }
@@ -153,64 +170,60 @@ async function openWebCheckout(config: RazorpayOrderConfig): Promise<CheckoutSuc
   });
 }
 
-function sleep(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+/**
+ * The page the in-app WebView loads. It runs the same Razorpay Checkout as the browser, with the same
+ * options, and reports the result to the app with `ReactNativeWebView.postMessage`.
+ */
+export function buildCheckoutHtml(config: RazorpayOrderConfig): string {
+  // `<` is escaped so no value can close the script tag early.
+  const options = JSON.stringify(checkoutOptions(config)).replace(/</g, '\\u003c');
+  return `<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<style>html,body{margin:0;height:100%;background:#ffffff;font-family:sans-serif}</style>
+</head>
+<body>
+<script src="${CHECKOUT_SCRIPT_URL}"></script>
+<script>
+  function post(message) {
+    window.ReactNativeWebView.postMessage(JSON.stringify(message));
+  }
+  var options = ${options};
+  options.handler = function (response) {
+    post({
+      type: 'success',
+      razorpay_payment_id: response.razorpay_payment_id,
+      razorpay_order_id: response.razorpay_order_id,
+      razorpay_signature: response.razorpay_signature
+    });
+  };
+  options.modal = { ondismiss: function () { post({ type: 'dismissed' }); } };
+  var checkout = new Razorpay(options);
+  checkout.on('payment.failed', function (response) {
+    post({ type: 'failed', description: (response.error && response.error.description) || '' });
+  });
+  checkout.open();
+</script>
+</body>
+</html>`;
 }
 
-/**
- * Phone without the native SDK (Expo Go, or mode 'web'): shows Razorpay's hosted Payment Link inside
- * the app and waits for the server to confirm it. Closing the page without paying cancels the purchase.
- */
-async function payWithPaymentLink(input: {
-  courseId: string;
-  couponCode?: string;
-  openPaymentPage?: (url: string) => PaymentPage;
-}): Promise<PaymentResult> {
-  if (!input.openPaymentPage) {
-    return { status: 'failed', reason: 'The payment page could not be opened. Please try again.' };
+/** Phone without the native SDK (Expo Go) or mode 'web': the checkout page opens inside the app. */
+async function openWebViewCheckout(
+  config: RazorpayOrderConfig,
+  openPaymentPage: (html: string) => Promise<CheckoutOutcome>,
+): Promise<CheckoutSuccess> {
+  const outcome = await openPaymentPage(buildCheckoutHtml(config));
+  if (outcome.type === 'success') {
+    return {
+      razorpay_payment_id: outcome.razorpay_payment_id,
+      razorpay_order_id: outcome.razorpay_order_id,
+      razorpay_signature: outcome.razorpay_signature,
+    };
   }
-
-  let created: Awaited<ReturnType<typeof api.createRazorpayPaymentLink>>;
-  try {
-    created = await api.createRazorpayPaymentLink({ courseId: input.courseId, couponCode: input.couponCode });
-  } catch (err) {
-    return { status: 'failed', reason: describeFailure(err) };
-  }
-
-  const page = input.openPaymentPage(created.paymentLink.url);
-  let pageClosed = false;
-  void page.closed.then(() => {
-    pageClosed = true;
-  });
-
-  const deadline = Date.now() + LINK_WAIT_MS;
-  while (Date.now() < deadline) {
-    await sleep(LINK_POLL_MS);
-    try {
-      const res = await api.razorpayLinkStatus(created.order._id);
-      if (res.status === 'paid') {
-        page.close();
-        return { status: 'paid', orderId: res.order._id };
-      }
-      if (res.status === 'cancelled') {
-        page.close();
-        return { status: 'cancelled' };
-      }
-      if (res.status === 'expired') {
-        page.close();
-        return { status: 'failed', reason: 'The payment link expired. Please try again.' };
-      }
-    } catch {
-      // Briefly offline: keep waiting for the next poll.
-    }
-    // The user closed the page and the check above showed no payment.
-    if (pageClosed) return { status: 'cancelled' };
-  }
-  page.close();
-  return {
-    status: 'failed',
-    reason: 'We have not received your payment yet. If you paid, your course will unlock shortly. Otherwise try again.',
-  };
+  if (outcome.type === 'dismissed') throw { code: RAZORPAY_PAYMENT_CANCELLED } satisfies CheckoutError;
+  throw { description: outcome.description || 'The payment did not go through.' } satisfies CheckoutError;
 }
 
 function isCancelled(err: unknown): boolean {
@@ -221,7 +234,7 @@ function describeFailure(err: unknown): string {
   let message = 'The payment did not go through.';
   if (err instanceof ApiError) message = err.message;
   else if (typeof err === 'object' && err !== null && 'description' in err && typeof err.description === 'string') {
-    message = err.description;
+    message = err.description || message;
   } else if (err instanceof Error) message = err.message;
   // The failure text is shown as a sentence followed by "Nothing was charged…".
   return /[.!?]$/.test(message) ? message : `${message}.`;
@@ -229,10 +242,10 @@ function describeFailure(err: unknown): string {
 
 export const razorpayPaymentService: PaymentService = {
   async pay({ courseId, couponCode, mode = 'web', openPaymentPage }) {
-    // Phone without the native SDK (Expo Go, or mode 'web'): pay through the hosted Payment Link.
     const onPhone = typeof document === 'undefined';
-    if (onPhone && (mode === 'web' || !nativeCheckoutAvailable())) {
-      return payWithPaymentLink({ courseId, couponCode, openPaymentPage });
+    const inAppPage = onPhone && (mode === 'web' || !nativeCheckoutAvailable());
+    if (inAppPage && !openPaymentPage) {
+      return { status: 'failed', reason: 'The payment page could not be opened. Please try again.' };
     }
 
     let created: Awaited<ReturnType<typeof api.createRazorpayOrder>>;
@@ -244,10 +257,9 @@ export const razorpayPaymentService: PaymentService = {
 
     let payment: CheckoutSuccess;
     try {
-      payment =
-        typeof document !== 'undefined'
-          ? await openWebCheckout(created.razorpay)
-          : await openNativeCheckout(created.razorpay);
+      if (inAppPage) payment = await openWebViewCheckout(created.razorpay, openPaymentPage!);
+      else if (onPhone) payment = await openNativeCheckout(created.razorpay);
+      else payment = await openWebCheckout(created.razorpay);
     } catch (err) {
       if (isCancelled(err)) return { status: 'cancelled' };
       return { status: 'failed', reason: describeFailure(err) };

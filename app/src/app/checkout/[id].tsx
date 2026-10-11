@@ -12,7 +12,7 @@ import {
   TriangleAlert,
   X,
 } from 'lucide-react-native';
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,7 +36,7 @@ import { ApiError, api } from '@/services/api';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
-import { razorpayPaymentService, type PaymentPage } from '@/services/payments';
+import { razorpayPaymentService, type CheckoutOutcome } from '@/services/payments';
 import { useStore } from '@/store';
 import { formatDuration, formatInr } from '@/lib/format';
 import { feedback } from '@/lib/util';
@@ -49,19 +49,23 @@ export default function CheckoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  /** Razorpay's hosted payment page, shown inside the app (WebView) while the purchase is in progress. */
-  const [paymentPage, setPaymentPage] = useState<{ url: string; finish: () => void } | null>(null);
-  const openPaymentPage = useCallback((url: string): PaymentPage => {
-    let resolveClosed: () => void = () => {};
-    const closed = new Promise<void>((resolve) => {
-      resolveClosed = resolve;
-    });
-    const finish = () => {
-      setPaymentPage(null);
-      resolveClosed();
-    };
-    setPaymentPage({ url, finish });
-    return { closed, close: finish };
+  /** Razorpay Checkout (UPI and QR only), shown inside the app while a purchase is in progress. */
+  const [checkoutHtml, setCheckoutHtml] = useState<string | null>(null);
+  const checkoutResolver = useRef<((outcome: CheckoutOutcome) => void) | null>(null);
+  const openPaymentPage = useCallback(
+    (html: string) =>
+      new Promise<CheckoutOutcome>((resolve) => {
+        checkoutResolver.current = resolve;
+        setCheckoutHtml(html);
+      }),
+    [],
+  );
+  /** Closes the checkout page and hands its outcome to the payment flow. */
+  const finishCheckout = useCallback((outcome: CheckoutOutcome) => {
+    const resolve = checkoutResolver.current;
+    checkoutResolver.current = null;
+    setCheckoutHtml(null);
+    resolve?.(outcome);
   }, []);
   const { isEnrolled, addEnrollment, settings } = useStore();
   const { byId } = useCatalog();
@@ -311,26 +315,37 @@ export default function CheckoutScreen() {
       </Screen>
 
       <Modal
-        visible={paymentPage !== null && WebView !== null}
+        visible={checkoutHtml !== null && WebView !== null}
         animationType="slide"
-        onRequestClose={() => paymentPage?.finish()}>
-        {paymentPage && WebView ? (
+        onRequestClose={() => finishCheckout({ type: 'dismissed' })}>
+        {checkoutHtml !== null && WebView ? (
           <View style={[styles.paymentPage, { paddingTop: insets.top }]}>
             <View style={styles.paymentHead}>
               <Text style={[type.bodyStrong, styles.flex]}>{t('Checkout')}</Text>
-              <Pressable onPress={() => paymentPage.finish()} hitSlop={12} accessibilityLabel={t('Close')}>
+              <Pressable
+                onPress={() => finishCheckout({ type: 'dismissed' })}
+                hitSlop={12}
+                accessibilityLabel={t('Close')}>
                 <X size={22} color={colors.text} />
               </Pressable>
             </View>
             <WebView
-              source={{ uri: paymentPage.url }}
+              source={{ html: checkoutHtml, baseUrl: 'https://checkout.razorpay.com' }}
               startInLoadingState
               javaScriptEnabled
               domStorageEnabled
-              // Razorpay opens UPI and bank apps through their own schemes (upi://, intent://, phonepe://).
+              thirdPartyCookiesEnabled
+              onMessage={(event) => {
+                try {
+                  finishCheckout(JSON.parse(event.nativeEvent.data) as CheckoutOutcome);
+                } catch {
+                  // Not a checkout message: ignore it.
+                }
+              }}
+              // Razorpay opens UPI apps through their own schemes (upi://, intent://, phonepe://).
               // The WebView cannot load those, so they are handed to the phone instead.
               onShouldStartLoadWithRequest={(request) => {
-                if (/^https?:\/\//i.test(request.url) || request.url === 'about:blank') return true;
+                if (/^(https?:|about:|data:|blob:)/i.test(request.url)) return true;
                 Linking.openURL(request.url).catch(() => {});
                 return false;
               }}

@@ -5,6 +5,7 @@ import { Order } from '../models/Order.js';
 import { emitToAdmins, emitToUser } from '../realtime/socket.js';
 import { trackEvent } from '../services/analytics.js';
 import {
+  checkoutContact,
   paymentsConfigured,
   publicKeyId,
   razorpayClient,
@@ -113,7 +114,7 @@ export const createRazorpayOrder = asyncHandler(async (req, res) => {
       prefill: {
         name: req.user.name,
         email: req.user.email || undefined,
-        contact: req.user.phone || undefined,
+        contact: checkoutContact(req.user.phone),
       },
     },
   });
