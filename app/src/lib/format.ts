@@ -8,6 +8,13 @@ export function formatInr(amount: number): string {
   return `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)}`;
 }
 
+/** A lesson's length as shown in lists: under a minute in seconds ("20 sec"), otherwise minutes ("12 min"). */
+export function lessonLength(lesson: { minutes: number; seconds?: number }): string {
+  const seconds = lesson.seconds ?? lesson.minutes * 60;
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} sec`;
+  return `${Math.round(seconds / 60)} min`;
+}
+
 /** 95 -> "1h 35m", 42 -> "42m" */
 export function formatDuration(minutes: number): string {
   const total = Math.round(minutes);

@@ -133,6 +133,7 @@ const lessonSchema = z
       .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
       .default(''),
     videos: z.array(lessonVideoSchema).max(4).default([]),
+    durationSec: z.number().int().min(0).max(86400).default(0),
     recipe: recipeSchema.optional().nullable(),
   })
   .transform((lesson) => {

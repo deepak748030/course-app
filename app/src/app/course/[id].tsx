@@ -34,7 +34,7 @@ import { mapCourse } from '@/services/catalogService';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
-import { formatDuration, formatInr } from '@/lib/format';
+import { formatDuration, formatInr, lessonLength } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
 
@@ -180,14 +180,14 @@ export default function CourseDetailsScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewLesson.minutes} minutes`}
+              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${lessonLength(previewLesson)}`}
               onPress={() => openLesson(previewLesson)}
               style={styles.heroPlay}>
               <View style={styles.playCircle}>
                 <Play size={20} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
               </View>
               <Text style={[type.labelStrong, { color: colors.textInverse }]}>
-                Watch free preview · {previewLesson.minutes} min
+                Watch free preview · {lessonLength(previewLesson)}
               </Text>
             </Pressable>
             {/* The discount sits where the player puts its own secondary controls: bottom right,

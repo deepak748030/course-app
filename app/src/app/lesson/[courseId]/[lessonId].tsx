@@ -76,7 +76,7 @@ import { api } from '@/services/api';
 import { useT } from '@/i18n';
 import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
-import { formatClock, scaleQuantity } from '@/lib/format';
+import { formatClock, lessonLength, scaleQuantity } from '@/lib/format';
 import { feedback } from '@/lib/util';
 
 type TabKey = 'overview' | 'recipe' | 'notes';
@@ -732,7 +732,7 @@ export default function LessonPlayerScreen() {
             <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
             <View style={styles.metaWrap}>
               <MetaItem icon={Clapperboard} label={`Lesson ${lessonNumber} of ${course.lessonCount}`} />
-              <MetaItem icon={Clock} label={`${lesson.minutes} min`} />
+              <MetaItem icon={Clock} label={lessonLength(lesson)} />
               <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
             </View>
             {completed ? (
@@ -784,7 +784,7 @@ export default function LessonPlayerScreen() {
                     <ListRow
                       icon={Play}
                       label={upcoming.title}
-                      subtitle={`Next lesson · ${upcoming.minutes} min`}
+                      subtitle={`Next lesson · ${lessonLength(upcoming)}`}
                       onPress={() => goToLesson(upcoming.id)}
                     />
                   ) : (

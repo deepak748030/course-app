@@ -118,6 +118,7 @@ export type ServerLesson = {
   /** Object key of the course video in private storage; the app gets a signed link from the server. */
   videoKey?: string;
   minutes: number;
+  durationSec?: number;
   isPreview: boolean;
   recipe?: ServerRecipe | null;
 };

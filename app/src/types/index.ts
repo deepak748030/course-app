@@ -31,6 +31,8 @@ export interface Lesson {
   title: string;
   description: string;
   minutes: number;
+  /** Exact length in seconds when the lesson's video was measured on upload. */
+  seconds?: number;
   isPreview: boolean;
   video: VideoKey;
   /** The course has its own video in private storage (fetched as a signed link); otherwise the demo clip plays. */

@@ -30,7 +30,7 @@ import { SaveButton } from '@/components/save-button';
 import { Badge, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/lib/catalog';
-import { formatDuration, formatInr } from '@/lib/format';
+import { formatDuration, formatInr, lessonLength } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
 
@@ -257,7 +257,7 @@ export function LessonRow({
     <Pressable
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`Lesson ${index !== undefined ? `${index}. ` : ''}${lesson.title}, ${lesson.minutes} minutes${
+      accessibilityLabel={`Lesson ${index !== undefined ? `${index}. ` : ''}${lesson.title}, ${lessonLength(lesson)}${
         lesson.isPreview ? ', free preview' : locked ? ', locked until purchase' : ''
       }`}
       accessibilityState={{ selected: state === 'current' }}
@@ -273,7 +273,7 @@ export function LessonRow({
           {lesson.title}
         </Text>
         <View style={styles.lessonMeta}>
-          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lesson.minutes} min</Text>
+          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lessonLength(lesson)}</Text>
           {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" /> : null}
           {state === 'completed' ? <Badge label={t("Completed")} tone="success" /> : null}
           {state === 'current' ? <Badge label={t("Next up")} tone="primary" /> : null}

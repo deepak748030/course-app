@@ -38,6 +38,8 @@ const lessonSchema = new Schema(
     title: { type: String, required: true, trim: true, maxlength: 140 },
     description: { type: String, default: '', trim: true },
     minutes: { type: Number, required: true, min: 1, max: 600 },
+    /** Exact length of the uploaded video in seconds (0 = not measured). */
+    durationSec: { type: Number, default: 0, min: 0, max: 86400 },
     /** Free preview lesson — playable without purchase. */
     isPreview: { type: Boolean, default: false },
     /** Object key of the lesson video in the private B2 bucket. Empty = bundled demo clip. */

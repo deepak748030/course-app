@@ -36,6 +36,8 @@ export interface Lesson {
   videoKey?: string;
   /** Encoded versions of the lesson video, one per quality. */
   videos?: LessonVideo[];
+  /** Exact length of the video in seconds, read when it was uploaded. */
+  durationSec?: number;
 }
 
 export type VideoQuality = '360' | '480' | '720' | '1080';

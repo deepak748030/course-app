@@ -111,6 +111,22 @@ function payloadFromForm(form: FormState) {
 
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
+/** Length of a video file in whole seconds, read in the browser before it is uploaded (0 if unknown). */
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const done = (seconds: number) => {
+      URL.revokeObjectURL(url);
+      resolve(seconds);
+    };
+    video.onloadedmetadata = () => done(Number.isFinite(video.duration) ? Math.round(video.duration) : 0);
+    video.onerror = () => done(0);
+    video.src = url;
+  });
+}
+
 /** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
 const VIDEO_QUALITIES: VideoQuality[] = ['360', '480', '720', '1080'];
 
@@ -122,7 +138,7 @@ function LessonVideos({
 }: {
   courseId?: string;
   value: LessonVideo[];
-  onChange: (videos: LessonVideo[]) => void;
+  onChange: (videos: LessonVideo[], durationSec?: number) => void;
 }) {
   const toast = useToast();
   const [busy, setBusy] = useState<{ quality: VideoQuality; progress: number } | null>(null);
@@ -134,8 +150,9 @@ function LessonVideos({
     }
     setBusy({ quality, progress: 0 });
     try {
+      const durationSec = await readVideoDuration(file);
       const key = await uploadCourseVideo(file, courseId, quality, (progress) => setBusy({ quality, progress }));
-      onChange([...value.filter((v) => v.quality !== quality), { quality, videoKey: key }]);
+      onChange([...value.filter((v) => v.quality !== quality), { quality, videoKey: key }], durationSec || undefined);
       toast('success', `${quality}p video uploaded. Click Save changes to publish it to the app.`);
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Video upload failed');
@@ -613,7 +630,14 @@ export default function Courses() {
                         <LessonVideos
                           courseId={editing?._id}
                           value={lesson.videos ?? []}
-                          onChange={(videos) => sectionOps.patchLesson(i, j, { videos, videoKey: '' })}
+                          onChange={(videos, durationSec) =>
+                            sectionOps.patchLesson(i, j, {
+                              videos,
+                              videoKey: '',
+                              // The real length replaces the typed minutes, so course totals match the video.
+                              ...(durationSec ? { durationSec, minutes: Math.max(1, Math.ceil(durationSec / 60)) } : {}),
+                            })
+                          }
                         />
                         <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
                           <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />
