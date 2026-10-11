@@ -11,7 +11,7 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, r2Configured } from '../services/r2.js';
+import { MAX_VIDEO_BYTES, VIDEO_TYPES, createVideoUploadUrl, videoStorageConfigured } from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -28,9 +28,9 @@ router.get('/stats/overview', overview);
 const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(365).optional() });
 router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
 
-// ---------- course videos (Cloudflare R2) -------------------------------------
+// ---------- course videos (Backblaze B2) -------------------------------------
 router.get('/uploads/video/status', (_req, res) => {
-  res.json({ configured: r2Configured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES) });
+  res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES) });
 });
 const videoUploadSchema = z.object({
   courseId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
@@ -38,13 +38,13 @@ const videoUploadSchema = z.object({
   contentType: z.enum(['video/mp4', 'video/webm', 'video/quicktime']),
   size: z.number().int().min(1).max(MAX_VIDEO_BYTES),
 });
-/** POST /api/admin/uploads/video — signs a direct-to-R2 upload for one lesson video. */
+/** POST /api/admin/uploads/video — signs a direct-to-B2 upload for one lesson video. */
 router.post(
   '/uploads/video',
   validateBody(videoUploadSchema),
   asyncHandler(async (req, res) => {
-    if (!r2Configured) {
-      throw new HttpError(503, 'Video storage is not set up. Add the R2_* settings on the server first.');
+    if (!videoStorageConfigured) {
+      throw new HttpError(503, 'Video storage is not set up. Add the B2_* settings on the server first.');
     }
     const { courseId, fileName, contentType, size } = req.body;
     const upload = await createVideoUploadUrl({

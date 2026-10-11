@@ -33,7 +33,7 @@ export interface Lesson {
   minutes: number;
   isPreview: boolean;
   video: VideoKey;
-  /** Course video on Cloudflare R2; when set it replaces the bundled demo clip. */
+  /** Course video on Backblaze B2; when set it replaces the bundled demo clip. */
   videoUrl?: string;
   recipe?: Recipe;
 }

@@ -111,7 +111,7 @@ function payloadFromForm(form: FormState) {
 
 const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
-/** Per-lesson video control: uploads to Cloudflare R2 with progress, or shows the attached video. */
+/** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
 function LessonVideo({
   courseId,
   value,

@@ -174,32 +174,31 @@ src/
 └── utils/               # HttpError, asyncHandler, token signing
 ```
 
-## Course videos on Cloudflare R2 (free)
+## Course videos on Backblaze B2 (free tier)
 
 Lesson videos are uploaded from the admin dashboard (Courses → lesson → **Upload video**). The
-browser sends the file straight to Cloudflare R2; the server only signs the upload. Free tier:
-10 GB storage and no egress fees.
+browser sends the file straight to Backblaze B2 (S3-compatible API); the server only signs the
+upload. Free tier: 10 GB storage and a daily free download allowance.
 
-1. In the Cloudflare dashboard, create an R2 bucket (for example `ydu-course-videos`).
-2. Make it public: bucket → Settings → Public access → enable the `r2.dev` URL or attach a custom
-   domain. Put that https address in `R2_PUBLIC_BASE_URL` (no trailing slash).
-3. Bucket → Settings → CORS policy, so the admin dashboard can upload (replace the origin with your
-   dashboard URL, or `*` while testing):
+1. In the B2 console, create a bucket (for example `ydu-course-videos`). Keep it **Public** so the
+   app can play the videos from their URLs.
+2. Open the bucket details and note:
+   - the **Endpoint** (for example `s3.us-west-004.backblazeb2.com`) → `B2_S3_ENDPOINT=https://<endpoint>`
+   - the friendly URL (`https://f<NNN>.backblazeb2.com/file/<bucket>`) → `B2_PUBLIC_BASE_URL`
+     (or your CDN domain instead).
+3. Bucket → **CORS Rules**, so the admin dashboard can upload. Replace the origin with your dashboard
+   URL (or `*` while testing):
 
-   ```json
-   [
-     {
-       "AllowedOrigins": ["https://your-admin-dashboard-url"],
-       "AllowedMethods": ["PUT", "GET", "HEAD"],
-       "AllowedHeaders": ["*"],
-       "ExposeHeaders": ["ETag"],
-       "MaxAgeSeconds": 3600
-     }
-   ]
-   ```
+   - Allowed origins: `https://your-admin-dashboard-url`
+   - Allowed operations: `s3_put`, `s3_get`, `s3_head`
+   - Allowed headers: `*`
+   - Expose headers: `ETag`
+   - Max age: `3600`
 
-4. Manage R2 → Create API token (Object Read & Write, this bucket only). Put the account id, access
-   key id, secret and bucket name into `server/.env` (see `.env.example`).
+4. App Keys → **Add a New Application Key**. Limit it to this bucket, with the capabilities
+   `listFiles`, `readFiles`, `writeFiles`. Put its **keyID** in `B2_KEY_ID` and its
+   **applicationKey** in `B2_APPLICATION_KEY` in `server/.env`. Never use the master key here.
 
-Videos up to 4 GB each. Uploaded videos are public URLs, so only put demo or intended-for-all material
-there. Replacing or removing a video in the dashboard does not delete the old file from R2.
+Videos up to 4 GB each. Uploaded videos are public URLs, so only put material there that is meant
+for learners to watch. Replacing or removing a video in the dashboard does not delete the old file
+from the bucket.

@@ -128,12 +128,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return res.json() as Promise<T>;
 }
 
-/** Video storage status: whether Cloudflare R2 is set up on the server, and the upload limits. */
+/** Video storage status: whether Backblaze B2 is set up on the server, and the upload limits. */
 export const videoStorageStatus = () =>
   request<{ configured: boolean; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
 
 /**
- * Uploads one lesson video straight from the browser to Cloudflare R2. The server only signs a
+ * Uploads one lesson video straight from the browser to Backblaze B2. The server only signs a
  * short-lived PUT URL; the bytes never pass through the API. Resolves with the public video URL.
  */
 export async function uploadCourseVideo(
@@ -156,9 +156,9 @@ export async function uploadCourseVideo(
     xhr.onload = () =>
       xhr.status >= 200 && xhr.status < 300
         ? resolve()
-        : reject(new ApiError(xhr.status, 'Video storage rejected the upload. Check the R2 bucket CORS settings.'));
+        : reject(new ApiError(xhr.status, 'Video storage rejected the upload. Check the B2 bucket CORS settings.'));
     xhr.onerror = () =>
-      reject(new ApiError(0, 'Could not reach video storage. Check the R2 bucket CORS settings and your connection.'));
+      reject(new ApiError(0, 'Could not reach video storage. Check the B2 bucket CORS settings and your connection.'));
     xhr.send(file);
   });
   return signed.publicUrl;

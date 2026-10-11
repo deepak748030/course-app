@@ -114,7 +114,7 @@ export type ServerLesson = {
   _id: string;
   title: string;
   description: string;
-  /** Public https URL of the lesson video on Cloudflare R2; empty = bundled demo clip. */
+  /** Public https URL of the lesson video on Backblaze B2; empty = bundled demo clip. */
   videoUrl?: string;
   minutes: number;
   isPreview: boolean;
