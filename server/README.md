@@ -177,7 +177,7 @@ src/
 ## Course videos on Backblaze B2 (private bucket, free tier)
 
 Lesson videos are uploaded from the admin dashboard (Courses → lesson → **Upload video**). The
-browser sends the file straight to the bucket. The bucket stays **private**: when a learner opens
+admin dashboard sends the file to this server, which streams it into the bucket. The bucket stays **private**: when a learner opens
 a lesson, the app asks the server for a short-lived link. The server gives that link only to
 enrolled learners (or for free-preview lessons). Free tier: 10 GB storage.
 
@@ -186,13 +186,8 @@ enrolled learners (or for free-preview lessons). Free tier: 10 GB storage.
 1. **Buckets → Create a Bucket.** Name it, for example `ydu-course-videos`. Bucket Type: **Private**.
 2. Open the bucket. On the details page, copy the **Endpoint**, for example
    `s3.us-west-004.backblazeb2.com`.
-3. Bucket → **CORS Rules** → add a rule so the admin dashboard can upload:
-   - Allowed origins: your admin dashboard URL (use `*` only while testing)
-   - Allowed operations: `s3_put`, `s3_get`, `s3_head`
-   - Allowed headers: `*`
-   - Expose headers: `ETag`
-   - Max age: `3600`
-4. **App Keys → Add a New Application Key**:
+3. No CORS setup is needed. The admin dashboard sends videos to this server, which uploads them to the bucket.
+3. **App Keys → Add a New Application Key**:
    - Name: `ydu-server`
    - Allow access to Bucket(s): only `ydu-course-videos`
    - Type of access: Read and Write
