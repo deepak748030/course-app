@@ -12,9 +12,9 @@
  * A push only reaches a phone built with EAS (development or store build), not Expo Go. The Expo
  * project id comes from app.json (`extra.eas.projectId`) or EXPO_PUBLIC_EAS_PROJECT_ID.
  */
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import type * as NotificationsApi from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
@@ -23,8 +23,24 @@ import { api } from '@/services/api';
 
 const TOKEN_KEY = 'ydu.pushToken';
 
+/**
+ * expo-notifications cannot load in Expo Go on Android (SDK 53+): its remote-push module throws the
+ * moment it is imported. So it is loaded only where it works, and push quietly stays off in Expo Go;
+ * the app itself runs normally there. Development and store builds get the real module.
+ */
+function loadNotifications(): typeof NotificationsApi | null {
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
+  try {
+    return require('expo-notifications') as typeof NotificationsApi;
+  } catch {
+    return null;
+  }
+}
+
+const Notifications = loadNotifications();
+
 // Show a banner and play the sound while the app is open too.
-Notifications.setNotificationHandler({
+Notifications?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -39,7 +55,7 @@ function projectId(): string | undefined {
 }
 
 async function ensureAndroidChannel() {
-  if (Platform.OS !== 'android') return;
+  if (!Notifications || Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync('default', {
     name: 'YDU Academy',
     importance: Notifications.AndroidImportance.HIGH,
@@ -49,7 +65,7 @@ async function ensureAndroidChannel() {
 
 /** This device's Expo push token, or null when it cannot receive pushes (simulator, denied, no project id). */
 async function currentToken(): Promise<string | null> {
-  if (!Device.isDevice) return null;
+  if (!Notifications || !Device.isDevice) return null;
   await ensureAndroidChannel();
   const permission = await Notifications.getPermissionsAsync();
   let status = permission.status;
@@ -93,6 +109,7 @@ export async function forgetPushToken(): Promise<void> {
 
 /** Keeps the server current when the operating system hands the phone a new token. */
 export function watchPushTokenChanges(onChange: () => void): () => void {
+  if (!Notifications) return () => {};
   const subscription = Notifications.addPushTokenListener(() => onChange());
   return () => subscription.remove();
 }
@@ -106,7 +123,8 @@ export function useNotificationTaps(onTap: (target: TapTarget) => void) {
   handler.current = onTap;
 
   useEffect(() => {
-    const open = (response: Notifications.NotificationResponse | null) => {
+    if (!Notifications) return;
+    const open = (response: NotificationsApi.NotificationResponse | null) => {
       if (!response) return;
       const data = response.notification.request.content.data as { courseId?: string } | undefined;
       handler.current({ courseId: data?.courseId ?? null });
