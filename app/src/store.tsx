@@ -420,6 +420,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Stable identities. Effects depend on these, and the store value is rebuilt on every state change:
+  // a new function here would re-run those effects, which change state again, in a loop. A call that
+  // changes nothing returns the previous state, so React does not re-render at all.
+  const markNotificationsRead = useCallback(
+    () =>
+      setState((prev) =>
+        prev.notificationsRead && prev.notificationsUnread === 0
+          ? prev
+          : { ...prev, notificationsRead: true, notificationsUnread: 0, notificationsSeenAt: new Date().toISOString() },
+      ),
+    [],
+  );
+  const setNotificationsUnread = useCallback(
+    (count: number) =>
+      setState((prev) =>
+        prev.notificationsUnread === count && prev.notificationsRead === (count === 0)
+          ? prev
+          : { ...prev, notificationsUnread: count, notificationsRead: count === 0 },
+      ),
+    [],
+  );
+
   const value = useMemo<StoreValue>(() => {
     const lessonProgress = (courseId: Id, lessonId: Id) =>
       state.progress[courseId]?.[lessonId] ?? { completed: false, positionSec: 0 };
@@ -560,19 +582,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...prev,
           preferences: { ...prev.preferences, [key]: value },
         })),
-      markNotificationsRead: () =>
-        setState((prev) => ({
-          ...prev,
-          notificationsRead: true,
-          notificationsUnread: 0,
-          notificationsSeenAt: new Date().toISOString(),
-        })),
-      setNotificationsUnread: (count) =>
-        setState((prev) =>
-          prev.notificationsUnread === count && prev.notificationsRead === (count === 0)
-            ? prev
-            : { ...prev, notificationsUnread: count, notificationsRead: count === 0 },
-        ),
+      markNotificationsRead,
+      setNotificationsUnread,
       resetDeviceData: () => {
         // Local-only fields go back to their defaults; the account's own data is fetched again below.
         setState((prev) => ({
