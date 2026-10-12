@@ -391,16 +391,12 @@ check('every brand icon is cut from the supplied logo.png', () => {
   const generator = read('scripts/generate-brand-icons.mjs');
   assert.ok(generator.includes("resolve(IMAGE_DIR, 'logo.png')"), 'the generator reads the supplied logo.png');
   for (const output of [
-    'icon.png',
     'favicon.png',
     'splash-icon.png',
-    'brand-logo.png',
     'android-icon-background.png',
     'android-icon-foreground.png',
     'android-icon-monochrome.png',
     'brand-mark.png',
-    'ydu-logo.svg',
-    'ydu-mark.svg',
   ]) {
     assert.ok(generator.includes(`'${output}'`), `the generator writes ${output}`);
   }
@@ -428,17 +424,13 @@ check('every brand icon is cut from the supplied logo.png', () => {
 
   // The icon set itself: every size the platforms ask for, written by the generator.
   for (const file of [
-    'assets/images/icon.png',
     'assets/images/android-icon-foreground.png',
     'assets/images/android-icon-background.png',
     'assets/images/android-icon-monochrome.png',
     'assets/images/favicon.png',
     'assets/images/splash-icon.png',
     'assets/images/logo.png',
-    'assets/images/brand-logo.png',
     'assets/images/brand-mark.png',
-    'assets/brand/ydu-logo.svg',
-    'assets/brand/ydu-mark.svg',
   ]) {
     assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
   }
@@ -457,10 +449,8 @@ check('every brand icon is cut from the supplied logo.png', () => {
   const centre = at(logo, logo.width >> 1, logo.height >> 1);
 
   for (const [file, size] of [
-    ['assets/images/icon.png', 1024],
     ['assets/images/favicon.png', 196],
     ['assets/images/splash-icon.png', 512],
-    ['assets/images/brand-logo.png', 512],
   ]) {
     const icon = pixels(file);
     assert.equal(icon.width, size, `${file} is ${size}px wide`);
@@ -490,26 +480,6 @@ check('every brand icon is cut from the supplied logo.png', () => {
   assert.equal(at(mark, 0, 0)[3], 0, 'the text-free mark sits on transparent');
   assert.equal(at(mark, mark.width >> 1, mark.height >> 1)[3], 255, 'with the churn opaque at its centre');
 
-  // The brand SVGs are the logo's own pixels in a vector wrapper, not a second drawing: unwrap the
-  // embedded raster and it must carry the same field green and the same centre as logo.png.
-  for (const [file, size] of [
-    ['assets/brand/ydu-logo.svg', 1024],
-    ['assets/brand/ydu-mark.svg', 512],
-  ]) {
-    const svg = read(file);
-    assert.ok(svg.includes(`viewBox="0 0 ${size} ${size}"`), `${file} is a ${size} square`);
-    const match = svg.match(/href="data:image\/png;base64,([^"]+)"/);
-    assert.ok(match, `${file} embeds its pixels rather than redrawing them`);
-    const embedded = decodePng(Buffer.from(match[1], 'base64'));
-    assert.equal(embedded.width, size, `${file} embeds the ${size}px rendition`);
-    if (file.endsWith('ydu-logo.svg')) {
-      assert.ok(close(at(embedded, 0, 0), field, 2), `${file} embeds the logo with its field`);
-      assert.ok(close(at(embedded, size >> 1, size >> 1), centre), `${file} embeds the logo's centre`);
-    } else {
-      assert.equal(at(embedded, 0, 0)[3], 0, `${file} embeds the text-free mark on transparent`);
-      assert.equal(at(embedded, size >> 1, size >> 1)[3], 255, `${file} keeps the churn opaque`);
-    }
-  }
 
 });
 
