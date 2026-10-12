@@ -25,7 +25,10 @@ export const listOrders = asyncHandler(async (req, res) => {
         rx.test(o.course?.title || '') ||
         rx.test(o.user?.name || '') ||
         rx.test(o.user?.email || '') ||
-        rx.test(o.couponCode || '')
+        rx.test(o.couponCode || '') ||
+        rx.test(o.paymentReference || '') ||
+        rx.test(o.razorpayOrderId || '') ||
+        rx.test(o.paymentLinkId || '')
     );
   }
 

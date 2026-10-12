@@ -7,6 +7,7 @@ import authRoutes from './auth.routes.js';
 import catalogRoutes from './catalog.routes.js';
 import couponsRoutes from './coupons.routes.js';
 import enrollmentsRoutes from './enrollments.routes.js';
+import notificationsRoutes from './notifications.routes.js';
 import ordersRoutes from './orders.routes.js';
 import paymentsRoutes from './payments.routes.js';
 import reviewsRoutes from './reviews.routes.js';
@@ -36,6 +37,7 @@ router.use('/orders', ordersRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/enrollments', enrollmentsRoutes);
 router.use('/users', usersRoutes);
+router.use('/notifications', notificationsRoutes);
 router.use('/', reviewsRoutes); // /api/courses/:courseId/reviews
 router.use('/coupons', couponsRoutes);
 router.use('/settings', settingsRoutes);

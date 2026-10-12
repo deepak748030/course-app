@@ -1,4 +1,4 @@
-import { IndianRupee, ShoppingBag, Tag } from 'lucide-react';
+import { Copy, IndianRupee, ReceiptText, ShoppingBag, Tag } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
@@ -10,6 +10,7 @@ import {
   ConfirmDialog,
   EmptyState,
   LoadingBlock,
+  Modal,
   Pagination,
   SearchInput,
   formatDateTime,
@@ -31,7 +32,73 @@ const STATUS_OPTIONS: StatusOption<OrderStatus>[] = [
   { value: 'refunded', label: 'Refunded', tone: 'error', hint: 'Money returned. The learner loses access to the course.' },
 ];
 
+/** A payment reference shown in full, with a copy button. Shortens on narrow screens via truncate. */
+function CopyId({ value }: { value: string }) {
+  const toast = useToast();
+  return (
+    <div className="mt-0.5 flex max-w-[220px] items-center gap-1">
+      <code className="min-w-0 truncate rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink">{value}</code>
+      <button
+        type="button"
+        aria-label="Copy payment ID"
+        title="Copy"
+        onClick={() => {
+          void navigator.clipboard
+            ?.writeText(value)
+            .then(() => toast('success', 'Copied'))
+            .catch(() => toast('error', 'Could not copy. Select the text and copy it instead.'));
+        }}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-subtle hover:bg-ink/5 hover:text-ink"
+      >
+        <Copy size={12} />
+      </button>
+    </div>
+  );
+}
+
+function PaymentDetails({ order, onClose }: { order: Order; onClose: () => void }) {
+  const rows: [string, string | undefined][] = [
+    ['Payment ID', order.paymentReference],
+    ['Razorpay order ID', order.razorpayOrderId],
+    ['Payment link ID', order.paymentLinkId],
+  ];
+  return (
+    <Modal open onClose={onClose} title="Payment details" width="max-w-xl">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Learner</p>
+            <p className="font-semibold">{order.user?.name || 'Deleted learner'}</p>
+            <p className="text-xs text-subtle">{order.user?.email || ''}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Course</p>
+            <p className="font-semibold">{order.courseTitle}</p>
+            <p className="text-xs text-subtle">{formatInr(order.amountInr)} · {order.paymentMethod.toUpperCase()} · {order.status}</p>
+          </div>
+        </div>
+        <div className="divide-y divide-line-soft rounded-lg border border-line">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted">{label}</p>
+              {value ? (
+                <CopyId value={value} />
+              ) : (
+                <p className="text-sm text-subtle">{label === 'Payment ID' ? 'Not confirmed yet' : 'Not created'}</p>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-subtle">
+          Use the Payment ID to find this payment in the Razorpay dashboard. Order ID #{order._id.slice(-8)} · {formatDateTime(order.createdAt)}
+        </p>
+      </div>
+    </Modal>
+  );
+}
+
 export default function Orders() {
+  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
   const toast = useToast();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [totals, setTotals] = useState({ count: 0, paid: 0, discounts: 0 });
@@ -137,6 +204,18 @@ export default function Orders() {
                     <td className="border-b border-line-soft px-4 py-3 font-mono text-xs text-subtle">
                       #{order._id.slice(-8)}
                       <p className="font-sans text-xs">{order.paymentMethod.toUpperCase()}</p>
+                      {order.paymentReference ? (
+                        <CopyId value={order.paymentReference} />
+                      ) : (
+                        <p className="font-sans text-[11px] text-subtle">No payment ID</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentOrder(order)}
+                        className="mt-1 inline-flex h-7 items-center gap-1 rounded-md px-2 font-sans text-xs font-semibold text-brand-ink hover:bg-brand-soft"
+                      >
+                        <ReceiptText size={13} /> Payment details
+                      </button>
                     </td>
                     <td className="border-b border-line-soft px-4 py-3">
                       <p className="font-semibold">{order.user?.name || 'Deleted learner'}</p>
@@ -182,6 +261,7 @@ export default function Orders() {
         )}
       </Card>
 
+      {paymentOrder && <PaymentDetails order={paymentOrder} onClose={() => setPaymentOrder(null)} />}
       <ConfirmDialog
         open={refundTarget !== null}
         title="Refund this order?"

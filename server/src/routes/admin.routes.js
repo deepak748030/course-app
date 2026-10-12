@@ -7,6 +7,7 @@ import * as account from '../controllers/admin/account.controller.js';
 import * as categories from '../controllers/admin/categories.controller.js';
 import * as coupons from '../controllers/admin/coupons.controller.js';
 import * as courses from '../controllers/admin/courses.controller.js';
+import * as notifications from '../controllers/admin/notifications.controller.js';
 import * as orders from '../controllers/admin/orders.controller.js';
 import * as reviews from '../controllers/admin/reviews.controller.js';
 import * as settings from '../controllers/admin/settings.controller.js';
@@ -323,5 +324,29 @@ router.patch('/account', validateBody(accountSchema), account.updateAccount);
 
 router.get('/settings', settings.getSettings);
 router.put('/settings', validateBody(settingsSchema), settings.updateSettings);
+
+// ---------- notifications (in-app inbox + push) ----------------------------------
+const notificationKinds = ['announcement', 'course-update', 'learning-reminder', 'product'];
+const sendNotificationSchema = z
+  .object({
+    audience: z.enum(['all', 'user']),
+    userId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid learner').optional(),
+    title: z.string().trim().min(1, 'Add a title').max(120),
+    body: z.string().trim().min(1, 'Write the message').max(500),
+    kind: z.enum(notificationKinds).default('announcement'),
+    courseId: z
+      .string()
+      .regex(/^[a-f\d]{24}$/i, 'Invalid course')
+      .optional()
+      .or(z.literal(''))
+      .transform((value) => value || undefined),
+  })
+  .refine((value) => value.audience !== 'user' || value.userId, {
+    message: 'Choose a learner',
+    path: ['userId'],
+  });
+
+router.get('/notifications', notifications.listNotifications);
+router.post('/notifications', validateBody(sendNotificationSchema), notifications.sendNotification);
 
 export default router;

@@ -99,6 +99,12 @@ export interface Order {
   discountInr: number;
   status: OrderStatus;
   paymentMethod: string;
+  /** Razorpay payment id (pay_…), set once the payment is confirmed. */
+  paymentReference?: string;
+  /** Razorpay order id (order_…). */
+  razorpayOrderId?: string;
+  /** Razorpay Payment Link id (plink_…), for purchases made on the hosted page. */
+  paymentLinkId?: string;
   createdAt: string;
 }
 
