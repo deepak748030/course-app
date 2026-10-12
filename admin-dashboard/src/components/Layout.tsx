@@ -218,12 +218,13 @@ export default function Layout() {
               <p className="truncate text-xs text-subtle">{user?.email}</p>
             </div>
             <button
+              aria-label="Sign out"
               title="Sign out"
               onClick={() => {
                 logout();
                 navigate('/login');
               }}
-              className="rounded-md p-1.5 text-subtle transition-colors hover:bg-error-soft hover:text-error"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-error-soft hover:text-error"
             >
               <LogOut size={16} />
             </button>
@@ -279,7 +280,7 @@ export default function Layout() {
         </header>
 
         {demo && (
-          <div className="flex items-center justify-between gap-3 border-b border-line bg-brand-soft px-6 py-2">
+          <div className="flex flex-col gap-2 border-b border-line bg-brand-soft px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
             <p className="text-[13px] font-medium text-brand-ink">
               The server or its database is unreachable — showing the built-in demo dataset. Start the API with
               MongoDB to control live data. Changes here persist in this browser only.
@@ -289,7 +290,7 @@ export default function Layout() {
                 resetDemoDb();
                 window.location.reload();
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-ink-ink hover:bg-brand/30"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 self-start rounded-md px-2.5 text-xs font-semibold text-brand-ink hover:bg-brand/20 sm:self-auto"
             >
               <RefreshCw size={12} /> Reset demo data
             </button>

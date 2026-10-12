@@ -133,7 +133,7 @@ function AdminAccountCard() {
           <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
         </Field>
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-line-soft px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-4">
         <p className="text-[13px] text-muted">Saving signs you out so you can sign in with the new details.</p>
         <Button icon={KeyRound} onClick={save} loading={saving} disabled={!canSave}>
           Update login

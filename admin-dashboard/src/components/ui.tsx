@@ -44,8 +44,9 @@ export function Button({
   loading?: boolean;
 }) {
   const base =
-    'inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-colors select-none disabled:opacity-45 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink';
-  const sizes = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-sm' };
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-semibold transition-colors select-none disabled:opacity-45 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink';
+  // Small buttons keep a 40px touch target on phones and tighten up from md (32px) on desktop.
+  const sizes = { sm: 'h-10 px-3 text-[13px] md:h-8', md: 'h-10 px-4 text-sm' };
   const variants: Record<ButtonVariant, string> = {
     primary: 'bg-brand text-on-brand hover:bg-brand-pressed',
     dark: 'bg-ink text-white hover:bg-ink/85',
@@ -189,7 +190,7 @@ export function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 ${
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40 ${
         checked ? 'bg-brand' : 'bg-ink/15'
       }`}
     >
@@ -231,7 +232,11 @@ export function Modal({
       <div className={`relative w-full ${width} max-h-[88vh] overflow-auto rounded-xl border border-line bg-surface`}>
         <div className="sticky top-0 flex items-center justify-between border-b border-line-soft bg-surface px-5 py-4">
           <h3 className="text-[15px] font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-ink/5 hover:text-ink">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink"
+          >
             <X size={17} />
           </button>
         </div>
@@ -273,12 +278,16 @@ export function Drawer({
             <h3 className="text-base font-semibold">{title}</h3>
             {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-ink/5 hover:text-ink">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink"
+          >
             <X size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line-soft px-6 py-4">{footer}</div>}
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line-soft px-6 py-4">{footer}</div>}
       </div>
     </div>
   );

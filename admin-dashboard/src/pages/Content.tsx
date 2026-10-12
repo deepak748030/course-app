@@ -290,7 +290,7 @@ export default function Content() {
               />
             </div>
           ))}
-          <div className="flex items-center justify-between gap-3 border-t border-line-soft pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
             {!faqsValid ? (
               <p className="text-[13px] font-medium text-error">Every question needs text, or it will be dropped on save.</p>
             ) : (
@@ -396,7 +396,7 @@ export default function Content() {
             ))}
           </div>
 
-          <div className="flex items-center justify-between gap-3 border-t border-line-soft pt-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
             <p className="text-[13px] text-muted">Editing here makes this document your own text.</p>
             {!draft.builtIn[tab] && (
               <Button size="sm" variant="ghost" icon={RotateCcw} onClick={resetDoc}>
