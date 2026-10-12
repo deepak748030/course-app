@@ -44,9 +44,6 @@ export default function NotificationsScreen() {
         </>
       )}
 
-      <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
-        {t('Push notifications are not connected yet, so these are shown only inside the app.')}
-      </Text>
     </Screen>
   );
 }
@@ -112,5 +109,4 @@ const styles = createStyles(() => StyleSheet.create({
     justifyContent: 'center',
   },
   openLink: { marginTop: spacing.xs },
-  note: { paddingHorizontal: layout.section, paddingTop: spacing.sm },
 }));

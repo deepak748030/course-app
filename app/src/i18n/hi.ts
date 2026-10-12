@@ -405,7 +405,6 @@ export const hi: Record<string, string> = {
   'Payments are processed by Razorpay.': 'भुगतान Razorpay से होता है।',
   'Payments are processed by Razorpay. Each order is kept on your academy account.': 'भुगतान Razorpay से होता है। हर ऑर्डर आपके अकादमी खाते में दर्ज रहता है।',
   'Push delivery is not connected yet. These switches save your choice for when it is.': 'पुश डिलीवरी अभी जुड़ी नहीं है। ये स्विच आपकी पसंद सेव रखते हैं, ताकि जुड़ने पर लागू हो।',
-  'Push notifications are not connected yet, so these are shown only inside the app.': 'पुश नोटिफ़िकेशन अभी जुड़े नहीं हैं, इसलिए ये सिर्फ़ ऐप के अंदर दिखते हैं।',
   'Terms, refunds and privacy': 'शर्तें, रिफ़ंड और गोपनीयता',
   'There is no support inbox in the app yet, so no contact form is offered. Use the share button to send feedback to the academy team, along with what you were doing.': 'ऐप में अभी सपोर्ट इनबॉक्स नहीं है, इसलिए संपर्क फ़ॉर्म नहीं है। शेयर बटन से अकादमी टीम को फ़ीडबैक भेजें, साथ में बताएं कि आप क्या कर रहे थे।',
   'This course is no longer available, so there is nothing to rate.': 'यह कोर्स अब उपलब्ध नहीं है, इसलिए रेट करने के लिए कुछ नहीं है।',

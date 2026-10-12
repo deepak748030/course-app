@@ -5,47 +5,9 @@
 
 import type { FaqItem, NotificationItem } from '@/types';
 
-export const notifications: NotificationItem[] = [
-  {
-    id: 'n1',
-    kind: 'learning-reminder',
-    title: 'Pick up where you left off',
-    body: 'You were 4 minutes into “Reading a lactometer correctly”. A short session today keeps the streak going.',
-    minutesAgo: 45,
-    courseId: 'milk-foundations',
-  },
-  {
-    id: 'n2',
-    kind: 'course-update',
-    title: 'Paneer Craft: acid strength',
-    body: 'Meera added a short lesson on checking citric acid strength before a batch. It is now part of the troubleshooting section.',
-    minutesAgo: 190,
-    courseId: 'paneer-craft',
-  },
-  {
-    id: 'n3',
-    kind: 'course-update',
-    title: 'Ghee, step by step',
-    body: '“Ghee & Butter at Home” now includes a longer walkthrough of the clarification stages.',
-    minutesAgo: 1450,
-    courseId: 'ghee-butter',
-  },
-  {
-    id: 'n4',
-    kind: 'course-update',
-    title: 'A small addition to Artisan Cheese',
-    body: 'A new lesson covers cleaning and turning shelves between wheels in a small maturing room.',
-    minutesAgo: 2900,
-    courseId: 'artisan-cheese',
-  },
-  {
-    id: 'n5',
-    kind: 'product',
-    title: 'Notes are live in the player',
-    body: 'You can now write batch notes and they stay with the lesson on this device.',
-    minutesAgo: 4300,
-  },
-];
+// Notifications are not invented here. The list stays empty until the academy sends real ones,
+// and the screen then shows its empty state.
+export const notifications: NotificationItem[] = [];
 
 export const faqs: FaqItem[] = [
   {

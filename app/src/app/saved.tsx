@@ -13,6 +13,7 @@ import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import type { Course } from '@/types';
 import { formatDuration } from '@/lib/format';
+import { useInfiniteList } from '@/lib/infinite';
 import { Clock, Milk } from 'lucide-react-native';
 
 type Segment = 'courses' | 'recipes';
@@ -38,8 +39,15 @@ export default function SavedScreen() {
     [state.savedRecipeIds, courses],
   );
 
+  const coursePages = useInfiniteList(savedCourses, { resetKey: segment });
+  const recipePages = useInfiniteList(savedRecipes, { resetKey: segment });
+  const loadMoreSaved = () => {
+    coursePages.loadMore();
+    recipePages.loadMore();
+  };
+
   return (
-    <Screen header={<AppBar title={t("Saved")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.gap }}>
+    <Screen onEndReached={loadMoreSaved} header={<AppBar title={t("Saved")} />} contentStyle={{ paddingBottom: spacing.xxl, gap: layout.gap }}>
       <View style={styles.segmentWrap}>
         <Segmented<Segment>
           options={[
@@ -62,7 +70,7 @@ export default function SavedScreen() {
           />
         ) : (
           <DataList>
-            {savedCourses.map((course) => (
+            {coursePages.visible.map((course) => (
               <Pressable
                 key={course.id}
                 accessibilityRole="button"
@@ -96,7 +104,7 @@ export default function SavedScreen() {
         />
       ) : (
         <DataList>
-          {savedRecipes.map(({ course, lesson }) => (
+          {recipePages.visible.map(({ course, lesson }) => (
             <View key={lesson.id} style={styles.recipeRow}>
               <Pressable
                 accessibilityRole="button"

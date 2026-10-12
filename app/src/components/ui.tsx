@@ -81,6 +81,7 @@ export function Screen({
   footer,
   contentStyle,
   style,
+  onEndReached,
 }: {
   children: ReactNode;
   scroll?: boolean;
@@ -88,7 +89,14 @@ export function Screen({
   footer?: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
+  /** Infinite scroll: called when the scroller gets near its end. */
+  onEndReached?: () => void;
 }) {
+  const scrollMetrics = useRef({ offset: 0, viewport: 0, content: 0 });
+  const checkEnd = () => {
+    const m = scrollMetrics.current;
+    if (onEndReached && m.viewport > 0 && m.content > 0 && m.offset + m.viewport >= m.content - 240) onEndReached();
+  };
   // The header is measured once it lays out; until then the content sits under it, hidden by it.
   const [headerHeight, setHeaderHeight] = useState(0);
   const ownPaddingTop = StyleSheet.flatten(contentStyle)?.paddingTop;
@@ -118,7 +126,25 @@ export function Screen({
               header ? { paddingTop: headerHeight + contentPaddingTop } : null,
             ]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={120}
+            onLayout={(event) => {
+              scrollMetrics.current.viewport = event.nativeEvent.layout.height;
+              checkEnd();
+            }}
+            onContentSizeChange={(_, height) => {
+              scrollMetrics.current.content = height;
+              checkEnd();
+            }}
+            onScroll={(event) => {
+              const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+              scrollMetrics.current = {
+                offset: contentOffset.y,
+                viewport: layoutMeasurement.height,
+                content: contentSize.height,
+              };
+              checkEnd();
+            }}>
             {children}
           </ScrollView>
           {header ? (

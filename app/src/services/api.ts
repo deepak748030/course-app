@@ -43,6 +43,17 @@ export function setSessionExpiredHandler(handler: (() => void) | null) {
   onSessionExpired = handler;
 }
 
+let onAccountBlocked: (() => void) | null = null;
+
+/**
+ * The server answers 403 "This account is blocked" to every request from a blocked account. The
+ * store registers a handler that ends the local session, so a blocked user cannot keep using the
+ * app (learning data, lessons, purchases) on a token that is still on the device.
+ */
+export function setAccountBlockedHandler(handler: (() => void) | null) {
+  onAccountBlocked = handler;
+}
+
 interface Options {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -91,6 +102,10 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
     if (response.status === 401 && authToken && !path.includes('/otp/')) {
       onSessionExpired?.();
       message = 'Your session has expired. Please sign in again.';
+    }
+    if (response.status === 403 && authToken && message === 'This account is blocked') {
+      onAccountBlocked?.();
+      message = 'Your account has been blocked. Contact the academy for help.';
     }
     throw new ApiError(response.status, message, details);
   }

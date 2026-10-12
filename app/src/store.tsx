@@ -13,7 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
-import { api, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
+import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import type {
@@ -298,6 +298,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Ends the local account: realtime, stored session and learning data. Shared by sign-out and by
+  // a blocked account, so neither leaves the account's data on the device.
+  const endAccountSession = useCallback(async () => {
+    disconnectRealtime();
+    await authService.clearSession();
+    setSession(null);
+    // Learning data belongs to the account, so it goes with the session.
+    setState((prev) => ({
+      ...seedState(),
+      onboardingDone: true,
+      interests: prev.interests,
+      preferences: prev.preferences,
+      // The look and the language belong to the device, not to the account.
+      theme: prev.theme,
+      language: prev.language,
+    }));
+  }, []);
+
+  // A blocked account is signed out at once, even while the app is open.
+  useEffect(() => {
+    setAccountBlockedHandler(() => {
+      void endAccountSession();
+    });
+    return () => setAccountBlockedHandler(null);
+  }, [endAccountSession]);
+
   // A token the server no longer accepts ends the local session, so the user signs in again
   // instead of hitting the same 401 on every payment or lesson request.
   useEffect(() => {
@@ -415,21 +441,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, language: id }));
       },
 
-      signOut: async () => {
-        disconnectRealtime();
-        await authService.clearSession();
-        setSession(null);
-        // Learning data belongs to the account, so it goes with the session.
-        setState((prev) => ({
-          ...seedState(),
-          onboardingDone: true,
-          interests: prev.interests,
-          preferences: prev.preferences,
-          // The look and the language belong to the device, not to the account.
-          theme: prev.theme,
-          language: prev.language,
-        }));
-      },
+      signOut: endAccountSession,
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),
 
       toggleInterest: (id) => {

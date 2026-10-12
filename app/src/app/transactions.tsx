@@ -17,6 +17,7 @@ import { AppBar, Badge, DataList, EmptyState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useT } from '@/i18n';
 import { formatInr } from '@/lib/format';
+import { useInfiniteList } from '@/lib/infinite';
 import { api, type ServerOrder } from '@/services/api';
 import { useCatalog } from '@/services/catalog-context';
 import type { Course } from '@/types';
@@ -51,6 +52,7 @@ export default function TransactionsScreen() {
   }, [load]);
 
   const paid = orders.filter((order) => order.status === 'paid');
+  const orderPages = useInfiniteList(orders);
   const paidTotal = paid.reduce((sum, order) => sum + order.amountInr, 0);
   const savedTotal = paid.reduce((sum, order) => sum + (order.discountInr || 0), 0);
 
@@ -60,6 +62,7 @@ export default function TransactionsScreen() {
 
   return (
     <Screen
+      onEndReached={orderPages.loadMore}
       header={<AppBar title={t("Transactions")} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       {state === 'loading' ? (
@@ -103,7 +106,7 @@ export default function TransactionsScreen() {
             {/* No gap between rows: the list is framed by a hairline at the top and bottom, with one between rows. */}
             <View style={styles.listFrame}>
             <DataList dividerInset={layout.screen + 64 + spacing.md}>
-              {orders.map((order) => {
+              {orderPages.visible.map((order) => {
                 const course = order.course ? byId(order.course.slug) : undefined;
                 const refunded = order.status === 'refunded';
                 const pending = order.status === 'pending';
