@@ -45,7 +45,7 @@ export const overview = asyncHandler(async (_req, res) => {
   const [orders, users, courses, categories, enrollments, ratingDist, userCount] = await Promise.all([
     Order.find({ status: 'paid', createdAt: { $gte: d60 } }).select('amountInr createdAt course').lean(),
     User.find({ createdAt: { $gte: d60 } }).select('createdAt').lean(),
-    Course.find().populate('category', 'label').lean(),
+    Course.find().select('title coverUrl rating reviewCount priceInr published category').populate('category', 'label').lean(),
     Category.find().lean(),
     Enrollment.find({ createdAt: { $gte: d60 } }).select('createdAt course').lean(),
     Review.aggregate([

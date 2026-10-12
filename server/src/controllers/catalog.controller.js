@@ -10,6 +10,12 @@ export const listCategories = asyncHandler(async (_req, res) => {
   res.json({ categories });
 });
 
+/**
+ * Fields the public catalog sends. The app shows neither batch sheets nor the quality list (qualities come
+ * from the playback endpoint), so those are not shipped with every course in every list.
+ */
+const PUBLIC_COURSE_FIELDS = '-createdAt -updatedAt -__v -lessons.recipe -lessons.videos';
+
 /** Attach the derived lesson/hour counts a lean document does not carry. */
 function withDerived(course) {
   const lessonCount = course.lessons.length;
@@ -33,7 +39,7 @@ export const listCourses = asyncHandler(async (req, res) => {
   if (q) filter.$text = { $search: q };
 
   const courses = await Course.find(filter)
-    .select('-createdAt -updatedAt -__v')
+    .select(PUBLIC_COURSE_FIELDS)
     .populate('category', 'slug label icon')
     .sort(q ? { score: { $meta: 'textScore' } } : { isPopular: -1, rating: -1 })
     .limit(limit)
@@ -49,7 +55,7 @@ export const getCourse = asyncHandler(async (req, res) => {
   if (/^[a-f\d]{24}$/i.test(idOrSlug)) filter._id = idOrSlug;
   else filter.slug = idOrSlug.toLowerCase();
 
-  const course = await Course.findOne(filter).populate('category', 'slug label icon').lean();
+  const course = await Course.findOne(filter).select(PUBLIC_COURSE_FIELDS).populate('category', 'slug label icon').lean();
   if (!course) throw new HttpError(404, 'Course not found');
 
   const [enrollments] = await Enrollment.aggregate([
@@ -107,7 +113,7 @@ export const relatedCourses = asyncHandler(async (req, res) => {
   if (/^[a-f\d]{24}$/i.test(idOrSlug)) filter._id = idOrSlug;
   else filter.slug = idOrSlug.toLowerCase();
 
-  const course = await Course.findOne(filter).lean();
+  const course = await Course.findOne(filter).select('category').lean();
   if (!course) throw new HttpError(404, 'Course not found');
 
   // Co-purchase: other courses bought by the same learners, most-shared first.
@@ -132,7 +138,7 @@ export const relatedCourses = asyncHandler(async (req, res) => {
   let related = [];
   if (coBought.length) {
     related = await Course.find({ _id: { $in: coBought.map((c) => c._id) }, published: true })
-      .select('-createdAt -updatedAt -__v')
+      .select(PUBLIC_COURSE_FIELDS)
       .populate('category', 'slug label icon')
       .lean();
     // keep the co-purchase ranking
@@ -144,7 +150,7 @@ export const relatedCourses = asyncHandler(async (req, res) => {
     const exclude = [...related.map((c) => c._id), course._id];
     const baseQuery = () =>
       Course.find({ published: true, _id: { $nin: exclude } })
-        .select('-createdAt -updatedAt -__v')
+        .select(PUBLIC_COURSE_FIELDS)
         .populate('category', 'slug label icon')
         .sort({ isPopular: -1, rating: -1 })
         .lean();

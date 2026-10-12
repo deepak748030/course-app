@@ -7,8 +7,10 @@ import { HttpError, asyncHandler } from '../utils/http.js';
  * its learning state from this instead of device-only storage.
  */
 export const myEnrollments = asyncHandler(async (req, res) => {
+  // The app reads the course's slug, title and price, and the progress fields. Nothing else is sent.
   const enrollments = await Enrollment.find({ user: req.user._id })
-    .populate('course', 'slug title promise coverUrl category level priceInr lessons')
+    .select('course completedLessons lastLessonId lastPositionSeconds createdAt')
+    .populate('course', 'slug title priceInr')
     .sort({ createdAt: -1 })
     .lean();
   res.json({ enrollments });

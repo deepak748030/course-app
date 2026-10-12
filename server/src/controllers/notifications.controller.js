@@ -19,6 +19,7 @@ export const listInbox = asyncHandler(async (req, res) => {
   const filter = before ? { $and: [mine, { createdAt: { $lt: new Date(before) } }] } : mine;
 
   const rows = await Notification.find(filter)
+    .select('title body kind course createdAt')
     .sort({ createdAt: -1 })
     .limit(limit + 1)
     .populate('course', 'slug')

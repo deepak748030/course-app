@@ -19,7 +19,8 @@ export const listUsers = asyncHandler(async (req, res) => {
     filter.$or = [{ name: rx }, { email: rx }, { phone: rx }];
   }
 
-  const users = await User.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+  // passwordHash never leaves the server: .lean() skips the model's toJSON that strips it.
+  const users = await User.find(filter).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(500).lean();
   const counts = await Enrollment.aggregate([
     { $match: { user: { $in: users.map((u) => u._id) } } },
     { $group: { _id: '$user', count: { $sum: 1 } } },
@@ -42,7 +43,7 @@ export const listUsers = asyncHandler(async (req, res) => {
 
 /** GET /api/admin/users/:id — detail drawer: profile, enrollments, orders. */
 export const getUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).lean();
+  const user = await User.findById(req.params.id).select('-passwordHash -__v').lean();
   if (!user) throw new HttpError(404, 'User not found');
 
   const [enrollments, orders] = await Promise.all([
