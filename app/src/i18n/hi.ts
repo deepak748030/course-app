@@ -406,4 +406,6 @@ export const hi: Record<string, string> = {
   "This course is already unlocked on your account. Buying again would only create a duplicate enrolment, so there is nothing to pay.": "यह कोर्स आपके अकाउंट पर पहले से खुला है। दोबारा खरीदने से डुप्लिकेट नामांकन बनेगा, इसलिए भुगतान की ज़रूरत नहीं है।",
   "Try the payment again": "भुगतान फिर से करें",
   "Your course purchases and payments": "आपकी कोर्स खरीद और भुगतान",
+  'Available coupons': 'उपलब्ध कूपन',
+  '{n}% OFF': '{n}% छूट',
 };

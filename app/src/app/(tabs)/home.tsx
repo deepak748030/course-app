@@ -32,7 +32,7 @@ import {
   TabHeader,
   usePressScale,
 } from '@/components/ui';
-import { BrandLockup, BrandMark } from '@/components/marks';
+import { images } from '@/media';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/lib/catalog';
 import { CatalogGate, useCatalog } from '@/services/catalog-context';
@@ -110,11 +110,8 @@ export default function HomeScreen() {
         <TabHeader
           style={styles.headerCompact}
           leading={
-            /* The supplied logo, the file itself: at 40px it is the app's own icon sitting in its
-               own header, next to the name it already carries. The vector mark below is the same
-               artwork cut from the same file — it keeps the small spots (the footer) legible, where
-               a 14px wordmark would be a smudge. */
-            <BrandLockup width={40} />
+            /* The brand-mark.png artwork, shown whole at 40px in the header. */
+            <Image source={images.brandMark} style={{ width: 40, height: 40 }} contentFit="contain" />
           }
           title="YDU Academy"
           meta={
@@ -240,7 +237,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.brandFooter}>
-        <BrandMark size={20} />
+        <Image source={images.brandMark} style={{ width: 20, height: 20 }} contentFit="contain" />
         <Text style={[type.label, { color: colors.textSubtle }]}>{t("Live catalog \u2014 synced from the academy server in real time.")}</Text>
       </View>
       </CatalogGate>

@@ -32,7 +32,7 @@ import {
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent, firstPlayableLesson } from '@/lib/catalog';
 import { useAppContent } from '@/services/app-content';
-import { ApiError, api } from '@/services/api';
+import { ApiError, api, type AvailableCoupon } from '@/services/api';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
@@ -82,6 +82,7 @@ export default function CheckoutScreen() {
     if (course) track('checkout_started', { courseId: course.remoteId });
   }, [course?.remoteId]); // eslint-disable-line react-hooks/exhaustive-deps
   const [couponError, setCouponError] = useState<string | null>(null);
+  const [availableCoupons, setAvailableCoupons] = useState<AvailableCoupon[]>([]);
   const [processing, setProcessing] = useState(false);
   const [outcome, setOutcome] = useState<Outcome>(null);
 
@@ -105,8 +106,20 @@ export default function CheckoutScreen() {
   const offer = discountPercent(course);
   const firstLesson = firstPlayableLesson(course);
 
-  const applyCoupon = async () => {
-    const code = couponInput.trim().toUpperCase();
+  // Offered codes are a convenience: if the list fails, the typed-code box still works.
+  useEffect(() => {
+    let alive = true;
+    api
+      .availableCoupons()
+      .then((list) => alive && setAvailableCoupons(list))
+      .catch(() => alive && setAvailableCoupons([]));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const applyCoupon = async (typed?: string) => {
+    const code = (typed ?? couponInput).trim().toUpperCase();
     if (!code) return;
     setCheckingCoupon(true);
     setCouponError(null);
@@ -222,7 +235,7 @@ export default function CheckoutScreen() {
                 editable={!processing && !checkingCoupon}
                 error={couponError}
                 returnKeyType="done"
-                onSubmitEditing={applyCoupon}
+                onSubmitEditing={() => void applyCoupon()}
                 rightSlot={
                   <Pressable
                     accessibilityRole="button"
@@ -243,7 +256,42 @@ export default function CheckoutScreen() {
                   </Pressable>
                 }
               />
-
+              {availableCoupons.length > 0 ? (
+                <View style={styles.offerList}>
+                  <Text style={[type.label, { color: colors.textMuted }]}>{t('Available coupons')}</Text>
+                  {availableCoupons.map((offer) => {
+                    const offerLabel =
+                      offer.type === 'percent'
+                        ? t('{n}% OFF', { n: offer.value })
+                        : `${formatInr(offer.value)} OFF`;
+                    return (
+                      <Pressable
+                        key={offer.code}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Apply coupon ${offer.code}, ${offerLabel}`}
+                        disabled={processing || checkingCoupon}
+                        onPress={() => {
+                          setCouponInput(offer.code);
+                          void applyCoupon(offer.code);
+                        }}
+                        style={({ pressed }) => [styles.offerCard, pressed && { opacity: 0.7 }]}>
+                        <Tag size={16} color={colors.accentText} strokeWidth={2} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={[type.labelStrong, { color: colors.text }]}>
+                            {offer.code} · {offerLabel}
+                          </Text>
+                          {offer.description ? (
+                            <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
+                              {offer.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <Text style={[type.labelStrong, { color: colors.accentText }]}>{t('Apply')}</Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
           )}
         </View>
@@ -442,6 +490,18 @@ const styles = createStyles(() => StyleSheet.create({
 
   strike: { textDecorationLine: 'line-through' },
   couponBlock: { gap: spacing.sm, paddingHorizontal: layout.screen },
+  offerList: { gap: spacing.sm, marginTop: spacing.xs },
+  offerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   couponRow: {
     flexDirection: 'row',
     alignItems: 'center',

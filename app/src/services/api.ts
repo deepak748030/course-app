@@ -206,6 +206,14 @@ export type ServerReview = {
   createdAt: string;
 };
 
+export interface AvailableCoupon {
+  code: string;
+  type: 'percent' | 'flat';
+  value: number;
+  description: string;
+  expiresAt: string | null;
+}
+
 export type ServerSettings = {
   appName: string;
   tagline: string;
@@ -271,6 +279,9 @@ export const api = {
   settings: () => request<{ settings: ServerSettings }>('/api/settings'),
 
   // ---- checkout ----
+  /** Codes the user can apply right now, for the checkout's "available coupons" list. */
+  availableCoupons: () =>
+    request<{ coupons: AvailableCoupon[] }>('/api/coupons/available').then((r) => r.coupons),
   validateCoupon: (code: string, courseId: string) =>
     request<{ coupon: { code: string; type: string; value: number }; discountInr: number; finalPriceInr: number }>(
       '/api/coupons/validate',
