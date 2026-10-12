@@ -178,8 +178,14 @@ export default function LessonPlayerScreen() {
   const needsPlaybackUrl = Boolean(unlocked && lesson?.hasCourseVideo);
   const courseRemoteId = course?.remoteId;
   const lessonRemoteId = lesson?.id;
+  /* A new lesson or a retry starts without a link. A quality change does not: the current picture
+     stays on screen until the new link is ready, because detaching the player from its view mid-play
+     is what crashes the native video view. */
   useEffect(() => {
     setPlaybackUrl(null);
+  }, [lessonRemoteId, playbackAttempt]);
+
+  useEffect(() => {
     setPlaybackFailed(false);
     setPlaybackReason(null);
     if (!needsPlaybackUrl || !courseRemoteId || !lessonRemoteId) return;
@@ -211,13 +217,15 @@ export default function LessonPlayerScreen() {
   };
 
   /** The course video once its link is ready, otherwise the bundled demo clip. */
-  const videoSource = !unlocked || !lesson
-    ? null
-    : lesson.hasCourseVideo
-      ? playbackUrl
-        ? { uri: playbackUrl, useCaching: true }
-        : null
-      : videos[lesson.video];
+  // Memoised on primitives: a new source object on every render makes the player reload constantly.
+  const hasLesson = Boolean(lesson);
+  const lessonHasCourseVideo = Boolean(lesson?.hasCourseVideo);
+  const lessonVideo = lesson?.video;
+  const videoSource = useMemo(() => {
+    if (!unlocked || !hasLesson) return null;
+    if (!lessonHasCourseVideo) return lessonVideo ? videos[lessonVideo] : null;
+    return playbackUrl ? { uri: playbackUrl, useCaching: true } : null;
+  }, [unlocked, hasLesson, lessonHasCourseVideo, lessonVideo, playbackUrl]);
 
   const player = useVideoPlayer(videoSource, (instance) => {
     instance.timeUpdateEventInterval = 1;
