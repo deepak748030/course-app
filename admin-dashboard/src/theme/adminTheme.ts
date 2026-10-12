@@ -9,7 +9,15 @@ export type AdminThemeId = 'green' | 'yellow';
 
 export const ADMIN_THEMES: Record<
   AdminThemeId,
-  { label: string; description: string; swatch: string; favicon: string; chart: { brand: string; gold: string; ink: string } }
+  {
+    label: string;
+    description: string;
+    swatch: string;
+    favicon: string;
+    chart: { brand: string; gold: string; ink: string };
+    /** Colours of the Settings preview tile. */
+    preview: { canvas: string; sidebar: string; accent: string; accentSoft: string; onAccent: string };
+  }
 > = {
   green: {
     label: 'Green & white',
@@ -17,6 +25,7 @@ export const ADMIN_THEMES: Record<
     swatch: '#14532D',
     favicon: '/favicon-green.png',
     chart: { brand: '#14532D', gold: '#2F6B47', ink: '#0F231A' },
+    preview: { canvas: '#F5F8F6', sidebar: '#14532D', accent: '#14532D', accentSoft: '#E4F0E7', onAccent: '#FFFFFF' },
   },
   yellow: {
     label: 'Yellow & white',
@@ -24,6 +33,7 @@ export const ADMIN_THEMES: Record<
     swatch: '#FFC629',
     favicon: '/favicon-yellow.png',
     chart: { brand: '#FFC629', gold: '#D9A400', ink: '#17150F' },
+    preview: { canvas: '#FBF5E4', sidebar: '#FFC629', accent: '#FFC629', accentSoft: '#FFF4CC', onAccent: '#1F1B0E' },
   },
 };
 

@@ -13,10 +13,11 @@ function AppearanceCard() {
   const [theme, setTheme] = useAdminTheme();
   return (
     <Card>
-      <CardHeader title="Appearance" subtitle="Colour theme for this admin console, saved on this browser" />
-      <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+      <CardHeader title="Appearance" subtitle="Colour theme for this console. Saved on this browser; the browser tab icon follows it." />
+      <div className="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
         {(Object.keys(ADMIN_THEMES) as AdminThemeId[]).map((id) => {
           const option = ADMIN_THEMES[id];
+          const p = option.preview;
           const selected = theme === id;
           return (
             <button
@@ -24,20 +25,51 @@ function AppearanceCard() {
               type="button"
               onClick={() => setTheme(id)}
               aria-pressed={selected}
-              className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-colors ${
-                selected ? 'border-brand bg-brand-soft' : 'border-line hover:bg-surface-alt'
+              className={`group overflow-hidden rounded-xl border-2 bg-surface text-left transition-colors ${
+                selected ? 'border-brand' : 'border-line hover:border-ink/30'
               }`}
             >
-              <span
-                className="h-9 w-9 shrink-0 rounded-lg border border-line"
-                style={{ background: option.swatch }}
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold">{option.label}</span>
-                <span className="mt-0.5 block text-[13px] leading-relaxed text-muted">{option.description}</span>
-              </span>
-              {selected && <span className="text-xs font-bold text-brand-ink">Selected</span>}
+              {/* Miniature of the console in this theme */}
+              <div className="flex h-36 border-b border-line-soft" style={{ background: p.canvas }} aria-hidden>
+                <div className="flex w-12 flex-col gap-1.5 p-2" style={{ background: p.sidebar }}>
+                  <span className="h-1.5 w-6 rounded-full bg-white/80" />
+                  <span className="h-1.5 w-7 rounded-full bg-white/40" />
+                  <span className="h-1.5 w-5 rounded-full bg-white/40" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-2.5 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="h-2 w-16 rounded-full" style={{ background: p.accentSoft }} />
+                    <span
+                      className="rounded-full px-2.5 py-1 text-[10px] font-bold"
+                      style={{ background: p.accent, color: p.onAccent }}
+                    >
+                      Save
+                    </span>
+                  </div>
+                  <div className="rounded-lg bg-white p-2.5 shadow-none ring-1 ring-black/5">
+                    <div className="mb-2 h-1.5 w-10 rounded-full" style={{ background: p.accent }} />
+                    <div className="flex items-end gap-1.5">
+                      {[40, 70, 52, 88, 62].map((h, index) => (
+                        <span key={index} className="w-full rounded-sm" style={{ height: h / 4, background: index % 2 ? p.accent : p.accentSoft }} />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-start gap-3 p-4">
+                <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-line" style={{ background: option.swatch }} aria-hidden />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold">{option.label}</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-muted">{option.description}</p>
+                </div>
+                <span
+                  className={`mt-0.5 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                    selected ? 'bg-brand text-on-brand' : 'bg-surface-alt text-subtle'
+                  }`}
+                >
+                  {selected ? 'In use' : 'Use this'}
+                </span>
+              </div>
             </button>
           );
         })}

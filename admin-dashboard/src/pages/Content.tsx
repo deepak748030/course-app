@@ -37,6 +37,21 @@ const EMPTY_DEFAULTS: ContentDefaults = {
 
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
+/** Older or hand-written documents may leave out a section's body or points: always give the editor arrays. */
+function normalizeDoc(doc: LegalDocEntry): LegalDocEntry {
+  return {
+    ...doc,
+    title: doc.title ?? '',
+    heading: doc.heading ?? '',
+    summary: doc.summary ?? '',
+    sections: (doc.sections ?? []).map((section) => ({
+      heading: section.heading ?? '',
+      body: section.body ?? [],
+      points: section.points ?? [],
+    })),
+  };
+}
+
 /** Builds the editor state from what is stored, filling every empty part with the built-in text. */
 function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
   const builtIn = {
@@ -49,9 +64,9 @@ function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
   return {
     faqs: copy(builtIn.faqs ? defaults.faqs : s.faqs ?? []),
     legalDocs: {
-      terms: copy(builtIn.terms ? defaults.legalDocs.terms : s.legalDocs!.terms!),
-      refund: copy(builtIn.refund ? defaults.legalDocs.refund : s.legalDocs!.refund!),
-      privacy: copy(builtIn.privacy ? defaults.legalDocs.privacy : s.legalDocs!.privacy!),
+      terms: copy(builtIn.terms ? defaults.legalDocs.terms : normalizeDoc(s.legalDocs!.terms!)),
+      refund: copy(builtIn.refund ? defaults.legalDocs.refund : normalizeDoc(s.legalDocs!.refund!)),
+      privacy: copy(builtIn.privacy ? defaults.legalDocs.privacy : normalizeDoc(s.legalDocs!.privacy!)),
     },
     purchaseTerms: builtIn.purchaseTerms ? [...defaults.purchaseTerms] : [...(s.purchaseTerms ?? [])],
     builtIn,
@@ -67,10 +82,10 @@ function moveItem<T>(list: T[], index: number, delta: number): T[] {
   return next;
 }
 
-const cleanLines = (items: string[]) => items.map((item) => item.trim()).filter(Boolean);
+const cleanLines = (items?: string[] | null) => (items ?? []).map((item) => item.trim()).filter(Boolean);
 
 /** Textareas edit one entry per line; blank lines are kept while typing and dropped on save. */
-const toLines = (items: string[]) => items.join('\n');
+const toLines = (items?: string[] | null) => (items ?? []).join('\n');
 const fromLines = (text: string) => text.split('\n');
 
 function cleanDoc(key: DocKey, doc: LegalDocEntry): LegalDocEntry {
