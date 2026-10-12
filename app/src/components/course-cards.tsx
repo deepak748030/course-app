@@ -235,23 +235,37 @@ export function LessonRow({
   state,
   index,
   onPress,
+  tone,
 }: {
   lesson: Lesson;
   state: LessonRowState;
   index?: number;
   onPress: () => void;
+  /** 'dark' for the player's black sheet: light ink instead of the page colours. */
+  tone?: 'dark';
 }) {
   const t = useT();
 
+  const dark = tone === 'dark';
   const locked = state === 'locked';
   const Icon = locked ? Lock : state === 'completed' ? CircleCheck : Play;
-  const iconColor = locked
-    ? colors.textSubtle
-    : state === 'completed'
-      ? colors.success
-      : state === 'current'
-        ? colors.accentText
-        : colors.textMuted;
+  const iconColor = dark
+    ? locked
+      ? 'rgba(255,255,255,0.4)'
+      : state === 'completed'
+        ? colors.success
+        : state === 'current'
+          ? colors.gold
+          : 'rgba(255,255,255,0.7)'
+    : locked
+      ? colors.textSubtle
+      : state === 'completed'
+        ? colors.success
+        : state === 'current'
+          ? colors.accentText
+          : colors.textMuted;
+  const titleColor = dark ? (locked ? 'rgba(255,255,255,0.5)' : colors.onPlayer) : locked ? colors.textMuted : colors.text;
+  const metaColor = dark ? 'rgba(255,255,255,0.6)' : colors.textSubtle;
 
   return (
     <Pressable
@@ -264,16 +278,16 @@ export function LessonRow({
       onPress={onPress}
       style={({ pressed }) => [styles.lessonRow, pressed && { opacity: 0.7 }]}>
       {index !== undefined ? (
-        <Text style={[type.label, tabularNums, styles.lessonIndex, { color: colors.textSubtle }]}>
+        <Text style={[type.label, tabularNums, styles.lessonIndex, { color: metaColor }]}>
           {String(index).padStart(2, '0')}
         </Text>
       ) : null}
       <View style={styles.flex}>
-        <Text style={[type.body, locked ? { color: colors.textMuted } : { color: colors.text }]} numberOfLines={2}>
+        <Text style={[type.body, { color: titleColor }]} numberOfLines={2}>
           {lesson.title}
         </Text>
         <View style={styles.lessonMeta}>
-          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lessonLength(lesson)}</Text>
+          <Text style={[type.label, tabularNums, { color: metaColor }]}>{lessonLength(lesson)}</Text>
           {lesson.isPreview ? (
             <Badge
               label={

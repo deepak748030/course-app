@@ -725,10 +725,16 @@ export default function LessonPlayerScreen() {
   };
 
 
+  // The player's sheets are black and frosted, so their text uses the player's light ink.
+  const sheetInk = colors.onPlayer;
+  const sheetMuted = 'rgba(255,255,255,0.7)';
+  const sheetAccent = colors.gold;
+
   /** The lesson list, speed and quality sheets. Drawn inline, or inside the fullscreen modal while it is open. */
   const sheets = (
     <>
       <BottomSheet
+        dark
         visible={lessonListOpen}
         onClose={() => {
           setLessonListOpen(false);
@@ -745,12 +751,14 @@ export default function LessonPlayerScreen() {
               index={lessonIndex + 1}
               state={stateFor(entry.id)}
               onPress={() => goToLesson(entry.id)}
+              tone="dark"
             />
           ))}
         </DataList>
       </BottomSheet>
 
       <BottomSheet
+        dark
         visible={speedOpen}
         onClose={() => {
           setSpeedOpen(false);
@@ -769,13 +777,14 @@ export default function LessonPlayerScreen() {
               showControls();
             }}
             style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
-            {player.playbackRate === speed ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+            <Text style={[type.body, { color: sheetInk }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
+            {player.playbackRate === speed ? <Check size={18} color={sheetAccent} strokeWidth={2.2} /> : null}
           </Pressable>
         ))}
       </BottomSheet>
 
       <BottomSheet
+        dark
         visible={qualityOpen}
         onClose={() => {
           setQualityOpen(false);
@@ -801,12 +810,12 @@ export default function LessonPlayerScreen() {
               }}
               style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
               <View style={styles.flex}>
-                <Text style={[type.body, { color: colors.text }]}>{t('Best available')}</Text>
-                <Text style={[type.label, { color: colors.textMuted }]}>
+                <Text style={[type.body, { color: sheetInk }]}>{t('Best available')}</Text>
+                <Text style={[type.label, { color: sheetMuted }]}>
                   {quality === null && playingQuality ? `Playing ${qualityLabel(playingQuality)}` : t('Chosen automatically')}
                 </Text>
               </View>
-              {quality === null ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+              {quality === null ? <Check size={18} color={sheetAccent} strokeWidth={2.2} /> : null}
             </Pressable>
             {qualities.map((q) => (
               <Pressable
@@ -820,8 +829,8 @@ export default function LessonPlayerScreen() {
                   showControls();
                 }}
                 style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-                <Text style={[type.body, styles.flex, { color: colors.text }]}>{qualityLabel(q)}</Text>
-                {quality === q ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+                <Text style={[type.body, styles.flex, { color: sheetInk }]}>{qualityLabel(q)}</Text>
+                {quality === q ? <Check size={18} color={sheetAccent} strokeWidth={2.2} /> : null}
               </Pressable>
             ))}
           </>
@@ -840,16 +849,16 @@ export default function LessonPlayerScreen() {
           return (
             <View key={track.id} style={styles.sheetRow} accessibilityLabel={`${size.height}p, ${detail}`}>
               <View style={styles.flex}>
-                <Text style={[type.body, { color: colors.text }]}>{size.height}p</Text>
-                <Text style={[type.label, { color: colors.textMuted }]}>{detail}</Text>
+                <Text style={[type.body, { color: sheetInk }]}>{size.height}p</Text>
+                <Text style={[type.label, { color: sheetMuted }]}>{detail}</Text>
               </View>
-              {active ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+              {active ? <Check size={18} color={sheetAccent} strokeWidth={2.2} /> : null}
             </View>
           );
         })}
         {/* Quality is chosen by the player from the renditions a lesson carries. */}
         {qualities.length === 0 ? (
-          <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
+          <Text style={[type.label, styles.sheetNote, { color: sheetMuted }]}>
             {t('Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
           </Text>
         ) : null}
