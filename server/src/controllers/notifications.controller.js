@@ -26,8 +26,10 @@ export const listInbox = asyncHandler(async (req, res) => {
   const hasMore = rows.length > limit;
   const items = rows.slice(0, limit).map(shape);
 
-  // Unread = arrived after the time the learner last opened the inbox.
-  const unreadCount = since ? await Notification.countDocuments({ $and: [mine, { createdAt: { $gt: new Date(since) } }] }) : 0;
+  // Unread = arrived after the time the learner last opened the inbox (everything, before their first visit).
+  const unreadCount = await Notification.countDocuments(
+    since ? { $and: [mine, { createdAt: { $gt: new Date(since) } }] } : mine
+  );
   res.json({ items, hasMore, unreadCount });
 });
 

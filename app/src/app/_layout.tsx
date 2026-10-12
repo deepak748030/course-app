@@ -1,7 +1,7 @@
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
@@ -14,6 +14,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { ServiceGate } from '@/components/service-gate';
 import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
 import { startAnalytics, track } from '@/services/analytics';
+import { useNotificationTaps } from '@/services/push';
 import { CatalogProvider } from '@/services/catalog-context';
 import { StoreProvider, useStore } from '@/store';
 
@@ -110,7 +111,14 @@ function useThemedWindow() {
 
 function SplashGate({ children }: { children: ReactNode }) {
   const { ready } = useStore();
+  const router = useRouter();
   useThemedWindow();
+
+  // Tapping a push opens the course it is about, or the inbox.
+  useNotificationTaps(({ courseId }) => {
+    if (courseId) router.push({ pathname: '/course/[id]', params: { id: courseId } });
+    else router.push('/notifications');
+  });
 
   useEffect(() => {
     if (ready) hideSplash();

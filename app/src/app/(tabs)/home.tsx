@@ -1,9 +1,9 @@
 import { Image, type ImageSource } from 'expo-image';
 import { CourseImage } from '@/components/course-image';
 import { mediaSource } from '@/services/catalogService';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -36,7 +36,7 @@ import { images } from '@/media';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/lib/catalog';
 import { CatalogGate, useCatalog } from '@/services/catalog-context';
-import { notifications } from '@/data/content';
+import { api } from '@/services/api';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
@@ -46,7 +46,7 @@ export default function HomeScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { session, state, courseProgressRatio, resumeLesson, settings } = useStore();
+  const { session, state, courseProgressRatio, resumeLesson, settings, setNotificationsUnread } = useStore();
   const { courses, categories, status } = useCatalog();
   const interestIds = state.interests;
 
@@ -100,7 +100,18 @@ export default function HomeScreen() {
   }, [state.enrollments, courses]);
 
   const resume = activeCourse ? resumeLesson(activeCourse) : null;
-  const unread = state.notificationsRead ? 0 : notifications.length;
+  const unread = state.notificationsUnread;
+
+  // The badge is the server's count of messages the learner has not opened yet; re-read each time Home is shown.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      api
+        .inbox({ limit: 1, since: state.notificationsSeenAt })
+        .then((page) => setNotificationsUnread(page.unreadCount))
+        .catch(() => {});
+    }, [session, state.notificationsSeenAt, setNotificationsUnread]),
+  );
 
   return (
     <Screen

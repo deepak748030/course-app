@@ -17,6 +17,7 @@ import { storage } from '@/lib/storage';
 import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
+import { forgetPushToken, syncPushToken, watchPushTokenChanges } from '@/services/push';
 import type {
   Course,
   Enrollment,
@@ -43,6 +44,10 @@ type PersistedState = {
   progress: Record<Id, Record<Id, LessonProgress>>;
   notes: Record<Id, string>;
   notificationsRead: boolean;
+  /** Unread messages in the inbox, as last counted by the server. */
+  notificationsUnread: number;
+  /** When the learner last opened the inbox; messages after this are unread. */
+  notificationsSeenAt?: string;
   preferences: NotificationPrefs;
   /**
    * Profile photo chosen on this device, as a data URI (web) or a local file URI (native).
@@ -77,6 +82,7 @@ function seedState(): PersistedState {
     progress: {},
     notes: {},
     notificationsRead: false,
+    notificationsUnread: 0,
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
     profileAvatarUri: null,
     theme: DEFAULT_THEME,
@@ -153,6 +159,7 @@ type StoreValue = {
 
   setPreference: (key: keyof NotificationPrefs, value: boolean) => void;
   markNotificationsRead: () => void;
+  setNotificationsUnread: (count: number) => void;
   /** Clears this device's cached learning data. Signed-in learners get their purchases and progress back from the server. */
   resetDeviceData: () => void;
 };
@@ -302,6 +309,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Ends the local account: realtime, stored session and learning data. Shared by sign-out and by
   // a blocked account, so neither leaves the account's data on the device.
   const endAccountSession = useCallback(async () => {
+    // While the session still exists: remove this phone from the account, so it gets no more of its pushes.
+    await forgetPushToken();
     disconnectRealtime();
     await authService.clearSession();
     setSession(null);
@@ -336,7 +345,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // takes effect without waiting for the next screen to load data.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
-      if (status === 'active' && sessionRef.current) void api.me().catch(() => {});
+      if (status === 'active' && sessionRef.current) {
+        void api.me().catch(() => {});
+        void syncPushToken();
+      }
     });
     return () => subscription.remove();
   }, []);
@@ -359,6 +371,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!session) disconnectRealtime();
     };
   }, [session?.token, hydrateLearning]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push: this phone is registered for the signed-in learner, and kept current when the OS rotates its token.
+  useEffect(() => {
+    if (!session) return;
+    void syncPushToken();
+    return watchPushTokenChanges(() => void syncPushToken());
+  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // An enrollment granted somewhere else (e.g. admin marks an order paid) refreshes access here.
   useEffect(
@@ -537,7 +556,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...prev,
           preferences: { ...prev.preferences, [key]: value },
         })),
-      markNotificationsRead: () => setState((prev) => ({ ...prev, notificationsRead: true })),
+      markNotificationsRead: () =>
+        setState((prev) => ({
+          ...prev,
+          notificationsRead: true,
+          notificationsUnread: 0,
+          notificationsSeenAt: new Date().toISOString(),
+        })),
+      setNotificationsUnread: (count) =>
+        setState((prev) =>
+          prev.notificationsUnread === count && prev.notificationsRead === (count === 0)
+            ? prev
+            : { ...prev, notificationsUnread: count, notificationsRead: count === 0 },
+        ),
       resetDeviceData: () => {
         // Local-only fields go back to their defaults; the account's own data is fetched again below.
         setState((prev) => ({

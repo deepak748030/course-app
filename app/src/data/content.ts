@@ -1,13 +1,10 @@
 /**
- * Editorial content: notifications, FAQs and legal copy — curated in-app material that is
+ * Editorial content: FAQs and legal copy — curated in-app material that is
  * deliberately not part of the server catalog.
  */
 
-import type { FaqItem, NotificationItem } from '@/types';
+import type { FaqItem } from '@/types';
 
-// Notifications are not invented here. The list stays empty until the academy sends real ones,
-// and the screen then shows its empty state.
-export const notifications: NotificationItem[] = [];
 
 export const faqs: FaqItem[] = [
   {

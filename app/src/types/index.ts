@@ -121,15 +121,6 @@ export interface CourseProgress {
   scope: Record<Id, LessonProgress>;
 }
 
-export interface NotificationItem {
-  id: Id;
-  kind: 'course-update' | 'learning-reminder' | 'product';
-  title: string;
-  body: string;
-  minutesAgo: number;
-  courseId?: Id;
-}
-
 export interface FaqItem {
   id: Id;
   question: string;

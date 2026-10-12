@@ -44,7 +44,15 @@
           "photosPermission": "YDU Academy uses your photo library so you can add a picture to your profile."
         }
       ],
-      "expo-system-ui"
+      "expo-system-ui",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#14532D",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

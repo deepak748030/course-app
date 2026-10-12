@@ -206,6 +206,7 @@ export const hi: Record<string, string> = {
   'Course updates and learning reminders will appear here.': 'कोर्स अपडेट और सीखने की याद यहाँ दिखेंगी।',
   'Today': 'आज',
   'Earlier': 'पहले',
+  'Check your connection and try again.': 'कनेक्शन जाँचकर दोबारा कोशिश करें।',
   'Open course': 'कोर्स खोलें',
   'Step {n} of {total}': 'चरण {n} / {total}',
   'Skip introduction': 'परिचय छोड़ें',

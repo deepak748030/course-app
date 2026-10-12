@@ -1,5 +1,6 @@
 import { revokeUserSockets } from '../../realtime/socket.js';
 import { Enrollment } from '../../models/Enrollment.js';
+import { PushToken } from '../../models/PushToken.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
 import { User } from '../../models/User.js';
@@ -59,7 +60,11 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
   const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!user) throw new HttpError(404, 'User not found');
-  if (user.blocked) revokeUserSockets(String(user._id));
+  if (user.blocked) {
+    revokeUserSockets(String(user._id));
+    // A blocked learner's phones must stop receiving pushes for the account.
+    await PushToken.deleteMany({ user: user._id });
+  }
   res.json({ user });
 });
 
@@ -74,6 +79,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
     Order.deleteMany({ user: user._id }),
     Enrollment.deleteMany({ user: user._id }),
     Review.deleteMany({ user: user._id }),
+    PushToken.deleteMany({ user: user._id }),
   ]);
   res.json({ ok: true, deleted: user.email });
 });

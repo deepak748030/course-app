@@ -113,6 +113,18 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
+export type InboxItem = {
+  id: string;
+  title: string;
+  body: string;
+  kind: 'announcement' | 'course-update' | 'learning-reminder' | 'product';
+  /** Course slug (the app's course id) when the message is about one course. */
+  courseId: string | null;
+  createdAt: string;
+};
+
+export type InboxPage = { items: InboxItem[]; hasMore: boolean; unreadCount: number };
+
 /** Server-side shapes the app consumes (mirrors the Mongoose models). */
 export type ServerUser = {
   _id: string;
@@ -274,6 +286,14 @@ export const api = {
       body: { phone, code },
     }),
   me: () => request<{ user: ServerUser }>('/api/auth/me'),
+  /** Registers this phone's push token for the signed-in learner (the server keeps it up to date). */
+  registerPushToken: (data: { token: string; platform: 'ios' | 'android' | 'web' | 'unknown' }) =>
+    request<{ ok: boolean }>('/api/notifications/push-token', { method: 'POST', body: data }),
+  unregisterPushToken: (token: string) =>
+    request<{ ok: boolean }>('/api/notifications/push-token', { method: 'DELETE', body: { token } }),
+  /** The learner's inbox, newest first. `before` pages back; `since` counts what arrived after it. */
+  inbox: (params: { limit?: number; before?: string; since?: string }) =>
+    request<InboxPage>('/api/notifications', { query: params }),
   updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
 
