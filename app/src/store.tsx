@@ -108,6 +108,8 @@ type StoreValue = {
   state: PersistedState;
   /** App-wide settings from the server (maintenance mode, support details), live-updated. */
   settings: ServerSettings | null;
+  /** Fetches the settings again now (the maintenance and update screens' "check again"). */
+  reloadSettings: () => Promise<ServerSettings | null>;
 
   signIn: (session: Session) => void;
   signOut: () => Promise<void>;
@@ -342,6 +344,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const reloadSettings = useCallback(async (): Promise<ServerSettings | null> => {
+    try {
+      const { settings: next } = await api.settings();
+      setSettings(next);
+      return next;
+    } catch {
+      // Offline or the server is down: keep the last known settings.
+      return null;
+    }
+  }, []);
+
   const value = useMemo<StoreValue>(() => {
     const lessonProgress = (courseId: Id, lessonId: Id) =>
       state.progress[courseId]?.[lessonId] ?? { completed: false, positionSec: 0 };
@@ -351,6 +364,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       session,
       state,
       settings,
+      reloadSettings,
 
       signIn: (next) => setSession(next),
       updateProfile: async (patch) => {

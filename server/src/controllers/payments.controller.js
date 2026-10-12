@@ -1,6 +1,7 @@
 import { isConnected } from '../config/db.js';
 import { Coupon } from '../models/Coupon.js';
 import { Course } from '../models/Course.js';
+import { Settings } from '../models/Settings.js';
 import { Order } from '../models/Order.js';
 import { emitToAdmins, emitToUser } from '../realtime/socket.js';
 import { trackEvent } from '../services/analytics.js';
@@ -80,9 +81,16 @@ async function createPendingOrder(user, courseId, couponCode) {
 }
 
 /** POST /api/payments/razorpay/order — prices the course on the server and opens a Razorpay order. */
+/** Maintenance mode pauses new purchases on the server too, not just in the app. */
+async function assertNotInMaintenance() {
+  const settings = await Settings.findById('app').select('maintenanceMode').lean();
+  if (settings?.maintenanceMode) throw new HttpError(503, 'The academy is under maintenance. Purchases resume shortly.');
+}
+
 export const createRazorpayOrder = asyncHandler(async (req, res) => {
   const { courseId, couponCode } = req.body;
   if (!paymentsConfigured()) throw new HttpError(503, 'Payments are not configured on this server yet.');
+  await assertNotInMaintenance();
 
   const { course, order } = await createPendingOrder(req.user, courseId, couponCode);
 
@@ -159,6 +167,7 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
 export const createRazorpayPaymentLink = asyncHandler(async (req, res) => {
   const { courseId, couponCode } = req.body;
   if (!paymentsConfigured()) throw new HttpError(503, 'Payments are not configured on this server yet.');
+  await assertNotInMaintenance();
 
   const { course, order } = await createPendingOrder(req.user, courseId, couponCode);
 

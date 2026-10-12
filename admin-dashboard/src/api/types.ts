@@ -134,6 +134,13 @@ export interface AppSettings {
   purchaseTerms?: string[];
 }
 
+/** The built-in text the app shows until the admin writes their own. */
+export interface ContentDefaults {
+  faqs: FaqEntry[];
+  legalDocs: { terms: LegalDocEntry; refund: LegalDocEntry; privacy: LegalDocEntry };
+  purchaseTerms: string[];
+}
+
 export interface FaqEntry {
   question: string;
   answer: string;

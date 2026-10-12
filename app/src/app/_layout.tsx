@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ServiceGate } from '@/components/service-gate';
 import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
 import { startAnalytics, track } from '@/services/analytics';
 import { CatalogProvider } from '@/services/catalog-context';
@@ -150,15 +151,18 @@ export default function RootLayout() {
               <SplashGate>
                 <View style={styles.flex}>
                   <StatusBarToneProvider>
-                    <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                    }}>
-                    <Stack.Screen name="index" options={{ animation: 'fade' }} />
-                    <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
-                    <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-                    </Stack>
+                    {/* Maintenance and update-required replace the whole app; see service-gate.tsx. */}
+                    <ServiceGate>
+                      <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: colors.background },
+                      }}>
+                      <Stack.Screen name="index" options={{ animation: 'fade' }} />
+                      <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
+                      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+                      </Stack>
+                    </ServiceGate>
                     {/* Dark icons on the white window; the strip behind the bar is painted in-app. */}
                     <AppStatusBar />
                     <StatusBarBackdrop />

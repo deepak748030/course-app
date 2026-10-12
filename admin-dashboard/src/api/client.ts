@@ -13,6 +13,7 @@ import type {
   AnalyticsOverview,
   AppSettings,
   Category,
+  ContentDefaults,
   Coupon,
   Course,
   Overview,
@@ -299,6 +300,9 @@ export const api = {
   deleteCoupon: (id: string) => request<{ ok: boolean }>(`/admin/coupons/${id}`, { method: 'DELETE' }),
 
   getSettings: () => request<{ settings: AppSettings }>('/admin/settings').then((r) => r.settings),
+  /** Settings plus the built-in content defaults, for the Content page. */
+  getSettingsWithDefaults: () =>
+    request<{ settings: AppSettings; contentDefaults?: ContentDefaults }>('/admin/settings'),
   updateSettings: (data: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/admin/settings', { method: 'PUT', body: data }).then((r) => r.settings),
   /** Changes the admin's login (username = email) and/or password. The current password is always required. */

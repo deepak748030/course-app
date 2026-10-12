@@ -408,4 +408,13 @@ export const hi: Record<string, string> = {
   "Your course purchases and payments": "आपकी कोर्स खरीद और भुगतान",
   'Available coupons': 'उपलब्ध कूपन',
   '{n}% OFF': '{n}% छूट',
+  "We'll be back shortly": 'हम जल्द वापस आएँगे',
+  'YDU Academy is under scheduled maintenance. Your courses, progress and notes are safe.': 'YDU Academy में रखरखाव चल रहा है। आपके कोर्स, प्रगति और नोट्स सुरक्षित हैं।',
+  'Check again': 'फिर से जाँचें',
+  'Need help?': 'मदद चाहिए?',
+  'Still under maintenance. This page checks again when you tap the button.': 'अभी भी रखरखाव चल रहा है। बटन दबाकर फिर से जाँचें।',
+  'Update required': 'अपडेट ज़रूरी है',
+  'A newer version of YDU Academy is needed to keep going.': 'आगे बढ़ने के लिए YDU Academy का नया वर्ज़न चाहिए।',
+  'You have {current}. The academy needs {required} or later. Update the app, then check again.': 'आपके पास {current} है। अकादमी को {required} या नया चाहिए। ऐप अपडेट करें, फिर फिर से जाँचें।',
+  'Still on {current}. Update the app first.': 'अभी {current} पर हैं। पहले ऐप अपडेट करें।',
 };

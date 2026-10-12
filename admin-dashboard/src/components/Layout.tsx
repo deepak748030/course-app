@@ -8,6 +8,7 @@ import {
   PanelLeftOpen,
   RefreshCw,
   ScrollText,
+  Images,
   X,
   Settings,
   Shapes,
@@ -36,6 +37,7 @@ const NAV = [
   { to: '/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/reviews', label: 'Reviews', icon: Star },
   { to: '/coupons', label: 'Coupons', icon: TicketPercent },
+  { to: '/banners', label: 'Banners', icon: Images },
   { to: '/content', label: 'Content', icon: ScrollText },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -51,6 +53,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/orders': { title: 'Orders', subtitle: 'Every purchase, payment and refund' },
   '/reviews': { title: 'Reviews', subtitle: 'What learners say about each course' },
   '/coupons': { title: 'Coupons', subtitle: 'Discount codes for checkout' },
+  '/banners': { title: 'Banners', subtitle: 'The posters at the top of the app’s home screen' },
   '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy the app shows' },
   '/settings': { title: 'Settings', subtitle: 'App-wide controls the whole platform follows' },
 };
