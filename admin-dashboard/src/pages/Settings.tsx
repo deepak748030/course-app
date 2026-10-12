@@ -6,7 +6,7 @@ import { api } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings } from '../api/types';
 import { ADMIN_THEMES, useAdminTheme, type AdminThemeId } from '../theme/adminTheme';
-import { Button, Card, CardHeader, Field, Input, LoadingBlock, Select, Textarea, Toggle, useToast } from '../components/ui';
+import { Button, Card, CardHeader, Field, Input, LoadingBlock, PasswordInput, Select, Textarea, Toggle, useToast } from '../components/ui';
 
 /** Colour theme of this admin console. Stored on this browser only; changes apply at once. */
 function AppearanceCard() {
@@ -124,13 +124,13 @@ function AdminAccountCard() {
           <Input type="email" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
         </Field>
         <Field label="Current password" hint="Required to save any change">
-          <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+          <PasswordInput value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
         </Field>
         <Field label="New password" hint="At least 8 characters. Leave empty to keep it.">
-          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+          <PasswordInput value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
         </Field>
         <Field label="Confirm new password" error={changingPassword && !passwordsMatch ? 'The passwords do not match' : undefined}>
-          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+          <PasswordInput value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
         </Field>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft px-5 py-4">
