@@ -5,7 +5,6 @@ export type Id = string;
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Language = 'English' | 'Hindi' | 'English + Hindi';
-export type VideoKey = 'milk' | 'paneer' | 'ghee' | 'curd-ferments';
 
 export interface Ingredient {
   item: string;
@@ -34,8 +33,7 @@ export interface Lesson {
   isPreview: boolean;
   /** Seconds anyone may watch without buying. Unset on older lessons: then the whole lesson is free when `isPreview`. */
   previewSec?: number;
-  video: VideoKey;
-  /** The course has its own video in private storage (fetched as a signed link); otherwise the demo clip plays. */
+  /** The lesson has its own video in private storage (fetched as a signed link). Without one, nothing plays. */
   hasCourseVideo?: boolean;
   recipe?: Recipe;
 }
@@ -75,7 +73,6 @@ export interface Course {
   promise: string;
   description: string;
   cover: ImageSource;
-  video: VideoKey;
   categoryId: Id;
   level: Level;
   language: Language;

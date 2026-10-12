@@ -7,7 +7,7 @@ player with a standardised batch sheet beside the video.
 
 > **Server-connected build.** The catalog, accounts, purchases, lesson progress and reviews all
 > live on the YDU Academy server (`../server`). The payment gateway is still a simulation — no money
-> moves — but every paid order is a real record on the server. Lesson videos stay bundled demo media.
+> moves — but every paid order is a real record on the server. Lesson videos come only from the server; the app bundles no demo video.
 > Anything not implemented is said so in the UI rather than shown as a working control.
 
 ## Run it
@@ -120,11 +120,9 @@ State is one React context with `AsyncStorage` persistence — no state library 
 
 ## Assets and placeholders
 
-Photography in `assets/images` was **AI-generated for this prototype** in a clean editorial dairy
-style: eight course covers (`course-milk-foundations`, `course-paneer-craft`, `course-curd-ferments`,
-`course-ghee-butter`, `course-frozen-desserts`, `course-artisan-cheese`, `course-dairy-farming`,
-`course-dairy-business`) and two onboarding frames (`onboarding-fresh-milk`, `onboarding-testing`).
-Photography is used for illustration only; every course corresponds to fictional sample content.
+Only artwork the app actually shows is bundled: the brand files, the onboarding frames
+(`onboarding-ydu-poster`, `onboarding-fresh-milk`, `onboarding-testing`, AI-generated for this prototype)
+and the placeholder panel. Course covers come from the server. Unused stills and demo videos were removed.
 
 Any photograph that has not been generated yet falls back to `placeholder-panel-4x3.jpg` — a designed
 brand panel (ivory ground, the dairy mark in ink, brand-yellow arc), not a grey box, so nothing ever
@@ -134,13 +132,10 @@ changes are needed.
 Derived media is reproducible and documented in scripts:
 
 ```bash
-bash scripts/generate-media.sh        # demo lesson clips (ffmpeg) + placeholder panels
 bash scripts/generate-brand-assets.sh # app icon, splash, favicon, Android adaptive layers
 ```
 
-`assets/videos/demo-clip-*.mp4` are short, silent demo clips (a slow push-in over a still) used as
-placeholder lesson and trailer footage until real course video exists. They are real, playable files —
-no invented streaming URLs are used anywhere.
+Lessons without an uploaded video show no player; the app never plays stand-in footage.
 
 The brand mark is a **milk can with a play triangle on its face and a drop beneath it**, drawn as
 vector geometry in `src/components/marks.tsx` (a 48-unit box: lid plate and neck, tapered shoulder,
@@ -174,7 +169,7 @@ The UI follows the project's design rules document and is generated from one tok
   a learner who stops to read the frame is never left with a blank one.
 - **The transport row says what it can honestly do.** Speed is a real rate change, sound is a real
   `player.muted` toggle, and quality names the rendition actually on screen — from the video tracks the
-  platform reports, or from the bundled clips' known 960x540 when it reports none. Opening it lists every
+  platform reports, or shows "Auto" when it reports none. Opening it lists every
   rendition with its resolution, bitrate and which one is in use, and says plainly that the demo lessons
   ship a single 540p file each: no invented 480p/720p/1080p menu that changes nothing. (The bundled demo
   clips are video-only, so the sound toggle has no audio to reveal until a lesson with a track plays.)

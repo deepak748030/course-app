@@ -7,22 +7,7 @@
 import { COVER_PLACEHOLDER } from '@/constants/covers';
 import { API_URL, api, type ServerCourse } from '@/services/api';
 
-import type { Category, Course, Lesson, Recipe, VideoKey } from '@/types';
-
-/**
- * Lesson videos still ship with the app (bundled demo footage). Each category maps to one
- * clip; courses without a category clip fall back to the ferments reel.
- */
-const CATEGORY_CLIP: Record<string, VideoKey> = {
-  milk: 'milk',
-  paneer: 'paneer',
-  ghee: 'ghee',
-  ferments: 'curd-ferments',
-  cheese: 'curd-ferments',
-  frozen: 'ghee',
-  farming: 'milk',
-  business: 'curd-ferments',
-};
+import type { Category, Course, Lesson, Recipe } from '@/types';
 
 /** expo-image accepts { uri } sources; the web needs a plain string in some cases. */
 export function coverSource(coverUrl: string) {
@@ -51,7 +36,6 @@ function mapRecipe(server: ServerCourse['lessons'][number]['recipe']): Recipe | 
 
 export function mapCourse(server: ServerCourse): Course {
   const categorySlug = typeof server.category === 'string' ? '' : server.category.slug;
-  const video: VideoKey = CATEGORY_CLIP[categorySlug] ?? 'curd-ferments';
 
   const lessons: Lesson[] = server.lessons.map((lesson) => ({
     id: lesson._id,
@@ -62,7 +46,6 @@ export function mapCourse(server: ServerCourse): Course {
     seconds: lesson.durationSec || undefined,
     isPreview: lesson.isPreview,
     previewSec: lesson.previewSec || undefined,
-    video,
     hasCourseVideo: Boolean(lesson.videoKey),
     recipe: mapRecipe(lesson.recipe),
   }));
@@ -74,7 +57,6 @@ export function mapCourse(server: ServerCourse): Course {
     promise: server.promise,
     description: server.description,
     cover: coverSource(server.coverUrl),
-    video,
     categoryId: categorySlug,
     level: server.level,
     language: server.language === 'Hindi' || server.language === 'English + Hindi' ? server.language : 'English',

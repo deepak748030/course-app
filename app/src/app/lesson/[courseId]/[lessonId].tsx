@@ -74,7 +74,6 @@ import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { api } from '@/services/api';
 import { useT } from '@/i18n';
-import { CLIP_RENDITION, videos } from '@/media';
 import { useStore } from '@/store';
 import { formatClock, lessonLength, scaleQuantity } from '@/lib/format';
 import { feedback } from '@/lib/util';
@@ -218,16 +217,15 @@ export default function LessonPlayerScreen() {
     setQuality(next);
   };
 
-  /** The course video once its link is ready, otherwise the bundled demo clip. */
+  /** The lesson's own video once its link is ready. A lesson without one has nothing to play. */
   // Memoised on primitives: a new source object on every render makes the player reload constantly.
   const hasLesson = Boolean(lesson);
   const lessonHasCourseVideo = Boolean(lesson?.hasCourseVideo);
-  const lessonVideo = lesson?.video;
   const videoSource = useMemo(() => {
     if (!unlocked || !hasLesson) return null;
-    if (!lessonHasCourseVideo) return lessonVideo ? videos[lessonVideo] : null;
+    if (!lessonHasCourseVideo) return null;
     return playbackUrl ? { uri: playbackUrl, useCaching: true } : null;
-  }, [unlocked, hasLesson, lessonHasCourseVideo, lessonVideo, playbackUrl]);
+  }, [unlocked, hasLesson, lessonHasCourseVideo, playbackUrl]);
 
   const player = useVideoPlayer(videoSource, (instance) => {
     instance.timeUpdateEventInterval = 1;
@@ -264,8 +262,9 @@ export default function LessonPlayerScreen() {
    */
   const tracks = player.availableVideoTracks ?? [];
   const rendition = tracks[0] ?? null;
-  const renditionSize = rendition?.size ?? { width: CLIP_RENDITION.width, height: CLIP_RENDITION.height };
-  const renditionLabel = playingQuality ? qualityLabel(playingQuality) : `${renditionSize.height}p`;
+  // Only a real track carries a size; with none, the sheet and fullscreen fall back to a landscape frame.
+  const renditionSize = rendition?.size ?? { width: 16, height: 9 };
+  const renditionLabel = playingQuality ? qualityLabel(playingQuality) : rendition ? `${rendition.size.height}p` : 'Auto';
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
   const error = statusEvent?.error || playbackFailed;
@@ -295,7 +294,7 @@ export default function LessonPlayerScreen() {
     }
   });
 
-  // Lessons can share the same demo clip, so the player is not recreated on every navigation.
+  // The player is reused across lessons, so it is not recreated on every navigation.
   // Move it to the incoming lesson's saved position whenever the lesson changes.
   useEffect(() => {
     if (!course || !lesson) return;
@@ -672,7 +671,7 @@ export default function LessonPlayerScreen() {
                       accessibilityHint={
                         tracks.length > 1
                           ? `${tracks.length} renditions available`
-                          : 'This demo clip ships one rendition'
+                          : 'This lesson has one quality'
                       }
                       hitSlop={hit}
                       onPress={() => openFromPlayer(setQualityOpen)}
@@ -796,7 +795,7 @@ export default function LessonPlayerScreen() {
             ? `${qualities.length} versions uploaded for this lesson`
             : tracks.length > 1
             ? `${tracks.length} renditions in this lesson`
-            : 'This demo lesson ships a single rendition'
+            : tracks.length === 1 ? 'This lesson has one quality' : 'Quality is chosen by the player'
         }>
         {qualities.length > 0 ? (
           <>
@@ -835,7 +834,7 @@ export default function LessonPlayerScreen() {
             ))}
           </>
         ) : null}
-        {(qualities.length > 0 ? [] : tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
+        {(qualities.length > 0 ? [] : tracks).map((track, index) => {
           const active = rendition ? track.id === rendition.id : index === 0;
           const size = track.size;
           const bitrate = 'averageBitrate' in track ? track.averageBitrate : null;
@@ -856,10 +855,10 @@ export default function LessonPlayerScreen() {
             </View>
           );
         })}
-        {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
+        {/* Quality is chosen by the player from the renditions a lesson carries. */}
         {qualities.length === 0 ? (
           <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
-            {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
+            {t('Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
           </Text>
         ) : null}
       </BottomSheet>
