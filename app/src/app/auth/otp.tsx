@@ -73,11 +73,12 @@ export default function OtpScreen() {
       const messages: Record<OtpFailure, string> = {
         incorrect: t('That code is not correct. Check the last message and try again.'),
         expired: t('This code has expired after three attempts. Request a new one.'),
+        blocked: t('This account has been blocked by the academy, so it cannot be used to sign in. Contact support for help.'),
         network: t('We could not verify the code because the connection dropped. Try again.'),
       };
       setError({ kind: result.error, message: messages[result.error] });
       announce(messages[result.error]);
-      if (result.error !== 'network') setCode('');
+      if (result.error !== 'network' && result.error !== 'blocked') setCode('');
     },
     [announce, phone, router, signIn, verifying],
   );
@@ -164,7 +165,7 @@ export default function OtpScreen() {
             textContentType="oneTimeCode"
             maxLength={CODE_LENGTH}
             autoFocus
-            editable={!verifying && error?.kind !== 'expired'}
+            editable={!verifying && error?.kind !== 'expired' && error?.kind !== 'blocked'}
             accessibilityLabel={`One-time code, 6 digits, sent to ${formatIndianMobile(phone ?? '')}`}
             style={styles.hiddenInput}
           />
@@ -172,10 +173,18 @@ export default function OtpScreen() {
           {error ? (
             <View accessibilityLiveRegion="polite">
               <ErrorState
-                title={error.kind === 'expired' ? 'Code expired' : error.kind === 'network' ? 'Connection problem' : 'Incorrect code'}
+                title={
+                  error.kind === 'expired'
+                    ? 'Code expired'
+                    : error.kind === 'blocked'
+                      ? 'Account blocked'
+                      : error.kind === 'network'
+                        ? 'Connection problem'
+                        : 'Incorrect code'
+                }
                 body={error.message}
                 offline={error.kind === 'network'}
-                onRetry={error.kind === 'expired' ? resend : () => verify(code)}
+                onRetry={error.kind === 'expired' ? resend : error.kind === 'blocked' ? undefined : () => verify(code)}
               />
             </View>
           ) : null}
@@ -184,7 +193,7 @@ export default function OtpScreen() {
             label={t("Verify and continue")}
             onPress={() => verify(code)}
             loading={verifying}
-            disabled={code.length !== CODE_LENGTH || error?.kind === 'expired'}
+            disabled={code.length !== CODE_LENGTH || error?.kind === 'expired' || error?.kind === 'blocked'}
             accessibilityHint={t("Verifies the code and continues to the app")}
           />
 

@@ -8,6 +8,7 @@
  * lives in the auth service, which uses the platform secure store.
  */
 
+import { AppState } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
@@ -15,7 +16,7 @@ import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '
 import { storage } from '@/lib/storage';
 import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
 import { authService } from '@/services/auth';
-import { connectRealtime, disconnectRealtime, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
+import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import type {
   Course,
   Enrollment,
@@ -316,13 +317,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
-  // A blocked account is signed out at once, even while the app is open.
+  // A blocked account is signed out at once, even while the app is open: the server pushes the
+  // news on the realtime socket, and every request it rejects with 403 ends the session too.
   useEffect(() => {
     setAccountBlockedHandler(() => {
       void endAccountSession();
     });
-    return () => setAccountBlockedHandler(null);
+    const unsubscribe = onAccountBlocked(() => {
+      void endAccountSession();
+    });
+    return () => {
+      setAccountBlockedHandler(null);
+      unsubscribe();
+    };
   }, [endAccountSession]);
+
+  // Coming back to the app re-checks the account, so a block made while it was in the background
+  // takes effect without waiting for the next screen to load data.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active' && sessionRef.current) void api.me().catch(() => {});
+    });
+    return () => subscription.remove();
+  }, []);
 
   // A token the server no longer accepts ends the local session, so the user signs in again
   // instead of hitting the same 401 on every payment or lesson request.

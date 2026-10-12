@@ -1,3 +1,4 @@
+import { revokeUserSockets } from '../../realtime/socket.js';
 import { Enrollment } from '../../models/Enrollment.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
@@ -58,6 +59,7 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
   const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!user) throw new HttpError(404, 'User not found');
+  if (user.blocked) revokeUserSockets(String(user._id));
   res.json({ user });
 });
 

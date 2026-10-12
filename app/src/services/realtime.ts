@@ -20,6 +20,7 @@ type SettingsHandler = (payload: { settings?: unknown }) => void;
 type EnrollmentHandler = (payload: { courseId?: string; title?: string }) => void;
 
 let socket: Socket | null = null;
+const blockedHandlers = new Set<() => void>();
 const catalogHandlers = new Set<CatalogChangedHandler>();
 const settingsHandlers = new Set<SettingsHandler>();
 const enrollmentHandlers = new Set<EnrollmentHandler>();
@@ -54,8 +55,19 @@ export function connectRealtime(token?: string | null) {
   socket.on('enrollment.granted', (payload: { courseId?: string; title?: string }) => {
     enrollmentHandlers.forEach((handler) => handler(payload));
   });
+  socket.on('account.blocked', () => {
+    blockedHandlers.forEach((handler) => handler());
+  });
 
   return socket;
+}
+
+/** The academy blocked this account while the app was open. */
+export function onAccountBlocked(handler: () => void) {
+  blockedHandlers.add(handler);
+  return () => {
+    blockedHandlers.delete(handler);
+  };
 }
 
 export function disconnectRealtime() {

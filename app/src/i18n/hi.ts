@@ -11,6 +11,7 @@
  */
 
 export const hi: Record<string, string> = {
+  'This account has been blocked by the academy, so it cannot be used to sign in. Contact support for help.': 'यह खाता अकादमी द्वारा ब्लॉक किया गया है, इसलिए इससे साइन इन नहीं हो सकता। मदद के लिए सहायता से संपर्क करें।',
   'Home': 'होम',
   'Explore': 'एक्सप्लोर',
   'Learning': 'पढ़ाई',

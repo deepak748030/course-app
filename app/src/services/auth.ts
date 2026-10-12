@@ -19,7 +19,7 @@ import type { Session } from '@/types';
 const SESSION_KEY = 'ydu.session';
 
 /** Why a code could not be checked. The OTP screen words each one differently. */
-export type OtpFailure = 'incorrect' | 'expired' | 'network';
+export type OtpFailure = 'incorrect' | 'expired' | 'blocked' | 'network';
 
 export interface AuthService {
   requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
@@ -79,6 +79,7 @@ function otpFailureFrom(err: unknown): OtpFailure {
   if (err instanceof ApiError) {
     if (err.status === 401) return 'incorrect';
     if (err.status === 410) return 'expired';
+    if (err.status === 403) return 'blocked';
   }
   return 'network';
 }

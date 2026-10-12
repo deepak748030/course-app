@@ -108,3 +108,13 @@ export const emitToAdmins = (event, payload) => emit('admins', event, payload);
 export const emitToApp = (event, payload) => emit('app', event, payload);
 /** A single learner's devices. */
 export const emitToUser = (userId, event, payload) => emit(`user:${userId}`, event, payload);
+
+/**
+ * A blocked account must not keep its open app session. Tell its sockets, then drop them: the app
+ * signs the learner out, and a reconnect with the same token connects anonymously (the blocked
+ * check in the socket middleware). The disconnect waits a moment so the event is delivered first.
+ */
+export function revokeUserSockets(userId) {
+  emitToUser(userId, 'account.blocked', {});
+  setTimeout(() => io?.in(`user:${userId}`).disconnectSockets(true), 1500);
+}
