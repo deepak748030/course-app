@@ -134,7 +134,7 @@ const lessonSchema = z
     title: z.string().trim().min(1).max(140),
     description: z.string().trim().max(2000).default(''),
     minutes: z.number().int().min(1).max(600),
-    isPreview: z.boolean().default(false),
+    previewSec: z.number().int().min(0).max(86400).default(0),
     videoKey: z
       .string()
       .trim()
@@ -148,7 +148,9 @@ const lessonSchema = z
   .transform((lesson) => {
     // Best available quality also goes in `videoKey` so older app builds keep playing.
     const best = [...lesson.videos].sort((a, b) => Number(b.quality) - Number(a.quality))[0];
-    return { ...lesson, videoKey: best ? best.videoKey : lesson.videoKey };
+    // A preview cannot run past the end of the lesson; unmeasured lessons keep the value as typed.
+    const previewSec = lesson.durationSec > 0 ? Math.min(lesson.previewSec, lesson.durationSec) : lesson.previewSec;
+    return { ...lesson, previewSec, isPreview: previewSec > 0, videoKey: best ? best.videoKey : lesson.videoKey };
   });
 const courseSchema = z.object({
   title: z.string().trim().min(2).max(140),

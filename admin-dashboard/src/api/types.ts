@@ -32,6 +32,8 @@ export interface Lesson {
   description: string;
   minutes: number;
   isPreview: boolean;
+  /** Seconds anyone may watch without buying; 0 = locked. */
+  previewSec?: number;
   /** Object key of the uploaded course video in the private B2 bucket. Empty = no video yet. */
   videoKey?: string;
   /** Encoded versions of the lesson video, one per quality. */

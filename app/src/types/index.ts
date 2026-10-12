@@ -32,6 +32,8 @@ export interface Lesson {
   /** Exact length in seconds when the lesson's video was measured on upload. */
   seconds?: number;
   isPreview: boolean;
+  /** Seconds anyone may watch without buying. Unset on older lessons: then the whole lesson is free when `isPreview`. */
+  previewSec?: number;
   video: VideoKey;
   /** The course has its own video in private storage (fetched as a signed link); otherwise the demo clip plays. */
   hasCourseVideo?: boolean;

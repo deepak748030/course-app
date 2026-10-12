@@ -177,6 +177,7 @@ export const hi: Record<string, string> = {
   'Exit fullscreen': 'फ़ुलस्क्रीन बंद करें',
   'Seek within the lesson': 'लेसन में आगे-पीछे जाएँ',
   'Free preview': 'मुफ़्त झलक',
+  'Free preview ends at {time}. Buy the course to keep watching.': 'मुफ़्त झलक {time} पर समाप्त। आगे देखने के लिए कोर्स खरीदें।',
   'Completed': 'पूरा हुआ',
   'Course progress': 'कोर्स की प्रगति',
   'Overview': 'जानकारी',

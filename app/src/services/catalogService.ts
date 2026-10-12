@@ -61,6 +61,7 @@ export function mapCourse(server: ServerCourse): Course {
     minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
     seconds: lesson.durationSec || undefined,
     isPreview: lesson.isPreview,
+    previewSec: lesson.previewSec || undefined,
     video,
     hasCourseVideo: Boolean(lesson.videoKey),
     recipe: mapRecipe(lesson.recipe),

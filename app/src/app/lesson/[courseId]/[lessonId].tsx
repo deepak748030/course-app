@@ -69,7 +69,7 @@ import {
   scrollClip,
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { nextLesson } from '@/lib/catalog';
+import { freePreviewSec, nextLesson } from '@/lib/catalog';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { api } from '@/services/api';
@@ -160,6 +160,8 @@ export default function LessonPlayerScreen() {
   const [noteSaved, setNoteSaved] = useState(true);
 
   const unlocked = Boolean(course && lesson && (isEnrolled(course.id) || lesson.isPreview));
+  /** Seconds a non-buyer may watch: Infinity for a whole free lesson, 0 for a locked one. */
+  const previewCap = course && lesson && !isEnrolled(course.id) ? freePreviewSec(lesson) : Number.POSITIVE_INFINITY;
   const storedPosition = course && lesson ? lessonProgress(course.id, lesson.id) : { positionSec: 0, completed: false };
 
   /** Course videos are private: the server signs a short-lived link for this learner only. */
@@ -268,6 +270,7 @@ export default function LessonPlayerScreen() {
   const status = statusEvent?.status ?? player.status;
   const error = statusEvent?.error || playbackFailed;
   const [position, setPosition] = useState(storedPosition.positionSec);
+  const previewEnded = Number.isFinite(previewCap) && position >= previewCap;
   const [duration, setDuration] = useState(player.duration || 0);
 
   useEventListener(player, 'sourceLoad', ({ duration: loaded }) => {
@@ -280,6 +283,11 @@ export default function LessonPlayerScreen() {
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     setPosition(currentTime);
+    // The free part ends here: stop at the limit, whatever the learner does with the scrubber.
+    if (Number.isFinite(previewCap) && currentTime >= previewCap) {
+      player.pause();
+      player.currentTime = previewCap;
+    }
     if (player.duration) setDuration(player.duration);
     if (course && lesson && Math.abs(currentTime - lastSavedRef.current) >= SAVE_INTERVAL_SEC) {
       lastSavedRef.current = currentTime;
@@ -536,6 +544,21 @@ export default function LessonPlayerScreen() {
                 if (videoSource) player.replace(videoSource);
                 player.play();
               }}
+            />
+          </View>
+        ) : null}
+
+        {previewEnded && !error ? (
+          <View style={styles.centerOverlay}>
+            <CircleAlert size={26} color={colors.onPlayer} strokeWidth={1.9} />
+            <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center', paddingHorizontal: layout.screen }]}>
+              {t('Free preview ends at {time}. Buy the course to keep watching.', { time: formatClock(previewCap) })}
+            </Text>
+            <Button
+              label={t('View course')}
+              variant="secondary"
+              fullWidth={false}
+              onPress={() => course && router.push({ pathname: '/course/[id]', params: { id: course.id } })}
             />
           </View>
         ) : null}
@@ -890,7 +913,17 @@ export default function LessonPlayerScreen() {
               <Text style={[type.overline, styles.flex, { color: colors.textSubtle }]} numberOfLines={1}>
                 {course.title}
               </Text>
-              {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" icon={CirclePlay} /> : null}
+              {lesson.isPreview ? (
+                <Badge
+                  label={
+                    Number.isFinite(freePreviewSec(lesson))
+                      ? `${t("Free preview")} · ${formatClock(freePreviewSec(lesson))}`
+                      : t("Free preview")
+                  }
+                  tone="sage"
+                  icon={CirclePlay}
+                />
+              ) : null}
             </View>
             <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
             <View style={styles.metaWrap}>

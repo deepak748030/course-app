@@ -135,6 +135,7 @@ export type ServerLesson = {
   minutes: number;
   durationSec?: number;
   isPreview: boolean;
+  previewSec?: number;
   recipe?: ServerRecipe | null;
 };
 

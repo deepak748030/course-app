@@ -23,6 +23,15 @@ export function nextLesson(course: Course, lessonId: string): Lesson | undefined
   return index === -1 ? undefined : course.lessons[index + 1];
 }
 
+/**
+ * Seconds of a lesson a non-buyer may watch: the set preview length; Infinity for an older free lesson
+ * that has no length (the whole lesson is free); 0 for a locked one.
+ */
+export function freePreviewSec(lesson: Lesson): number {
+  if (!lesson.isPreview) return 0;
+  return lesson.previewSec && lesson.previewSec > 0 ? lesson.previewSec : Number.POSITIVE_INFINITY;
+}
+
 export function firstPlayableLesson(course: Course): Lesson {
   return course.lessons.find((lesson) => lesson.isPreview) ?? course.lessons[0];
 }

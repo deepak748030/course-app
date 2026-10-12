@@ -29,8 +29,8 @@ import { OfferBadge } from '@/components/offer-tag';
 import { SaveButton } from '@/components/save-button';
 import { Badge, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { discountPercent } from '@/lib/catalog';
-import { formatDuration, formatInr, lessonLength } from '@/lib/format';
+import { discountPercent, freePreviewSec } from '@/lib/catalog';
+import { formatClock, formatDuration, formatInr, lessonLength } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
 
@@ -274,7 +274,16 @@ export function LessonRow({
         </Text>
         <View style={styles.lessonMeta}>
           <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lessonLength(lesson)}</Text>
-          {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" /> : null}
+          {lesson.isPreview ? (
+            <Badge
+              label={
+                Number.isFinite(freePreviewSec(lesson))
+                  ? `${t("Free preview")} · ${formatClock(freePreviewSec(lesson))}`
+                  : t("Free preview")
+              }
+              tone="sage"
+            />
+          ) : null}
           {state === 'completed' ? <Badge label={t("Completed")} tone="success" /> : null}
           {state === 'current' ? <Badge label={t("Next up")} tone="primary" /> : null}
         </View>

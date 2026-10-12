@@ -83,7 +83,11 @@ function formFromCourse(course: Course): FormState {
     published: course.published,
     isPopular: course.isPopular,
     isBeginnerPick: course.isBeginnerPick,
-    lessons: JSON.parse(JSON.stringify(course.lessons)),
+    // Older free lessons were all-or-nothing, so they stay whole until the admin sets a length.
+    lessons: course.lessons.map((lesson) => ({
+      ...(JSON.parse(JSON.stringify(lesson)) as Lesson),
+      previewSec: lesson.previewSec ?? (lesson.isPreview ? lesson.durationSec || 86400 : 0),
+    })),
   };
 }
 
@@ -125,6 +129,54 @@ function readVideoDuration(file: File): Promise<number> {
     video.onerror = () => done(0);
     video.src = url;
   });
+}
+
+/** Free-preview length for one lesson, typed in seconds or minutes and stored in seconds. 0 = locked. */
+function PreviewLimit({
+  value,
+  durationSec,
+  onChange,
+}: {
+  value: number;
+  durationSec?: number;
+  onChange: (seconds: number) => void;
+}) {
+  const [unit, setUnit] = useState<'sec' | 'min'>(value >= 60 && value % 60 === 0 ? 'min' : 'sec');
+  const factor = unit === 'min' ? 60 : 1;
+  const max = durationSec && durationSec > 0 ? durationSec : 86400;
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted"
+      title="How much of this lesson anyone can watch without buying. 0 = locked."
+    >
+      <span>Free</span>
+      <Input
+        type="number"
+        min={0}
+        step={1}
+        value={Number((value / factor).toFixed(1))}
+        onChange={(e) => onChange(Math.min(max, Math.max(0, Math.round(Number(e.target.value) * factor))))}
+        className="h-9 w-20"
+      />
+      <select
+        value={unit}
+        onChange={(e) => setUnit(e.target.value as 'sec' | 'min')}
+        className="h-9 rounded-md border border-line bg-transparent px-1.5 text-xs"
+      >
+        <option value="sec">sec</option>
+        <option value="min">min</option>
+      </select>
+      {durationSec ? (
+        <button
+          type="button"
+          onClick={() => onChange(durationSec)}
+          className="h-9 rounded-md border border-line px-2 hover:bg-brand-soft hover:text-brand"
+        >
+          Whole
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 /** `4:05` style length taken from the video; the admin never types it. */
@@ -323,7 +375,7 @@ export default function Courses() {
 
   const lessonOps = useMemo(
     () => ({
-      add: () => set('lessons', [...form.lessons, { title: '', description: '', minutes: 10, isPreview: false }]),
+      add: () => set('lessons', [...form.lessons, { title: '', description: '', minutes: 10, isPreview: false, previewSec: 0 }]),
       remove: (j: number) => set('lessons', form.lessons.filter((_, l) => l !== j)),
       patch: (j: number, patch: Partial<Lesson>) =>
         set('lessons', form.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson))),
@@ -614,10 +666,11 @@ export default function Courses() {
                             })
                           }
                         />
-                        <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
-                          <Toggle checked={lesson.isPreview} onChange={(v) => lessonOps.patch(j, { isPreview: v })} label="Free preview" />
-                          Preview
-                        </label>
+                        <PreviewLimit
+                          value={lesson.previewSec ?? 0}
+                          durationSec={lesson.durationSec}
+                          onChange={(seconds) => lessonOps.patch(j, { previewSec: seconds, isPreview: seconds > 0 })}
+                        />
                         <button onClick={() => lessonOps.remove(j)} className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error">
                           <X size={14} />
                         </button>
