@@ -25,7 +25,7 @@ function AppearanceCard() {
               type="button"
               onClick={() => setTheme(id)}
               aria-pressed={selected}
-              className={`group overflow-hidden rounded-xl border-2 bg-surface text-left transition-colors ${
+              className={`group overflow-hidden rounded-xl border-2 bg-surface text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 ${
                 selected ? 'border-brand' : 'border-line hover:border-ink/30'
               }`}
             >

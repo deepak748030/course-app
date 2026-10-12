@@ -174,7 +174,7 @@ export default function Layout() {
             onClick={() => setCollapsed((value) => !value)}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className="hidden shrink-0 rounded-md p-1.5 text-subtle transition-colors hover:bg-ink/5 hover:text-ink md:flex"
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-ink/5 hover:text-ink md:flex"
           >
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
@@ -189,7 +189,7 @@ export default function Layout() {
               title={collapsed ? label : undefined}
               aria-label={label}
               className={({ isActive }) =>
-                `group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                `group flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors md:min-h-0 ${
                   collapsed ? 'md:justify-center md:px-0' : ''
                 } ${
                   isActive
@@ -227,7 +227,7 @@ export default function Layout() {
                 logout();
                 navigate('/login');
               }}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-error-soft hover:text-error"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-error-soft hover:text-error md:h-9 md:w-9"
             >
               <LogOut size={16} />
             </button>
@@ -242,7 +242,7 @@ export default function Layout() {
             <button
               aria-label="Open menu"
               onClick={() => setMenuOpen(true)}
-              className="-ml-1 shrink-0 rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink md:hidden"
+              className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink md:hidden"
             >
               {menuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
@@ -254,7 +254,7 @@ export default function Layout() {
           <div className="flex shrink-0 items-center gap-2">
             {presence && !demo && (
               <span
-                className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink"
+                className="hidden items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink sm:inline-flex"
                 title="Signed-in accounts online right now"
               >
                 <span className="h-1.5 w-1.5 rounded-full bg-success" />
@@ -275,8 +275,8 @@ export default function Layout() {
               </span>
             )}
             {demo && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-brand-ink">
-                <Wrench size={12} /> Demo data
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-xs font-semibold text-brand-ink sm:px-3">
+                <Wrench size={12} /> <span className="hidden sm:inline">Demo data</span>
               </span>
             )}
           </div>
@@ -284,7 +284,7 @@ export default function Layout() {
 
         {demo && (
           <div className="flex flex-col gap-2 border-b border-line bg-brand-soft px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
-            <p className="text-[13px] font-medium text-brand-ink">
+            <p className="text-[13px] leading-snug font-medium text-brand-ink">
               The server or its database is unreachable — showing the built-in demo dataset. Start the API with
               MongoDB to control live data. Changes here persist in this browser only.
             </p>
@@ -293,7 +293,7 @@ export default function Layout() {
                 resetDemoDb();
                 window.location.reload();
               }}
-              className="inline-flex h-8 shrink-0 items-center gap-1.5 self-start rounded-md px-2.5 text-xs font-semibold text-brand-ink hover:bg-brand/20 sm:self-auto"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-md px-3 text-xs font-semibold text-brand-ink transition-colors hover:bg-brand/20 sm:h-9 sm:self-auto"
             >
               <RefreshCw size={12} /> Reset demo data
             </button>
