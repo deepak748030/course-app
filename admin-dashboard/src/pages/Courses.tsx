@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  PrefixInput,
   CourseCover,
   Drawer,
   EmptyState,
@@ -537,11 +538,11 @@ export default function Courses() {
                 <option>Advanced</option>
               </Select>
             </Field>
-            <Field label="Price (₹)">
-              <Input type="number" min={0} value={form.priceInr} onChange={(e) => set('priceInr', e.target.value)} />
+            <Field label="Price">
+              <PrefixInput prefix="₹" type="number" min={0} value={form.priceInr} onChange={(e) => set('priceInr', e.target.value)} />
             </Field>
-            <Field label="List price (₹)" hint="Optional — shown struck through.">
-              <Input type="number" min={0} value={form.listPriceInr} onChange={(e) => set('listPriceInr', e.target.value)} />
+            <Field label="List price" hint="Optional — shown struck through.">
+              <PrefixInput prefix="₹" type="number" min={0} value={form.listPriceInr} onChange={(e) => set('listPriceInr', e.target.value)} />
             </Field>
             <Field label="Language">
               <Select value={form.language} onChange={(e) => set('language', e.target.value)}>

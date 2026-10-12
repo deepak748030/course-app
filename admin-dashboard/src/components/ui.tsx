@@ -4,6 +4,7 @@
  */
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Info, Loader2, Search, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { HoldToConfirm } from './HoldToConfirm';
 import type { LucideIcon } from 'lucide-react';
 
 // ---------- formatting helpers -------------------------------------------------------
@@ -155,6 +156,16 @@ export function PasswordInput({ className = '', ...props }: React.InputHTMLAttri
       >
         {visible ? <EyeOff size={16} /> : <Eye size={16} />}
       </button>
+    </div>
+  );
+}
+
+/** Input with a fixed prefix inside the field, e.g. the ₹ sign on money fields. */
+export function PrefixInput({ prefix, className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement> & { prefix: string }) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-subtle">{prefix}</span>
+      <input {...props} className={`${inputClass} pl-8 ${className}`} />
     </div>
   );
 }
@@ -319,6 +330,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = 'Delete',
+  holdToConfirm = true,
   onCancel,
   onConfirm,
 }: {
@@ -326,6 +338,8 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel?: string;
+  /** Destructive confirms are press-and-hold so a stray tap cannot delete. Pass false for harmless confirms. */
+  holdToConfirm?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -336,9 +350,13 @@ export function ConfirmDialog({
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="danger" onClick={onConfirm}>
-          {confirmLabel}
-        </Button>
+        {holdToConfirm ? (
+          <HoldToConfirm label={`Hold to ${confirmLabel.toLowerCase()}`} onConfirm={onConfirm} />
+        ) : (
+          <Button variant="primary" onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        )}
       </div>
     </Modal>
   );

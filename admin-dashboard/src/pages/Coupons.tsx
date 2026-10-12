@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  PrefixInput,
   EmptyState,
   Field,
   Input,
@@ -246,8 +247,12 @@ export default function Coupons() {
                 <option value="flat">Flat ₹ off</option>
               </Select>
             </Field>
-            <Field label={form.type === 'percent' ? 'Percent (1–90)' : 'Amount (₹)'}>
-              <Input type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+            <Field label={form.type === 'percent' ? 'Percent (1–90)' : 'Amount'}>
+              {form.type === 'percent' ? (
+                <Input type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+              ) : (
+                <PrefixInput prefix="₹" type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+              )}
             </Field>
             <Field label="Max uses" hint="0 = unlimited.">
               <Input type="number" min={0} value={form.maxUses} onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value }))} />
