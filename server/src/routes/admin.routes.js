@@ -14,7 +14,7 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
+import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, getUploadProgress, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -32,6 +32,12 @@ const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(3
 router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
 
 // ---------- course videos (Backblaze B2, private bucket) -----------------------
+/** Storage-stage progress of one upload; the admin polls it while the file is copied to B2. */
+router.get('/uploads/video/progress/:id', (req, res) => {
+  const entry = /^[\w-]{8,64}$/.test(req.params.id) ? getUploadProgress(req.params.id) : null;
+  res.json(entry ?? { stage: 'waiting' });
+});
+
 router.get('/uploads/video/status', (_req, res) => {
   res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES), qualities: VIDEO_QUALITIES });
 });
@@ -70,6 +76,8 @@ router.post(
   asyncHandler(async (req, res) => {
     const file = req.file;
     const cleanup = () => file && fs.promises.rm(file.path, { force: true }).catch(() => {});
+    const headerId = String(req.headers['x-upload-id'] || '');
+    const progressId = /^[\w-]{8,64}$/.test(headerId) ? headerId : '';
     try {
       if (!file) throw new HttpError(400, 'Send a video in the "file" field');
       if (!videoStorageConfigured) {
@@ -90,6 +98,7 @@ router.post(
           contentType: file.mimetype,
           size: file.size,
           quality,
+          progressId,
         });
       } catch (err) {
         console.error('[uploads] could not store video in B2:', err?.message || err);

@@ -15,6 +15,7 @@
 import '../config/env.js';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { Transform } from 'node:stream';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -115,17 +116,54 @@ export function pickLessonVideo(lesson, quality) {
  * Streams a video file from local disk into the private bucket. Returns the object key, which the
  * lesson stores. The caller is responsible for deleting the local temp file afterwards.
  */
-export async function storeVideo({ courseKey, filePath, fileName, contentType, size, quality }) {
+/**
+ * Progress of uploads in flight, keyed by the id the browser sends in X-Upload-Id. The storage
+ * stage reports the bytes the SDK has pulled from the temp file, which is what is being sent to B2.
+ */
+const uploadProgress = new Map();
+
+export function setUploadProgress(id, entry) {
+  if (!id) return;
+  uploadProgress.set(id, { ...entry, updatedAt: Date.now() });
+}
+
+export function getUploadProgress(id) {
+  return uploadProgress.get(id) || null;
+}
+
+function forgetUploadProgressLater(id) {
+  if (!id) return;
+  setTimeout(() => uploadProgress.delete(id), 60_000).unref();
+}
+
+export async function storeVideo({ courseKey, filePath, fileName, contentType, size, quality, progressId }) {
   const key = buildVideoKey({ courseKey, fileName, contentType, quality });
-  await s3().send(
-    new PutObjectCommand({
-      Bucket: bucket,
-      Key: key,
-      Body: fs.createReadStream(filePath),
-      ContentType: contentType,
-      ContentLength: size,
-    })
-  );
+  let sent = 0;
+  const counter = new Transform({
+    transform(chunk, _encoding, callback) {
+      sent += chunk.length;
+      setUploadProgress(progressId, { stage: 'storing', sent, total: size });
+      callback(null, chunk);
+    },
+  });
+  setUploadProgress(progressId, { stage: 'storing', sent: 0, total: size });
+  try {
+    await s3().send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: fs.createReadStream(filePath).pipe(counter),
+        ContentType: contentType,
+        ContentLength: size,
+      })
+    );
+  } catch (err) {
+    setUploadProgress(progressId, { stage: 'failed', sent, total: size });
+    forgetUploadProgressLater(progressId);
+    throw err;
+  }
+  setUploadProgress(progressId, { stage: 'done', sent: size, total: size });
+  forgetUploadProgressLater(progressId);
   return key;
 }
 

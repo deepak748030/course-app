@@ -443,8 +443,8 @@ export default function LessonPlayerScreen() {
   };
 
   /** Sheets open under the fullscreen picture, so from fullscreen the picture steps back first. */
+  /** Sheets open over the player where it is — including fullscreen — so the picture never shrinks. */
   const openFromPlayer = (open: (value: boolean) => void) => {
-    if (fullscreenOpen) exitFullscreen();
     open(true);
   };
 
@@ -634,9 +634,6 @@ export default function LessonPlayerScreen() {
                       onPress={() => openFromPlayer(setSpeedOpen)}
                       style={styles.playerAction}>
                       <Gauge size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>
-                        {player.playbackRate}×
-                      </Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
@@ -650,7 +647,6 @@ export default function LessonPlayerScreen() {
                       onPress={() => openFromPlayer(setQualityOpen)}
                       style={styles.playerAction}>
                       <Hd size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                      <Text style={[type.label, tabularNums, { color: colors.onPlayer }]}>{renditionLabel}</Text>
                     </Pressable>
                   </View>
                   <View style={[styles.actionGroup, { gap: overlayPad }]}>
@@ -669,7 +665,6 @@ export default function LessonPlayerScreen() {
                       ) : (
                         <Volume2 size={15} color={colors.onPlayer} strokeWidth={1.9} />
                       )}
-                      <Text style={[type.label, { color: colors.onPlayer }]}>{muted ? 'Unmute' : 'Mute'}</Text>
                     </Pressable>
                     <Pressable
                       accessibilityRole="button"
@@ -678,9 +673,6 @@ export default function LessonPlayerScreen() {
                       onPress={fullscreen ? exitFullscreen : enterFullscreen}
                       style={styles.playerAction}>
                       <FullscreenIcon size={15} color={colors.onPlayer} strokeWidth={1.9} />
-                      <Text style={[type.label, { color: colors.onPlayer }]}>
-                        {fullscreen ? t("Exit fullscreen") : t("Fullscreen")}
-                      </Text>
                     </Pressable>
                   </View>
                 </Animated.View>
@@ -710,6 +702,139 @@ export default function LessonPlayerScreen() {
     );
   };
 
+
+  /** The lesson list, speed and quality sheets. Drawn inline, or inside the fullscreen modal while it is open. */
+  const sheets = (
+    <>
+      <BottomSheet
+        visible={lessonListOpen}
+        onClose={() => {
+          setLessonListOpen(false);
+          showControls();
+        }}
+        title={t("Lessons")}
+        subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
+        scrollable>
+        <DataList>
+          {course.lessons.map((entry, lessonIndex) => (
+            <LessonRow
+              key={entry.id}
+              lesson={entry}
+              index={lessonIndex + 1}
+              state={stateFor(entry.id)}
+              onPress={() => goToLesson(entry.id)}
+            />
+          ))}
+        </DataList>
+      </BottomSheet>
+
+      <BottomSheet
+        visible={speedOpen}
+        onClose={() => {
+          setSpeedOpen(false);
+          showControls();
+        }}
+        title={t("Playback speed")}>
+        {SPEEDS.map((speed) => (
+          <Pressable
+            key={speed}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: player.playbackRate === speed }}
+            accessibilityLabel={`${speed} times speed`}
+            onPress={() => {
+              player.playbackRate = speed;
+              setSpeedOpen(false);
+              showControls();
+            }}
+            style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
+            <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
+            {player.playbackRate === speed ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+          </Pressable>
+        ))}
+      </BottomSheet>
+
+      <BottomSheet
+        visible={qualityOpen}
+        onClose={() => {
+          setQualityOpen(false);
+          showControls();
+        }}
+        title={t("Video quality")}
+        subtitle={
+          qualities.length > 0
+            ? `${qualities.length} versions uploaded for this lesson`
+            : tracks.length > 1
+            ? `${tracks.length} renditions in this lesson`
+            : 'This demo lesson ships a single rendition'
+        }>
+        {qualities.length > 0 ? (
+          <>
+            <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ selected: quality === null }}
+              onPress={() => {
+                chooseQuality(null);
+                setQualityOpen(false);
+                showControls();
+              }}
+              style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
+              <View style={styles.flex}>
+                <Text style={[type.body, { color: colors.text }]}>{t('Best available')}</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>
+                  {quality === null && playingQuality ? `Playing ${qualityLabel(playingQuality)}` : t('Chosen automatically')}
+                </Text>
+              </View>
+              {quality === null ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+            </Pressable>
+            {qualities.map((q) => (
+              <Pressable
+                key={q}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: quality === q }}
+                accessibilityLabel={qualityLabel(q)}
+                onPress={() => {
+                  chooseQuality(q);
+                  setQualityOpen(false);
+                  showControls();
+                }}
+                style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
+                <Text style={[type.body, styles.flex, { color: colors.text }]}>{qualityLabel(q)}</Text>
+                {quality === q ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+              </Pressable>
+            ))}
+          </>
+        ) : null}
+        {(qualities.length > 0 ? [] : tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
+          const active = rendition ? track.id === rendition.id : index === 0;
+          const size = track.size;
+          const bitrate = 'averageBitrate' in track ? track.averageBitrate : null;
+          const detail = [
+            `${size.width} × ${size.height}`,
+            bitrate ? `${Math.round(bitrate / 1000)} kbps` : null,
+            active ? 'in use' : null,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          return (
+            <View key={track.id} style={styles.sheetRow} accessibilityLabel={`${size.height}p, ${detail}`}>
+              <View style={styles.flex}>
+                <Text style={[type.body, { color: colors.text }]}>{size.height}p</Text>
+                <Text style={[type.label, { color: colors.textMuted }]}>{detail}</Text>
+              </View>
+              {active ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
+            </View>
+          );
+        })}
+        {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
+        {qualities.length === 0 ? (
+          <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
+            {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
+          </Text>
+        ) : null}
+      </BottomSheet>
+    </>
+  );
+
   return (
     <View style={styles.root}>
       <AppStatusBar />
@@ -736,6 +861,7 @@ export default function LessonPlayerScreen() {
           onLayout={(event: LayoutChangeEvent) => setFullscreenHeight(event.nativeEvent.layout.height)}>
           <StatusBar hidden />
           {renderSurface(fullscreenHeight || windowHeight, true)}
+          {sheets}
         </View>
       </Modal>
 
@@ -969,132 +1095,7 @@ export default function LessonPlayerScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <BottomSheet
-        visible={lessonListOpen}
-        onClose={() => {
-          setLessonListOpen(false);
-          showControls();
-        }}
-        title={t("Lessons")}
-        subtitle={`${course.lessonCount} lessons · ${Math.round(courseProgressRatio(course) * 100)}% complete`}
-        scrollable>
-        <DataList>
-          {course.lessons.map((entry, lessonIndex) => (
-            <LessonRow
-              key={entry.id}
-              lesson={entry}
-              index={lessonIndex + 1}
-              state={stateFor(entry.id)}
-              onPress={() => goToLesson(entry.id)}
-            />
-          ))}
-        </DataList>
-      </BottomSheet>
-
-      <BottomSheet
-        visible={speedOpen}
-        onClose={() => {
-          setSpeedOpen(false);
-          showControls();
-        }}
-        title={t("Playback speed")}>
-        {SPEEDS.map((speed) => (
-          <Pressable
-            key={speed}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: player.playbackRate === speed }}
-            accessibilityLabel={`${speed} times speed`}
-            onPress={() => {
-              player.playbackRate = speed;
-              setSpeedOpen(false);
-              showControls();
-            }}
-            style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-            <Text style={[type.body, { color: colors.text }]}>{speed === 1 ? 'Normal (1×)' : `${speed}×`}</Text>
-            {player.playbackRate === speed ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
-          </Pressable>
-        ))}
-      </BottomSheet>
-
-      <BottomSheet
-        visible={qualityOpen}
-        onClose={() => {
-          setQualityOpen(false);
-          showControls();
-        }}
-        title={t("Video quality")}
-        subtitle={
-          qualities.length > 0
-            ? `${qualities.length} versions uploaded for this lesson`
-            : tracks.length > 1
-            ? `${tracks.length} renditions in this lesson`
-            : 'This demo lesson ships a single rendition'
-        }>
-        {qualities.length > 0 ? (
-          <>
-            <Pressable
-              accessibilityRole="radio"
-              accessibilityState={{ selected: quality === null }}
-              onPress={() => {
-                chooseQuality(null);
-                setQualityOpen(false);
-                showControls();
-              }}
-              style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-              <View style={styles.flex}>
-                <Text style={[type.body, { color: colors.text }]}>{t('Best available')}</Text>
-                <Text style={[type.label, { color: colors.textMuted }]}>
-                  {quality === null && playingQuality ? `Playing ${qualityLabel(playingQuality)}` : t('Chosen automatically')}
-                </Text>
-              </View>
-              {quality === null ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
-            </Pressable>
-            {qualities.map((q) => (
-              <Pressable
-                key={q}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: quality === q }}
-                accessibilityLabel={qualityLabel(q)}
-                onPress={() => {
-                  chooseQuality(q);
-                  setQualityOpen(false);
-                  showControls();
-                }}
-                style={({ pressed }) => [styles.sheetRow, pressed && { opacity: 0.7 }]}>
-                <Text style={[type.body, styles.flex, { color: colors.text }]}>{qualityLabel(q)}</Text>
-                {quality === q ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
-              </Pressable>
-            ))}
-          </>
-        ) : null}
-        {(qualities.length > 0 ? [] : tracks.length > 1 ? tracks : [{ id: 'demo', size: renditionSize, averageBitrate: null }]).map((track, index) => {
-          const active = rendition ? track.id === rendition.id : index === 0;
-          const size = track.size;
-          const bitrate = 'averageBitrate' in track ? track.averageBitrate : null;
-          const detail = [
-            `${size.width} × ${size.height}`,
-            bitrate ? `${Math.round(bitrate / 1000)} kbps` : null,
-            active ? 'in use' : null,
-          ]
-            .filter(Boolean)
-            .join(' · ');
-          return (
-            <View key={track.id} style={styles.sheetRow} accessibilityLabel={`${size.height}p, ${detail}`}>
-              <View style={styles.flex}>
-                <Text style={[type.body, { color: colors.text }]}>{size.height}p</Text>
-                <Text style={[type.label, { color: colors.textMuted }]}>{detail}</Text>
-              </View>
-              {active ? <Check size={18} color={colors.accentText} strokeWidth={2.2} /> : null}
-            </View>
-          );
-        })}
-        {/* Honest about the demo: one bundled file, and adaptive quality arrives with streaming. */}
-        {qualities.length === 0 ? (
-          <Text style={[type.label, styles.sheetNote, { color: colors.textSubtle }]}>
-            {t('The bundled demo clips are one 540p file each, so there is nothing to switch between here. Lessons that stream from a server list every rendition they carry, and the player picks the best one for the connection automatically.')}
-          </Text>
-        ) : null}
-      </BottomSheet>
+      {!fullscreenOpen ? sheets : null}
     </View>
   );
 }

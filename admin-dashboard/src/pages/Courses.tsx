@@ -146,17 +146,17 @@ function LessonVideos({
   onChange: (videos: LessonVideo[], durationSec?: number) => void;
 }) {
   const toast = useToast();
-  const [busy, setBusy] = useState<{ quality: VideoQuality; progress: number } | null>(null);
+  const [busy, setBusy] = useState<{ quality: VideoQuality; stage: 'sending' | 'storing'; percent: number } | null>(null);
 
   async function pick(quality: VideoQuality, file: File) {
     if (!VIDEO_TYPES.includes(file.type)) {
       toast('error', 'Use an MP4, WebM or MOV video.');
       return;
     }
-    setBusy({ quality, progress: 0 });
+    setBusy({ quality, stage: 'sending', percent: 0 });
     try {
       const durationSec = await readVideoDuration(file);
-      const key = await uploadCourseVideo(file, courseId, quality, (progress) => setBusy({ quality, progress }));
+      const key = await uploadCourseVideo(file, courseId, quality, (progress) => setBusy({ quality, ...progress }));
       onChange([...value.filter((v) => v.quality !== quality), { quality, videoKey: key }], durationSec || undefined);
       toast('success', `${quality}p video uploaded. Click Save changes to publish it to the app.`);
     } catch (e) {
@@ -183,7 +183,15 @@ function LessonVideos({
               className={`inline-flex h-8 cursor-pointer items-center gap-1 whitespace-nowrap rounded px-2 ${
                 anyBusy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand'
               }`}
-              title={uploaded ? `Replace the ${quality}p video` : `Upload the ${quality}p video`}
+              title={
+                uploading
+                  ? busy?.stage === 'storing'
+                    ? 'Server is copying the video to storage'
+                    : 'Sending the video to the server'
+                  : uploaded
+                    ? `Replace the ${quality}p video`
+                    : `Upload the ${quality}p video`
+              }
             >
               <input
                 type="file"
@@ -197,7 +205,7 @@ function LessonVideos({
                 }}
               />
               {uploading ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
-              {uploading ? `${busy?.progress ?? 0}%` : `${quality}p`}
+              {uploading ? `${busy?.stage === 'storing' ? 'Saving' : 'Uploading'} ${busy?.percent ?? 0}%` : `${quality}p`}
             </label>
             {uploaded && !anyBusy && (
               <button
