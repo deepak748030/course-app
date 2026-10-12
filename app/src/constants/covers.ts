@@ -1,8 +1,10 @@
+import { images } from '@/media';
+
 /**
  * The one default course image. Used whenever a course has no cover (or its cover fails to load),
  * on every screen, so the fallback always looks the same.
  */
-export const COVER_PLACEHOLDER = require('@/assets/images/placeholder-panel-4x3.jpg');
+export const COVER_PLACEHOLDER = images.brandMark;
 
-/** The placeholder's own background colour, so letterboxing blends in seamlessly. */
+/** Ivory ground behind the brand mark, so the letterboxing blends into the card. */
 export const COVER_PLACEHOLDER_BG = '#FBF6E3';

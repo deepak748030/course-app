@@ -124,9 +124,8 @@ Only artwork the app actually shows is bundled: the brand files, the onboarding 
 (`onboarding-ydu-poster`, `onboarding-fresh-milk`, `onboarding-testing`, AI-generated for this prototype)
 and the placeholder panel. Course covers come from the server. Unused stills and demo videos were removed.
 
-Any photograph that has not been generated yet falls back to `placeholder-panel-4x3.jpg` — a designed
-brand panel (ivory ground, the dairy mark in ink, brand-yellow arc), not a grey box, so nothing ever
-renders as a broken image. Replace any cover with real photography using the same file name; no code
+A course without a cover (or whose cover fails to load) shows `brand-mark.png` centred on the ivory
+brand ground, so nothing ever renders as a broken image. Replace any cover with real photography using the same file name; no code
 changes are needed.
 
 Derived media is reproducible and documented in scripts:
