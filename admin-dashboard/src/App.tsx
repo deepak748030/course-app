@@ -14,6 +14,7 @@ import Content from './pages/Content';
 import Banners from './pages/Banners';
 import Analytics from './pages/Analytics';
 import Users from './pages/Users';
+import Notifications from './pages/Notifications';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, ready } = useAuth();
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/coupons" element={<Coupons />} />
         <Route path="/banners" element={<Banners />} />
         <Route path="/content" element={<Content />} />
+        <Route path="/notifications" element={<Notifications />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -108,6 +108,23 @@ export interface Order {
   createdAt: string;
 }
 
+export type NotificationKind = 'announcement' | 'course-update' | 'learning-reminder' | 'product';
+
+/** A message the academy sent: the inbox entry plus how the push went. */
+export interface AdminNotification {
+  _id: string;
+  title: string;
+  body: string;
+  kind: NotificationKind;
+  audience: 'all' | 'user';
+  user: { _id: string; name: string; email: string } | null;
+  course: { _id: string; title: string; slug: string } | null;
+  pushStatus: 'queued' | 'sending' | 'sent' | 'failed' | 'no-devices';
+  pushDevices: number;
+  pushFailed: number;
+  createdAt: string;
+}
+
 export interface Coupon {
   _id: string;
   code: string;

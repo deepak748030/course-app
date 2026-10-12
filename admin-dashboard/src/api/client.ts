@@ -20,6 +20,8 @@ import type {
   Review,
   UserDetail,
   Order,
+  AdminNotification,
+  NotificationKind,
 } from './types';
 
 const TOKEN_KEY = 'ydu.admin.token';
@@ -272,6 +274,16 @@ export const api = {
     request<{ category: Category }>(`/admin/categories/${id}`, { method: 'PUT', body: data }).then((r) => r.category),
   deleteCategory: (id: string) => request<{ ok: boolean }>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
+  /** History of messages the academy sent, plus how many devices can receive a push. */
+  listNotifications: () => {
+    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
+    return request<{ notifications: AdminNotification[]; devices: number; learnersWithDevices: number }>('/admin/notifications');
+  },
+  /** Saves a message to the learner inbox(es) and pushes it to their devices. */
+  sendNotification: (data: { audience: 'all' | 'user'; userId?: string; title: string; body: string; kind: NotificationKind; courseId?: string }) => {
+    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
+    return request<{ notification: AdminNotification }>('/admin/notifications', { method: 'POST', body: data }).then((r) => r.notification);
+  },
   listUsers: (params: { search?: string; role?: string; blocked?: string }) =>
     request<{ users: AdminUser[] }>('/admin/users', { query: params }).then((r) => r.users),
   getUser: (id: string) => request<UserDetail>(`/admin/users/${id}`),
