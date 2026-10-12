@@ -417,7 +417,7 @@ check('every brand icon is cut from the supplied logo.png', () => {
   // home header show the whole lockup; the small spots (the footer, the brand row) use the same
   // artwork with the wordmark cut away, because a 14px "ACADEMY" is not a word, it is a smudge.
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
-  assert.ok(read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen shows the brand mark');
+  assert.ok(!read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen carries no brand placeholder');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandLockup'), 'and the home header');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandMark size={20} />'), 'the footer uses the mark');
   assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
