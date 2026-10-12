@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { CourseImage } from '@/components/course-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import {
   ArrowLeft,
   ArrowRight,

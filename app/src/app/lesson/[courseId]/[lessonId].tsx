@@ -1,7 +1,8 @@
 import { useEvent, useEventListener } from 'expo';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { StatusBar } from 'expo-status-bar';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import {
@@ -19,11 +20,8 @@ import {
   Lock,
   Maximize2,
   Minimize2,
-  Minus,
   Pause,
   Play,
-  Plus,
-  ShoppingBasket,
   SkipBack,
   SkipForward,
   Trophy,
@@ -40,7 +38,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
   type LayoutChangeEvent,
@@ -51,7 +48,6 @@ import Animated, { FadeIn, FadeOut, useAnimatedStyle, useReducedMotion, useShare
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AnimatedCheck } from '@/components/animated-icons';
-import { SaveButton } from '@/components/save-button';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
@@ -75,10 +71,8 @@ import { useCatalog } from '@/services/catalog-context';
 import { api } from '@/services/api';
 import { useT } from '@/i18n';
 import { useStore } from '@/store';
-import { formatClock, lessonLength, scaleQuantity } from '@/lib/format';
+import { formatClock, lessonLength } from '@/lib/format';
 import { feedback } from '@/lib/util';
-
-type TabKey = 'overview' | 'recipe' | 'notes';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
@@ -131,10 +125,6 @@ export default function LessonPlayerScreen() {
     lessonProgress,
     setLessonComplete,
     setLessonPosition,
-    noteFor,
-    setNote,
-    isRecipeSaved,
-    toggleSavedRecipe,
     courseProgressRatio,
   } = useStore();
 
@@ -145,18 +135,12 @@ export default function LessonPlayerScreen() {
     [course, params.lessonId],
   );
 
-  const initialTab: TabKey =
-    params.tab === 'recipe' && lesson?.recipe ? 'recipe' : params.tab === 'notes' ? 'notes' : 'overview';
-  const [tab, setTab] = useState<TabKey>(initialTab);
   const [lessonListOpen, setLessonListOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [qualityOpen, setQualityOpen] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   /** True once the lesson has actually played in this visit: the extras wait for that. */
   const [hasStarted, setHasStarted] = useState(false);
-  const [servings, setServings] = useState<number | null>(null);
-  const [noteDraft, setNoteDraft] = useState(() => (lesson ? noteFor(lesson.id) : ''));
-  const [noteSaved, setNoteSaved] = useState(true);
 
   const unlocked = Boolean(course && lesson && (isEnrolled(course.id) || lesson.isPreview));
   /** Seconds a non-buyer may watch: Infinity for a whole free lesson, 0 for a locked one. */
@@ -396,10 +380,6 @@ export default function LessonPlayerScreen() {
   const upcoming = nextLesson(course, lesson.id);
   const completed = storedPosition.completed;
   const progressPercent = duration > 0 ? position / duration : 0;
-  const recipe = lesson.recipe;
-  const baseServings = recipe?.servings ?? 1;
-  const currentServings = servings ?? baseServings;
-  const factor = currentServings / baseServings;
   const lessonNumber = course.lessons.findIndex((item) => item.id === lesson.id) + 1;
 
   const seekTo = (seconds: number) => {
@@ -906,7 +886,7 @@ export default function LessonPlayerScreen() {
           showsVerticalScrollIndicator={false}>
           {/* Title block under the video: section and status on one line, then the title, the
               facts and the progress — four short lines instead of a stack of loose labels, and
-              then a hairline so the tabs read as a separate control instead of more body copy. */}
+              then a hairline that separates the header from the lesson body. */}
           <View style={styles.lessonHead}>
             <View style={styles.kickerRow}>
               <Text style={[type.overline, styles.flex, { color: colors.textSubtle }]} numberOfLines={1}>
@@ -948,21 +928,11 @@ export default function LessonPlayerScreen() {
 
           <View style={styles.rule} />
 
-          <View style={styles.tabs}>
-            <TabButton label={t("Overview")} active={tab === 'overview'} onPress={() => setTab('overview')} />
-            <TabButton
-              label={t("Sheet")}
-              active={tab === 'recipe'}
-              disabled={!recipe}
-              hint={recipe ? undefined : 'This lesson has no batch sheet'}
-              onPress={() => recipe && setTab('recipe')}
-            />
-            <TabButton label={t("Notes")} active={tab === 'notes'} onPress={() => setTab('notes')} />
-          </View>
-
-          {tab === 'overview' ? (
-            <View style={styles.tabBody}>
+          <View style={styles.tabBody}>
+            <View style={styles.aboutCard}>
+              <Text style={[type.overline, { color: colors.textSubtle }]}>{t('About this lesson')}</Text>
               <Text style={[type.body, { color: colors.text }]}>{lesson.description}</Text>
+            </View>
               <Button
                 label={completed ? 'Mark as not done' : 'Mark lesson as complete'}
                 variant={completed ? 'secondary' : 'primary'}
@@ -999,139 +969,8 @@ export default function LessonPlayerScreen() {
                 </DataList>
               </View>
               <Text style={[type.label, { color: colors.textSubtle }]}>{t("Playback position is saved on this device, so you can leave and come back.")}</Text>
-            </View>
-          ) : null}
+          </View>
 
-          {tab === 'recipe' && recipe ? (
-            <View style={styles.tabBody}>
-              <View style={styles.recipeHead}>
-                <View style={styles.flex}>
-                  <Text style={[type.subheading, { color: colors.text }]}>{recipe.title}</Text>
-                  <View style={styles.metaRow}>
-                    <Clock size={14} color={colors.textMuted} strokeWidth={1.9} />
-                    <Text style={[type.label, tabularNums, { color: colors.textMuted }]}>
-                      {recipe.prepMinutes} min prep · {recipe.cookMinutes} min make
-                    </Text>
-                  </View>
-                </View>
-                <SaveButton
-                  saved={isRecipeSaved(recipe.id)}
-                  variant="soft"
-                  accessibilityLabel={isRecipeSaved(recipe.id) ? 'Remove batch sheet from saved' : 'Save batch sheet'}
-                  onToggle={() => toggleSavedRecipe(recipe.id)}
-                />
-              </View>
-
-              <View style={styles.servingsRow}>
-                <Text style={[type.label, { color: colors.textMuted }]}>{t("Batch")}</Text>
-                <View style={styles.stepper}>
-                  <IconButton
-                    icon={Minus}
-                    variant="soft"
-                    size={36}
-                    iconSize={16}
-                    accessibilityLabel={t("Smaller batch")}
-                    onPress={() => setServings(Math.max(1, currentServings - 1))}
-                  />
-                  <Text style={[type.bodyStrong, tabularNums, styles.servingValue, { color: colors.text }]}>
-                    {currentServings}
-                  </Text>
-                  <IconButton
-                    icon={Plus}
-                    variant="soft"
-                    size={36}
-                    iconSize={16}
-                    accessibilityLabel={t("Larger batch")}
-                    onPress={() => setServings(Math.min(12, currentServings + 1))}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.sectionCard}>
-                <View style={styles.ingredientHead}>
-                  <ShoppingBasket size={16} color={colors.sage} strokeWidth={1.9} />
-                  <Text style={[type.labelStrong, { color: colors.text }]}>{t("Materials")}</Text>
-                </View>
-                {recipe.ingredients.map((ingredient) => (
-                  <View key={ingredient.item} style={styles.ingredientRow}>
-                    <Text style={[type.body, { color: colors.text, flex: 1 }]}>{ingredient.item}</Text>
-                    <Text style={[type.body, tabularNums, { color: colors.textMuted }]}>
-                      {scaleQuantity(ingredient.quantity, factor)}
-                    </Text>
-                  </View>
-                ))}
-                {factor !== 1 ? (
-                  <Text style={[type.label, { color: colors.textSubtle }]}>
-                    Quantities scaled from the original batch of {baseServings}.
-                  </Text>
-                ) : null}
-              </View>
-
-              <View style={styles.sectionCard}>
-                <Text style={[type.labelStrong, { color: colors.text }]}>{t("Steps")}</Text>
-                {recipe.steps.map((step, index) => (
-                  <View key={step} style={styles.stepRow}>
-                    <View style={styles.stepNumber}>
-                      <Text style={[type.labelStrong, tabularNums, { color: colors.accentText }]}>{index + 1}</Text>
-                    </View>
-                    <Text style={[type.body, { color: colors.text, flex: 1 }]}>{step}</Text>
-                  </View>
-                ))}
-              </View>
-
-              {recipe.tips.length > 0 ? (
-                <View style={[styles.sectionCard, styles.tipsCard]}>
-                  <Text style={[type.labelStrong, { color: colors.text }]}>{t("Notes for this lesson")}</Text>
-                  {recipe.tips.map((tip) => (
-                    <Text key={tip} style={[type.body, { color: colors.textMuted }]}>
-                      • {tip}
-                    </Text>
-                  ))}
-                </View>
-              ) : null}
-
-              <Text style={[type.label, { color: colors.textSubtle }]}>{t("Batch sheet for learning. This is not food-safety or regulatory advice \u2014 check your own process and local rules.")}</Text>
-            </View>
-          ) : null}
-
-          {tab === 'notes' ? (
-            <View style={styles.tabBody}>
-              <Text style={[type.body, { color: colors.textMuted }]}>
-                Notes are private to this device and stay with “{lesson.title}”.
-              </Text>
-              <TextInput
-                value={noteDraft}
-                onChangeText={(text) => {
-                  setNoteDraft(text);
-                  setNoteSaved(false);
-                }}
-                onBlur={() => {
-                  setNote(lesson.id, noteDraft);
-                  setNoteSaved(true);
-                }}
-                multiline
-                placeholder={t("What did you change? What will you try next time?")}
-                placeholderTextColor={colors.textSubtle}
-                accessibilityLabel={`Notes for ${lesson.title}`}
-                style={[styles.notesInput, type.body, { color: colors.text }]}
-              />
-              <View style={styles.notesFooter}>
-                <Button
-                  label={t("Save note")}
-                  variant="secondary"
-                  fullWidth={false}
-                  onPress={() => {
-                    setNote(lesson.id, noteDraft);
-                    setNoteSaved(true);
-                    feedback.tap();
-                  }}
-                />
-                <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
-                  {noteSaved ? 'Saved on this device' : 'Unsaved changes'}
-                </Text>
-              </View>
-            </View>
-          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -1178,34 +1017,6 @@ function SeekBar({
         <View style={styles.seekRailLine} />
       </View>
       <Animated.View style={[styles.seekFill, fillStyle]} />
-    </Pressable>
-  );
-}
-
-function TabButton({
-  label,
-  active,
-  onPress,
-  disabled = false,
-  hint,
-}: {
-  label: string;
-  active: boolean;
-  onPress: () => void;
-  disabled?: boolean;
-  hint?: string;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="tab"
-      accessibilityState={{ selected: active, disabled }}
-      accessibilityLabel={hint ? `${label}. ${hint}` : label}
-      disabled={disabled}
-      onPress={onPress}
-      style={[styles.tabButton, active && styles.tabButtonActive, disabled && { opacity: 0.45 }]}>
-      <Text style={[active ? type.labelStrong : type.label, { color: active ? colors.text : colors.textMuted }]} numberOfLines={1}>
-        {label}
-      </Text>
     </Pressable>
   );
 }
@@ -1301,28 +1112,10 @@ const styles = createStyles(() => StyleSheet.create({
   progressBlock: { gap: spacing.xs, marginTop: spacing.md },
   progressHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   rule: { height: 1, backgroundColor: colors.divider },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.xs, flexWrap: 'wrap' },
 
-  tabs: {
-    flexDirection: 'row',
-    gap: layout.gap,
-    paddingHorizontal: layout.screen,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  tabButton: { flex: 1, minHeight: layout.touchTarget, alignItems: 'center', justifyContent: 'center' },
-  tabButtonActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
 
   tabBody: { gap: layout.gap, paddingTop: layout.gap, paddingHorizontal: layout.screen },
-  sectionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    gap: spacing.sm,
-  },
-  tipsCard: { backgroundColor: colors.surfaceAlt, borderColor: 'transparent' },
+  aboutCard: { gap: spacing.sm, padding: layout.screen, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider },
   /** Full-bleed list out of the body's 8pt gutter, the same shape as the groups on Profile. */
   actionCard: {
     backgroundColor: colors.surface,
@@ -1332,37 +1125,7 @@ const styles = createStyles(() => StyleSheet.create({
     marginHorizontal: -layout.screen,
   },
 
-  recipeHead: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
-  servingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.sm,
-  },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  servingValue: { minWidth: 28, textAlign: 'center' },
-  ingredientHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  ingredientRow: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.md },
-  stepRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'flex-start' },
-  stepNumber: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
-  notesInput: {
-    minHeight: 160,
-    textAlignVertical: 'top',
-    backgroundColor: colors.surface,
-    borderRadius: radius.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-  },
-  notesFooter: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 
   sheetSection: { gap: spacing.sm, paddingBottom: spacing.md },
   sheetRow: {

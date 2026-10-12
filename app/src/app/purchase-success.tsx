@@ -1,4 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { BookOpen, CircleCheck, Clock, Play, Receipt, Star } from 'lucide-react-native';
 import { useEffect, useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';

@@ -1,7 +1,8 @@
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { useFonts } from 'expo-font';
-import { DefaultTheme, Stack, ThemeProvider, useRouter } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react';

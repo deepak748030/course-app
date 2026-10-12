@@ -1,7 +1,8 @@
 import { Image, type ImageSource } from 'expo-image';
 import { CourseImage } from '@/components/course-image';
 import { mediaSource } from '@/services/catalogService';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {

@@ -23,7 +23,10 @@ export type OtpFailure = 'incorrect' | 'expired' | 'blocked' | 'network';
 
 export interface AuthService {
   requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
-  verifyOtp(phone: string, code: string): Promise<{ ok: true; session: Session } | { ok: false; error: OtpFailure }>;
+  verifyOtp(
+    phone: string,
+    code: string,
+  ): Promise<{ ok: true; session: Session; interests: string[] } | { ok: false; error: OtpFailure }>;
   getSession(): Promise<Session | null>;
   /** Persists profile edits made in the app. Same storage as the session token. */
   saveSession(session: Session): Promise<void>;
@@ -98,7 +101,7 @@ export const authService: AuthService = {
       const { token, user } = await api.verifyOtp(phone, code);
       const session = persistAndApply(sessionFromUser(token, user));
       await writeStored(SESSION_KEY, JSON.stringify(session));
-      return { ok: true, session };
+      return { ok: true, session, interests: user.interests ?? [] };
     } catch (err) {
       return { ok: false, error: otpFailureFrom(err) };
     }

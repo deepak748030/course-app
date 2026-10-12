@@ -11,7 +11,7 @@ import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import type { LucideIcon } from 'lucide-react-native';
 import { ArrowLeft, ChevronDown, ChevronRight, CircleAlert, Info, Search, WifiOff, X } from 'lucide-react-native';
 import { Children, type ReactNode, useEffect, useRef, useState } from 'react';
@@ -365,6 +365,9 @@ export function MetaItem({ icon: Icon, label, color = colors.textMuted }: { icon
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
+/** Taps closer together than this are one press. */
+const BUTTON_DOUBLE_TAP_MS = 600;
+
 export function Button({
   label,
   onPress,
@@ -400,6 +403,8 @@ export function Button({
   const busy = loading || pending;
   const inactive = disabled || busy;
   const sheenValue = useSharedValue(0);
+  // A second tap within this window is the same press again: ignored (double-tap protection).
+  const lastPress = useRef(0);
 
   useEffect(() => {
     if (!sheen || inactive || reduced || variant !== 'primary') {
@@ -438,6 +443,9 @@ export function Button({
         accessibilityState={{ disabled: inactive, busy }}
         disabled={inactive}
         onPress={() => {
+          const now = Date.now();
+          if (now - lastPress.current < BUTTON_DOUBLE_TAP_MS) return;
+          lastPress.current = now;
           feedback.tap();
           const result = onPress();
           if (result && typeof (result as Promise<unknown>).finally === 'function') {

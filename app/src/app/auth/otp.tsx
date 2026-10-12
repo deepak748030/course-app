@@ -1,4 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
@@ -34,7 +35,7 @@ export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { signIn } = useStore();
+  const { signIn, restoreInterests, state } = useStore();
 
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -65,7 +66,11 @@ export default function OtpScreen() {
       if (result.ok) {
         signIn(result.session);
         feedback.success();
-        router.replace('/auth/interests');
+        restoreInterests(result.interests);
+        // The "what do you work with" step is asked once: after a choice (here or on another device) it never returns.
+        // "Maybe later" saves nothing, so it is asked again on the next sign-in.
+        const hasChoice = result.interests.length > 0 || state.interests.length > 0;
+        router.replace(hasChoice ? '/home' : '/auth/interests');
         return;
       }
 
@@ -80,7 +85,7 @@ export default function OtpScreen() {
       announce(messages[result.error]);
       if (result.error !== 'network' && result.error !== 'blocked') setCode('');
     },
-    [announce, phone, router, signIn, verifying],
+    [announce, phone, restoreInterests, router, signIn, state.interests, verifying],
   );
 
   // Auto-verify once a complete code is entered — expected on OTP screens, still reversible.

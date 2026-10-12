@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import {
   Bell,
   Bookmark,

@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { BookOpen, Mail, MessageCircle, RefreshCcw, Share2 } from 'lucide-react-native';
 import { Share, StyleSheet, Text, View } from 'react-native';
 

@@ -131,6 +131,8 @@ type StoreValue = {
   completeOnboarding: () => void;
 
   toggleInterest: (id: string) => void;
+  /** Adopts the interests saved on the account, unless this device already has its own choice. */
+  restoreInterests: (ids: string[]) => void;
   isInterestSelected: (id: string) => boolean;
 
   toggleSavedCourse: (id: Id) => void;
@@ -479,6 +481,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       signOut: endAccountSession,
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),
 
+      restoreInterests: (ids) =>
+        setState((prev) => (prev.interests.length === 0 && ids.length > 0 ? { ...prev, interests: ids } : prev)),
       toggleInterest: (id) => {
         setState((prev) => {
           const interests = prev.interests.includes(id)

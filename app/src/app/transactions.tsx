@@ -7,7 +7,7 @@
 
 import { CourseImage } from '@/components/course-image';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { Receipt, WifiOff } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

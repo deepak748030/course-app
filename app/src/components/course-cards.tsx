@@ -12,7 +12,7 @@ import { CourseImage } from '@/components/course-image';
 import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import {
   ChartNoAxesColumnIncreasing,
   CircleCheck,
