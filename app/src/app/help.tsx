@@ -4,10 +4,11 @@ import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { Accordion, AppBar, Badge, Button, DataList, ListRow, Screen, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
-import { faqs } from '@/data/content';
+import { useAppContent } from '@/services/app-content';
 import { useT } from '@/i18n';
 
 export default function HelpScreen() {
+  const { faqs } = useAppContent();
   const t = useT();
 
   const router = useRouter();

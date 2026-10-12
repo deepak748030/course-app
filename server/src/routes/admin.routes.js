@@ -3,6 +3,7 @@ import os from 'node:os';
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
+import * as account from '../controllers/admin/account.controller.js';
 import * as categories from '../controllers/admin/categories.controller.js';
 import * as coupons from '../controllers/admin/coupons.controller.js';
 import * as courses from '../controllers/admin/courses.controller.js';
@@ -258,8 +259,39 @@ router.put('/coupons/:id', validateParams(objectIdParam), validateBody(couponUpd
 router.delete('/coupons/:id', validateParams(objectIdParam), coupons.deleteCoupon);
 
 // ---------- settings ---------------------------------------------------------------------------
+const legalSectionInput = z.object({
+  heading: z.string().trim().min(1).max(160),
+  body: z.array(z.string().trim().max(1000)).max(20).default([]),
+  points: z.array(z.string().trim().max(300)).max(20).default([]),
+});
+const legalDocInput = z
+  .object({
+    title: z.string().trim().min(1).max(60),
+    heading: z.string().trim().max(160).default(''),
+    summary: z.string().trim().max(200).default(''),
+    sections: z.array(legalSectionInput).max(30).default([]),
+  })
+  .nullable();
+
 const settingsSchema = z.object({
   appName: z.string().trim().min(2).max(60).optional(),
+  faqs: z
+    .array(
+      z.object({
+        question: z.string().trim().min(1).max(300),
+        answer: z.string().trim().max(2000).default(''),
+      })
+    )
+    .max(50)
+    .optional(),
+  legalDocs: z
+    .object({
+      terms: legalDocInput.optional(),
+      refund: legalDocInput.optional(),
+      privacy: legalDocInput.optional(),
+    })
+    .optional(),
+  purchaseTerms: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
   tagline: z.string().trim().max(200).optional(),
   supportEmail: z.string().trim().email().optional(),
   supportPhone: z.string().trim().max(30).optional(),
@@ -280,6 +312,14 @@ const settingsSchema = z.object({
     .max(5)
     .optional(),
 });
+
+/** Admin login (username = login email) and password. Needs the current password to change either. */
+const accountSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(120).optional(),
+  currentPassword: z.string().min(1).max(128),
+  newPassword: z.string().min(8, 'The new password needs at least 8 characters').max(128).optional(),
+});
+router.patch('/account', validateBody(accountSchema), account.updateAccount);
 
 router.get('/settings', settings.getSettings);
 router.put('/settings', validateBody(settingsSchema), settings.updateSettings);

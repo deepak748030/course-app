@@ -126,6 +126,30 @@ export interface AppSettings {
   homeBanners: HomeBanner[];
   /** 'web' = Razorpay hosted page in the phone browser (works in Expo Go); 'sdk' = native SDK (dev build). */
   checkoutMode: 'web' | 'sdk';
+  /** Help questions in the app, in order. Empty = the app's built-in FAQ. */
+  faqs?: FaqEntry[];
+  /** Policies in the app. A null/missing document shows the app's built-in text. */
+  legalDocs?: { terms?: LegalDocEntry | null; refund?: LegalDocEntry | null; privacy?: LegalDocEntry | null };
+  /** Checkout lines in the app. Empty = the built-in list. */
+  purchaseTerms?: string[];
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export interface LegalSectionEntry {
+  heading: string;
+  body: string[];
+  points: string[];
+}
+
+export interface LegalDocEntry {
+  title: string;
+  heading: string;
+  summary: string;
+  sections: LegalSectionEntry[];
 }
 
 /** A poster on the app's home screen. Empty imageUrl = the linked course's cover. */

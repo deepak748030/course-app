@@ -301,4 +301,11 @@ export const api = {
   getSettings: () => request<{ settings: AppSettings }>('/admin/settings').then((r) => r.settings),
   updateSettings: (data: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/admin/settings', { method: 'PUT', body: data }).then((r) => r.settings),
+  /** Changes the admin's login (username = email) and/or password. The current password is always required. */
+  updateAccount: (data: { email?: string; currentPassword: string; newPassword?: string }) => {
+    if (demoMode) {
+      return Promise.reject(new ApiError(503, 'Login changes need the real server — demo mode cannot change them.'));
+    }
+    return request<{ user: { email: string } }>('/admin/account', { method: 'PATCH', body: data });
+  },
 };

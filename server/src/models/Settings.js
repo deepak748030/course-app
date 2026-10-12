@@ -19,6 +19,36 @@ const homeBannerSchema = new Schema(
   { _id: false }
 );
 
+/** One help question. */
+const faqSchema = new Schema(
+  {
+    question: { type: String, default: '', trim: true, maxlength: 300 },
+    answer: { type: String, default: '', trim: true, maxlength: 2000 },
+  },
+  { _id: false }
+);
+
+/** A clause block inside a policy: a heading, paragraphs and optional bullet points. */
+const legalSectionSchema = new Schema(
+  {
+    heading: { type: String, default: '', trim: true, maxlength: 160 },
+    body: { type: [String], default: [] },
+    points: { type: [String], default: [] },
+  },
+  { _id: false }
+);
+
+/** A policy document (terms, refund, privacy). Empty = the app shows its built-in text. */
+const legalDocSchema = new Schema(
+  {
+    title: { type: String, default: '', trim: true, maxlength: 60 },
+    heading: { type: String, default: '', trim: true, maxlength: 160 },
+    summary: { type: String, default: '', trim: true, maxlength: 200 },
+    sections: { type: [legalSectionSchema], default: [] },
+  },
+  { _id: false }
+);
+
 const settingsSchema = new Schema(
   {
     _id: { type: String, default: 'app' },
@@ -35,6 +65,16 @@ const settingsSchema = new Schema(
     homeBanners: { type: [homeBannerSchema], default: [] },
     /** How the app takes payment: 'web' = Razorpay hosted page in the browser, 'sdk' = native SDK (dev build). */
     checkoutMode: { type: String, enum: ['web', 'sdk'], default: 'web' },
+    /** Help screen questions, in display order. Empty = the built-in FAQ. */
+    faqs: { type: [faqSchema], default: [] },
+    /** Policy documents. A missing document falls back to the app's built-in text. */
+    legalDocs: {
+      terms: { type: legalDocSchema, default: undefined },
+      refund: { type: legalDocSchema, default: undefined },
+      privacy: { type: legalDocSchema, default: undefined },
+    },
+    /** Lines shown on the checkout screen. Empty = the built-in list. */
+    purchaseTerms: { type: [String], default: [] },
   },
   { timestamps: true }
 );

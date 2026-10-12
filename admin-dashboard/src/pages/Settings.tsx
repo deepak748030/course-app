@@ -1,4 +1,6 @@
-import { ArrowDown, ArrowUp, CreditCard, ImagePlus, Plus, Save, Smartphone, Trash2, Wrench } from 'lucide-react';
+import { ArrowDown, ArrowUp, CreditCard, ImagePlus, KeyRound, Plus, Save, Smartphone, Trash2, Wrench } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, uploadImage } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
@@ -143,6 +145,71 @@ function HomeBannersCard({
   );
 }
 
+/** Admin login: the username is the login email. Changing either needs the current password, then a fresh sign-in. */
+function AdminAccountCard() {
+  const toast = useToast();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState(user?.email ?? '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const changingPassword = newPassword.length > 0;
+  const changingUsername = username.trim() !== '' && username.trim().toLowerCase() !== (user?.email ?? '').toLowerCase();
+  const passwordsMatch = newPassword === confirmPassword;
+  const canSave =
+    !saving &&
+    currentPassword.length > 0 &&
+    (changingUsername || changingPassword) &&
+    (!changingPassword || (newPassword.length >= 8 && passwordsMatch));
+
+  async function save() {
+    setSaving(true);
+    try {
+      await api.updateAccount({
+        currentPassword,
+        ...(changingUsername ? { email: username.trim().toLowerCase() } : {}),
+        ...(changingPassword ? { newPassword } : {}),
+      });
+      toast('success', 'Login updated. Sign in again with the new details.');
+      logout();
+      navigate('/login');
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Could not update the login');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader title="Admin login" subtitle="Change the username (login email) or the password for this admin account" />
+      <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+        <Field label="Username (login email)">
+          <Input type="email" value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
+        </Field>
+        <Field label="Current password" hint="Required to save any change">
+          <Input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" />
+        </Field>
+        <Field label="New password" hint="At least 8 characters. Leave empty to keep it.">
+          <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password" />
+        </Field>
+        <Field label="Confirm new password" error={changingPassword && !passwordsMatch ? 'The passwords do not match' : undefined}>
+          <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} autoComplete="new-password" />
+        </Field>
+      </div>
+      <div className="flex items-center justify-between gap-3 border-t border-line-soft px-5 py-4">
+        <p className="text-[13px] text-muted">Saving signs you out so you can sign in with the new details.</p>
+        <Button icon={KeyRound} onClick={save} loading={saving} disabled={!canSave}>
+          Update login
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -188,7 +255,9 @@ export default function Settings() {
     if (!form) return;
     setSaving(true);
     try {
-      const updated = await api.updateSettings(form);
+      // Help, policies and checkout copy have their own page; this form never sends them.
+      const { faqs: _faqs, legalDocs: _legal, purchaseTerms: _terms, ...fields } = form;
+      const updated = await api.updateSettings(fields);
       setSettings(updated);
       setForm(updated);
       toast('success', form.maintenanceMode ? 'Saved — maintenance mode is ON for the app' : 'Settings saved');
@@ -293,6 +362,8 @@ export default function Settings() {
           </div>
         </div>
       </Card>
+
+      <AdminAccountCard />
 
       {form.maintenanceMode && (
         <div className="rounded-lg border border-error/25 bg-error-soft px-4 py-3 text-[13px] font-medium text-error">

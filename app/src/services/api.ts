@@ -218,6 +218,23 @@ export type ServerSettings = {
   homeBanners?: { imageUrl: string; title: string; subtitle: string; courseSlug: string; active: boolean }[];
   /** 'web' = Razorpay hosted page in the browser (works in Expo Go); 'sdk' = native SDK (dev build). */
   checkoutMode?: 'web' | 'sdk';
+  /** Help questions set in the admin; empty = the built-in FAQ. */
+  faqs?: { question: string; answer: string }[];
+  /** Policy documents set in the admin; a missing one = the built-in text. */
+  legalDocs?: {
+    terms?: ServerLegalDoc | null;
+    refund?: ServerLegalDoc | null;
+    privacy?: ServerLegalDoc | null;
+  };
+  /** Checkout lines set in the admin; empty = the built-in list. */
+  purchaseTerms?: string[];
+};
+
+export type ServerLegalDoc = {
+  title: string;
+  heading: string;
+  summary: string;
+  sections: { heading: string; body?: string[]; points?: string[] }[];
 };
 
 export const api = {

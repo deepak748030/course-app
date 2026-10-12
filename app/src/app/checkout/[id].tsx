@@ -31,7 +31,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent, firstPlayableLesson } from '@/lib/catalog';
-import { purchaseTerms } from '@/data/content';
+import { useAppContent } from '@/services/app-content';
 import { ApiError, api } from '@/services/api';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
@@ -44,6 +44,7 @@ import { feedback } from '@/lib/util';
 type Outcome = { kind: 'failed'; message: string } | { kind: 'cancelled' } | null;
 
 export default function CheckoutScreen() {
+  const { purchaseTerms } = useAppContent();
   const t = useT();
 
   const { id } = useLocalSearchParams<{ id: string }>();

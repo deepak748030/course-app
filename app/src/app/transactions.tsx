@@ -100,6 +100,8 @@ export default function TransactionsScreen() {
             <Text style={[type.labelStrong, styles.heading, { color: colors.textMuted }]}>
               {orders.length === 1 ? t('1 transaction') : t('All {n} transactions', { n: orders.length })}
             </Text>
+            {/* No gap between rows: the list is framed by a hairline at the top and bottom, with one between rows. */}
+            <View style={styles.listFrame}>
             <DataList dividerInset={layout.screen + 64 + spacing.md}>
               {orders.map((order) => {
                 const course = order.course ? byId(order.course.slug) : undefined;
@@ -152,6 +154,7 @@ export default function TransactionsScreen() {
                 );
               })}
             </DataList>
+            </View>
           </View>
         </>
       )}
@@ -168,8 +171,13 @@ const styles = createStyles(() =>
       paddingVertical: spacing.sm,
     },
     summaryRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-    section: { gap: layout.gap },
+    section: { gap: spacing.sm },
     heading: { paddingHorizontal: layout.section },
+    listFrame: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

@@ -22,12 +22,13 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
-import { legalDocs } from '@/data/content';
+import { useAppContent, type LegalKey } from '@/services/app-content';
 import { useT } from '@/i18n';
 
-type DocKey = keyof typeof legalDocs;
+type DocKey = LegalKey;
 
 export default function LegalScreen() {
+  const { legalDocs } = useAppContent();
   const t = useT();
 
   const { doc } = useLocalSearchParams<{ doc?: string }>();

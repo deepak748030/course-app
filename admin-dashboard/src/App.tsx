@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import Orders from './pages/Orders';
 import Reviews from './pages/Reviews';
 import Settings from './pages/Settings';
+import Content from './pages/Content';
 import Analytics from './pages/Analytics';
 import Users from './pages/Users';
 
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/orders" element={<Orders />} />
         <Route path="/reviews" element={<Reviews />} />
         <Route path="/coupons" element={<Coupons />} />
+        <Route path="/content" element={<Content />} />
         <Route path="/settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

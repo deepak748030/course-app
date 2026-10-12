@@ -4,7 +4,10 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
+  ScrollText,
   X,
   Settings,
   Shapes,
@@ -33,8 +36,11 @@ const NAV = [
   { to: '/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/reviews', label: 'Reviews', icon: Star },
   { to: '/coupons', label: 'Coupons', icon: TicketPercent },
+  { to: '/content', label: 'Content', icon: ScrollText },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
+
+const SIDEBAR_KEY = 'ydu.admin.sidebarCollapsed';
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/': { title: 'Dashboard', subtitle: 'How the academy is doing, at a glance' },
@@ -45,6 +51,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/orders': { title: 'Orders', subtitle: 'Every purchase, payment and refund' },
   '/reviews': { title: 'Reviews', subtitle: 'What learners say about each course' },
   '/coupons': { title: 'Coupons', subtitle: 'Discount codes for checkout' },
+  '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy the app shows' },
   '/settings': { title: 'Settings', subtitle: 'App-wide controls the whole platform follows' },
 };
 
@@ -120,6 +127,11 @@ export default function Layout() {
   const current = TITLES[location.pathname] || TITLES['/'];
   const presence = usePresence();
   const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop only: collapsed shows icons alone. The choice is remembered on this computer.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1');
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+  }, [collapsed]);
 
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setMenuOpen(false), [location.pathname]);
@@ -137,16 +149,29 @@ export default function Layout() {
 
       {/* ---------- sidebar (drawer on mobile, column on md+) ---------- */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-line bg-surface transition-transform duration-200 md:static md:z-auto md:translate-x-0 ${
-          menuOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-line bg-surface transition-[transform,width] duration-200 md:static md:z-auto md:translate-x-0 ${
+          collapsed ? 'md:w-[76px]' : 'md:w-60'
+        } ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
       >
-        <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
+        <div
+          className={`flex items-center gap-2.5 px-5 pb-5 pt-6 ${
+            collapsed ? 'md:flex-col md:gap-4 md:px-0' : ''
+          }`}
+        >
           <BrandMark />
-          <div>
+          <div className={`min-w-0 flex-1 ${collapsed ? 'md:hidden' : ''}`}>
             <p className="text-[15px] font-bold leading-tight">YDU Academy</p>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-ink">Admin</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="hidden shrink-0 rounded-md p-1.5 text-subtle transition-colors hover:bg-ink/5 hover:text-ink md:flex"
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
@@ -155,8 +180,12 @@ export default function Layout() {
               key={to}
               to={to}
               end={end}
+              title={collapsed ? label : undefined}
+              aria-label={label}
               className={({ isActive }) =>
                 `group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  collapsed ? 'md:justify-center md:px-0' : ''
+                } ${
                   isActive
                     ? 'bg-brand-soft font-semibold text-brand-ink'
                     : 'text-muted hover:bg-ink/4 hover:text-ink'
@@ -164,17 +193,24 @@ export default function Layout() {
               }
             >
               <Icon size={17} className="shrink-0" />
-              {label}
+              <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
             </NavLink>
           ))}
         </nav>
 
         <div className="border-t border-line-soft p-3">
-          <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-white">
+          <div
+            className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
+              collapsed ? 'md:flex-col md:gap-2 md:px-0' : ''
+            }`}
+          >
+            <div
+              title={user?.name || 'Admin'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-white"
+            >
               {initials(user?.name || 'Admin')}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${collapsed ? 'md:hidden' : ''}`}>
               <p className="truncate text-[13px] font-semibold">{user?.name}</p>
               <p className="truncate text-xs text-subtle">{user?.email}</p>
             </div>
