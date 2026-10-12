@@ -278,6 +278,18 @@ export default function LessonPlayerScreen() {
     }
   });
 
+  // timeUpdate is the normal stop; this poll is the guarantee. It runs only while a capped preview plays.
+  useEffect(() => {
+    if (!Number.isFinite(previewCap) || !isPlaying) return;
+    const id = setInterval(() => {
+      if (player.currentTime >= previewCap) {
+        player.pause();
+        player.currentTime = previewCap;
+      }
+    }, 200);
+    return () => clearInterval(id);
+  }, [previewCap, isPlaying, player]);
+
   // The player is reused across lessons, so it is not recreated on every navigation.
   // Move it to the incoming lesson's saved position whenever the lesson changes.
   useEffect(() => {
@@ -907,7 +919,7 @@ export default function LessonPlayerScreen() {
             <Text style={[type.title, { color: colors.text }]}>{lesson.title}</Text>
             <View style={styles.metaWrap}>
               <MetaItem icon={Clapperboard} label={`Lesson ${lessonNumber} of ${course.lessonCount}`} />
-              <MetaItem icon={Clock} label={lessonLength(lesson)} />
+              <MetaItem icon={Clock} label={unlocked && Number.isFinite(previewCap) ? formatClock(previewCap) : lessonLength(lesson)} />
               <MetaItem icon={ChartNoAxesColumnIncreasing} label={course.level} />
             </View>
             {completed ? (

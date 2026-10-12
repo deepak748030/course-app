@@ -4,6 +4,7 @@
  */
 
 import type { Course, Id, Lesson } from '@/types';
+import { formatClock, lessonLength } from '@/lib/format';
 
 /**
  * Percent off when the catalog models a real discount, else null. Derived so a price change
@@ -30,6 +31,12 @@ export function nextLesson(course: Course, lessonId: string): Lesson | undefined
 export function freePreviewSec(lesson: Lesson): number {
   if (!lesson.isPreview) return 0;
   return lesson.previewSec && lesson.previewSec > 0 ? lesson.previewSec : Number.POSITIVE_INFINITY;
+}
+
+/** The length shown for a free-preview lesson: the admin's preview length when it is capped, else the whole lesson. */
+export function previewClock(lesson: Lesson): string {
+  const cap = freePreviewSec(lesson);
+  return Number.isFinite(cap) ? formatClock(cap) : lessonLength(lesson);
 }
 
 export function firstPlayableLesson(course: Course): Lesson {

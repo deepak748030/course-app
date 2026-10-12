@@ -29,7 +29,7 @@ import { RatingStar } from '@/components/rating-star';
 import { SaveButton } from '@/components/save-button';
 import { Badge, Button, DataList, EmptyState, IconButton, ProgressBar, Screen, Scrim, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { discountPercent } from '@/lib/catalog';
+import { discountPercent, previewClock } from '@/lib/catalog';
 import { api, type ServerReview } from '@/services/api';
 import { mapCourse } from '@/services/catalogService';
 import { track } from '@/services/analytics';
@@ -177,14 +177,14 @@ export default function CourseDetailsScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${lessonLength(previewLesson)}`}
+              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewClock(previewLesson)}`}
               onPress={() => openLesson(previewLesson)}
               style={styles.heroPlay}>
               <View style={styles.playCircle}>
                 <Play size={20} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
               </View>
               <Text style={[type.labelStrong, { color: colors.textInverse }]}>
-                Watch free preview · {lessonLength(previewLesson)}
+                Watch free preview · {previewClock(previewLesson)}
               </Text>
             </Pressable>
             {/* The discount sits where the player puts its own secondary controls: bottom right,
