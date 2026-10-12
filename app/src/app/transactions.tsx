@@ -1,7 +1,7 @@
 /**
  * Transactions: every purchase on this account, newest first — straight from the server.
  *
- * The demo payment gateway still simulates the charge itself, but each order is a real
+ * Each order is a real
  * record on the learner's account: amount paid, coupon used, date and status.
  */
 
@@ -92,7 +92,7 @@ export default function TransactionsScreen() {
               {savedTotal > 0 ? ` · ${formatInr(savedTotal)} saved with coupons` : ''}
             </Text>
             <Text style={[type.label, { color: colors.textSubtle }]}>
-              {t("Payments are simulated by the demo gateway; the orders themselves are real records on the academy server.")}
+              {t("Payments are processed by Razorpay. Each order is kept on your academy account.")}
             </Text>
           </View>
 

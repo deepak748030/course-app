@@ -114,7 +114,7 @@ export function ProfileEditorSheet({
       visible={visible}
       onClose={onClose}
       title={t("Edit profile")}
-      subtitle={t("Everything here stays on this device. Nothing is sent to a server in this prototype.")}
+      subtitle={t("Your changes are saved to your account.")}
       scrollable
       footer={
         <Button

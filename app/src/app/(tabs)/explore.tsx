@@ -289,7 +289,6 @@ export default function ExploreScreen() {
           </DataList>
         )}
 
-        <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>{t("Catalog, ratings and reviews are sample data for this prototype.")}</Text>
         </>
       )}
 

@@ -105,7 +105,7 @@ export default function OtpScreen() {
     setCode('');
     autoSubmitted.current = null;
     setSecondsLeft(RESEND_SECONDS);
-    announce('A new demo code has been generated.');
+    announce('A new code has been sent.');
   };
 
   const changeNumber = () => router.replace('/auth/phone');
@@ -217,10 +217,6 @@ export default function OtpScreen() {
             style={styles.changeLink}>
             <Text style={[type.labelStrong, { color: colors.accentText }]}>{t("Change number")}</Text>
           </Pressable>
-
-          <Text style={[type.label, { color: colors.textSubtle }]}>
-            {t('Demo build: this code is generated locally, never sent by SMS, and never written to a log. The demo code is in the project README.')}
-          </Text>
         </ScrollView>
       </Screen>
     </KeyboardAvoidingView>

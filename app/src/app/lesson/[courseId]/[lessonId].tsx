@@ -1090,7 +1090,7 @@ export default function LessonPlayerScreen() {
                 </View>
               ) : null}
 
-              <Text style={[type.label, { color: colors.textSubtle }]}>{t("Sample batch sheet for learning. This is not food-safety or regulatory advice \u2014 check your own process and local rules.")}</Text>
+              <Text style={[type.label, { color: colors.textSubtle }]}>{t("Batch sheet for learning. This is not food-safety or regulatory advice \u2014 check your own process and local rules.")}</Text>
             </View>
           ) : null}
 

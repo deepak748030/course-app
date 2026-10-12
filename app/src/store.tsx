@@ -152,7 +152,8 @@ type StoreValue = {
 
   setPreference: (key: keyof NotificationPrefs, value: boolean) => void;
   markNotificationsRead: () => void;
-  resetDemoData: () => void;
+  /** Clears this device's cached learning data. Signed-in learners get their purchases and progress back from the server. */
+  resetDeviceData: () => void;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -509,13 +510,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           preferences: { ...prev.preferences, [key]: value },
         })),
       markNotificationsRead: () => setState((prev) => ({ ...prev, notificationsRead: true })),
-      resetDemoData: () =>
+      resetDeviceData: () => {
+        // Local-only fields go back to their defaults; the account's own data is fetched again below.
         setState((prev) => ({
           ...seedState(),
-          onboardingDone: true,
+          onboardingDone: prev.onboardingDone,
           interests: prev.interests,
           preferences: prev.preferences,
-        })),
+          ratings: prev.ratings,
+          theme: prev.theme,
+          themeChosen: prev.themeChosen,
+          language: prev.language,
+          profileAvatarUri: prev.profileAvatarUri,
+        }));
+        if (session) void hydrateLearning();
+      },
     };
   }, [ready, session, state, settings, patchProgress, scheduleProgressSync, hydrateLearning]);
 

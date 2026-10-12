@@ -9,7 +9,7 @@ import { createStyles, colors, layout, radius, spacing, type } from '@/constants
 import { useT } from '@/i18n';
 import { normalizePhone, validateIndianMobile } from '@/lib/format';
 import { feedback } from '@/lib/util';
-import { DEMO_OFFLINE_PHONE, authService } from '@/services/auth';
+import { authService } from '@/services/auth';
 
 export default function PhoneScreen() {
   const t = useT();
@@ -101,21 +101,11 @@ export default function PhoneScreen() {
             <ErrorState
               offline
               title={t("We could not reach the server")}
-              body={
-                digits === DEMO_OFFLINE_PHONE
-                  ? 'This number is reserved in the demo to simulate a failed request. Try any other 10-digit number.'
-                  : 'Check your connection and try again. Your number has not been saved.'
-              }
+              body="Check your connection and try again. Your number has not been saved."
               onRetry={submit}
             />
           ) : null}
 
-          <View style={styles.demoNotice}>
-            <ShieldCheck size={16} color={colors.sage} strokeWidth={1.9} />
-            <Text style={[type.label, { color: colors.textMuted, flex: 1 }]}>
-              {t('Demo build: no SMS is sent and no real account is created. The demo verification code is documented in the project README.')}
-            </Text>
-          </View>
 
           <Text style={[type.label, { color: colors.textMuted }]}>
             By continuing you agree to our{' '}
@@ -156,14 +146,6 @@ const styles = createStyles(() => StyleSheet.create({
     flexGrow: 1,
   },
   intro: { gap: spacing.sm, paddingHorizontal: spacing.sm },
-  demoNotice: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-    backgroundColor: colors.sageSoft,
-    borderRadius: radius.sm,
-    padding: spacing.md,
-  },
   link: { color: colors.accentText, textDecorationLine: 'underline' },
   helpLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, minHeight: layout.touchTarget, justifyContent: 'center' },
 }));

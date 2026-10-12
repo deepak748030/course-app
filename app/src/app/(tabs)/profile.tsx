@@ -283,7 +283,7 @@ export default function ProfileScreen() {
             <ListRow
               icon={FileText}
               label={t("Terms and conditions")}
-              subtitle={t("The terms this prototype runs on")}
+              subtitle={t("Terms, refunds and privacy")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
             />
             <ListRow
@@ -301,11 +301,10 @@ export default function ProfileScreen() {
         <View style={styles.about}>
           <View style={styles.aboutRow}>
             <AppText variant="label" color={colors.textSubtle}>
-              YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
+              YDU Academy {Constants.expoConfig?.version ?? '1.0.0'}
             </AppText>
-            <Badge label={t("Demo")} tone="gold" />
           </View>
-          <AppText variant="label" color={colors.textSubtle}>{t("Sample catalog and demo sign-in codes. Payments are processed by Razorpay.")}</AppText>
+          <AppText variant="label" color={colors.textSubtle}>{t("Payments are processed by Razorpay.")}</AppText>
         </View>
       </View>
 

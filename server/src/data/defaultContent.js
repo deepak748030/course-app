@@ -1,29 +1,29 @@
-// Generated from app/src/data/content.ts — the built-in text the app shows when the admin has
+// Generated from app/src/data/content.ts — the built-in text the app shows when the academy has
 // not written its own. The admin Content page edits from these, so nothing starts blank.
 export const defaultFaqs = [
   {
     "question": "How long do I have access to a course I buy?",
-    "answer": "Access terms are set per course and shown on the checkout screen before you pay. In this prototype every course is a sample product with sample terms, so nothing is charged and nothing expires."
+    "answer": "The access terms for each course are shown on the checkout screen before you pay. Once your payment is confirmed, the course stays unlocked on your account."
   },
   {
-    "question": "Are the purchases in this app real?",
-    "answer": "Yes. Payments are processed by Razorpay in its secure checkout. Card, UPI and bank details never reach the YDU Academy app or server, and the course unlocks on your account once the payment is confirmed."
+    "question": "Is my payment secure?",
+    "answer": "Yes. Payments are processed by Razorpay in its secure checkout. Card, UPI and bank details never reach the YDU Academy app or server, and the course unlocks once the payment is confirmed."
   },
   {
-    "question": "How is my progress tracked?",
-    "answer": "Lesson completion, playback position and your notes are stored on this device only. Clearing them from Settings → Reset demo data removes them."
+    "question": "How is my progress saved?",
+    "answer": "Your lesson progress and playback position are saved to your account. Notes are kept on this device, so they are removed if you clear the app data or use Clear data on this device in Settings."
   },
   {
     "question": "Can I watch lessons offline?",
-    "answer": "Offline downloads are not implemented, so the app does not offer a download button. Any control you can see in the player is functional."
+    "answer": "Offline downloads are not available yet, so the app does not offer a download button. Every control you can see in the player works."
   },
   {
     "question": "Do courses have subtitles?",
-    "answer": "Not yet. Captions are not offered in the player until real caption tracks are available, rather than showing a control that does nothing."
+    "answer": "Not yet. Captions are not offered in the player until caption tracks are available, rather than showing a control that does nothing."
   },
   {
     "question": "I followed a method and the batch did not work",
-    "answer": "The make-sheets in the app are sample educational content, not food-safety, veterinary or licensing guidance. Batch outcomes depend on your milk, your equipment and your local rules — check with your dairy officer or a qualified advisor before you change a commercial process."
+    "answer": "The lessons teach methods and show examples. They are not food-safety, veterinary or licensing guidance. Batch outcomes depend on your milk, your equipment and your local rules, so check with your dairy officer or a qualified advisor before you change a commercial process."
   }
 ];
 
@@ -31,40 +31,42 @@ export const defaultLegalDocs = {
   "terms": {
     "title": "Terms of use",
     "heading": "YDU Academy terms of use",
-    "summary": "The terms this prototype runs on",
+    "summary": "Please read these terms before you use the academy.",
     "sections": [
       {
-        "heading": "What this document is",
+        "heading": "Using the academy",
         "body": [
-          "YDU Academy is a prototype. This page is placeholder text, not a legal agreement, and it has to be replaced with reviewed terms before the app is distributed."
+          "YDU Academy gives you access to dairy courses for your own learning. By creating an account or buying a course, you agree to these terms."
         ]
       },
       {
-        "heading": "Courses, prices and reviews",
-        "body": [
-          "Everything in the catalog is sample material, written to show how the app works."
-        ],
+        "heading": "Purchases",
         "points": [
-          "Courses, prices and ratings are fictional.",
-          "Purchases are simulated end to end: no payment is processed and no money moves.",
-          "Lesson videos are demo clips, not the training material they describe."
+          "Prices are shown in Indian rupees.",
+          "Payment is processed by Razorpay. YDU Academy does not store card, UPI or bank details.",
+          "A course unlocks on your account once the payment is confirmed."
         ]
       },
       {
-        "heading": "Applying what you learn",
+        "heading": "Learning material",
         "body": [
-          "You decide how to apply the methods shown in a lesson."
+          "The lessons teach methods and show examples. They are not food-safety, veterinary, licensing or regulatory advice."
         ],
         "points": [
-          "Batch sheets are teaching samples, not certified production records.",
-          "Nothing here is food-safety, veterinary, licensing or regulatory advice.",
           "Check the rules that apply to your own dairy before you change how it works."
         ]
       },
       {
-        "heading": "Your device, your data",
+        "heading": "Your account",
+        "points": [
+          "Keep your sign-in details private.",
+          "Do not share or resell course material."
+        ]
+      },
+      {
+        "heading": "Changes to these terms",
         "body": [
-          "Progress, notes and saved items live on this device only. Clearing the app data removes them, and there is no backup yet."
+          "The academy may update these terms. The version shown in the app is the one that applies."
         ]
       }
     ]
@@ -72,40 +74,30 @@ export const defaultLegalDocs = {
   "refund": {
     "title": "Refund policy",
     "heading": "YDU Academy refund policy",
-    "summary": "When a course can be refunded",
+    "summary": "How refund requests are handled.",
     "sections": [
       {
-        "heading": "In this build",
+        "heading": "Asking for a refund",
         "body": [
-          "Checkout is a demo. It unlocks a course on this device and takes no money, so there is nothing to refund yet."
-        ],
-        "points": [
-          "No card, UPI or bank details are collected.",
-          "Nothing is sent to a payment provider.",
-          "A demo purchase can be cleared from Transactions on this device."
+          "Contact the academy team through the support details in Help, and include your order number."
         ]
       },
       {
-        "heading": "The window a shipped app would run on",
+        "heading": "How a request is decided",
         "body": [
-          "A released app would refund on these terms:"
-        ],
-        "points": [
-          "Seven days from the date of purchase.",
-          "Full refund while no lesson has been started.",
-          "No refund once a quarter or more of the lessons are done."
+          "Each request is reviewed by the academy team. A refund is calculated on the amount you actually paid, so a course bought with a coupon is refunded at the coupon price."
         ]
       },
       {
-        "heading": "What the refund is calculated on",
+        "heading": "After a refund",
         "body": [
-          "Refunds are calculated on the amount actually paid. A course bought with a coupon is refunded at the coupon price, never at the list price. Batch sheets, notes and downloaded material follow the same rule as the lessons."
+          "An approved refund goes back to your original payment method, and the course is locked on your account."
         ]
       },
       {
-        "heading": "How the money reaches you",
+        "heading": "Timing",
         "body": [
-          "An approved refund goes back to the original payment method within five to seven working days, and the course locks again once the refund is processed."
+          "Refunds usually reach your bank within a few working days. The final timing depends on your bank."
         ]
       }
     ]
@@ -113,38 +105,39 @@ export const defaultLegalDocs = {
   "privacy": {
     "title": "Privacy policy",
     "heading": "YDU Academy privacy policy",
-    "summary": "What is stored, and where",
+    "summary": "What we collect, and why.",
     "sections": [
       {
-        "heading": "What this prototype stores",
-        "body": [
-          "Everything below is kept in this app on this device."
-        ],
+        "heading": "What we collect",
         "points": [
           "Your mobile number, used to sign in.",
-          "The session token, in the platform secure store.",
-          "Saved courses, batch sheets, lesson progress and your notes.",
-          "The profile details you type in yourself."
+          "Your name and the profile details you add.",
+          "Your purchases, lesson progress and ratings."
         ]
       },
       {
-        "heading": "What it does not do",
+        "heading": "Payments",
+        "body": [
+          "Card, UPI and bank details are entered on Razorpay’s checkout and never reach YDU Academy."
+        ]
+      },
+      {
+        "heading": "What we do not do",
         "points": [
-          "No analytics, advertising or third-party tracking.",
-          "No data leaves the device — there is no server to send it to.",
-          "No contact list, camera roll or location access."
+          "We do not sell your personal data.",
+          "We do not access your contacts or your location."
+        ]
+      },
+      {
+        "heading": "Notes and device data",
+        "body": [
+          "Notes are stored on your device. Clearing the app data removes them."
         ]
       },
       {
         "heading": "Removing your data",
         "body": [
-          "Logging out clears the session, progress and notes stored for it. Reset demo data on the Settings screen puts the app back to a clean slate."
-        ]
-      },
-      {
-        "heading": "What this document is",
-        "body": [
-          "Placeholder copy for a prototype. It is not a privacy policy, and it has to be replaced with a reviewed document before YDU Academy is distributed."
+          "You can clear the data kept on this device from Settings. To ask for your account to be deleted, contact the academy team through Help."
         ]
       }
     ]
@@ -152,8 +145,8 @@ export const defaultLegalDocs = {
 };
 
 export const defaultPurchaseTerms = [
-  "Stream every lesson of this course on this account",
-  "Lessons unlock immediately after the demo purchase completes",
-  "Batch notes, progress and playback position are saved on this device",
-  "Downloads, certificates, captions and live classes are not offered in this prototype"
+  "Access to every lesson of this course on your account",
+  "Lessons unlock as soon as your payment is confirmed",
+  "Your progress and playback position are saved to your account",
+  "Downloads, certificates and captions are not offered yet"
 ];

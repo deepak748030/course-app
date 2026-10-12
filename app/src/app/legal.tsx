@@ -46,7 +46,7 @@ export default function LegalScreen() {
         <View style={styles.docHead}>
           <Text style={[type.subheading, { color: colors.text }]}>{document.heading}</Text>
           <Text style={[type.label, { color: colors.textSubtle }]}>
-            {t('Sample document · not legally binding')}
+            {t('Official policy')}
           </Text>
         </View>
 
@@ -87,7 +87,7 @@ export default function LegalScreen() {
 
         <View style={styles.footNote}>
           <Text style={[docText, { color: colors.textSubtle }]}>
-            {t('Course titles, lesson copy and the policy documents are sample content and stay in English.')}
+            {t('Course titles and lesson copy stay in English.')}
           </Text>
         </View>
       </View>

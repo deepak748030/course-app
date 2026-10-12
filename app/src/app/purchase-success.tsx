@@ -144,7 +144,7 @@ export default function PurchaseSuccessScreen() {
             </Text>
             <View style={styles.badgeRow}>
               {enrolled ? <Badge label={t('Unlocked')} tone="sage" /> : null}
-              <Badge label={t("Demo purchase \u2014 no payment was processed")} tone="gold" />
+              <Badge label={t("Payment confirmed")} tone="sage" />
             </View>
           </View>
         </View>

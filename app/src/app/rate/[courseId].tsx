@@ -66,7 +66,7 @@ export default function RateCourseScreen() {
       <Screen header={<AppBar title={t('Rate this course')} />} contentStyle={styles.stateContent}>
         <ErrorState
           title={t('Course not found')}
-          body={t('This course is no longer in the sample catalog, so there is nothing to rate.')}
+          body={t('This course is no longer available, so there is nothing to rate.')}
         />
         <Button label={t('Back to My learning')} variant="secondary" onPress={() => router.replace('/learning')} />
       </Screen>
@@ -246,7 +246,7 @@ export default function RateCourseScreen() {
           </View>
 
           <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
-            {t('This prototype keeps your rating on this device. Nothing is sent anywhere.')}
+            {t('Your rating is saved to your account.')}
           </Text>
         </>
       )}

@@ -724,7 +724,7 @@ check('green is the default look, the number is read-only, and policy copy is sm
   assert.ok(legal.includes('type.bodyStrong'), 'clause headings are the 15pt step');
   const content = read('src/data/content.ts');
   assert.ok(content.includes('points?: readonly string[]'), 'clauses can carry bullet points');
-  assert.ok(/heading: 'What it does not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
+  assert.ok(/heading: 'What we do not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
 });
 
 check('the offer mark is plain text, and it owns the card corner', () => {

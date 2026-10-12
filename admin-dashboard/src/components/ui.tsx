@@ -504,10 +504,10 @@ export function CourseCover({
   if (coverUrl) {
     return <img src={coverUrl} alt="" className={`${className} shrink-0 rounded-md border border-line-soft object-cover`} />;
   }
-  // Same default artwork the learner app shows when a course has no image.
+  // Same brand-mark.png the learner app shows when a course has no image.
   return (
     <img
-      src="/course-placeholder.jpg"
+      src="/brand-mark.png"
       alt={title}
       className={`${className} shrink-0 rounded-md border border-line-soft object-contain`}
       style={{ background: '#FBF6E3' }}

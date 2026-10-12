@@ -21,9 +21,6 @@ const SESSION_KEY = 'ydu.session';
 /** Why a code could not be checked. The OTP screen words each one differently. */
 export type OtpFailure = 'incorrect' | 'expired' | 'network';
 
-/** Requesting a code for this number makes the server simulate a failure, for state testing. */
-export const DEMO_OFFLINE_PHONE = '9000000000';
-
 export interface AuthService {
   requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
   verifyOtp(phone: string, code: string): Promise<{ ok: true; session: Session } | { ok: false; error: OtpFailure }>;

@@ -3,14 +3,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Order, OrderStatus } from '../api/types';
+import { StatusMenu, type StatusOption } from '../components/StatusMenu';
 import {
   Badge,
   Card,
+  ConfirmDialog,
   EmptyState,
   LoadingBlock,
   Pagination,
   SearchInput,
-  Select,
   formatDateTime,
   formatInr,
   usePagination,
@@ -24,11 +25,11 @@ const STATUS_TABS: { id: string; label: string }[] = [
   { id: 'refunded', label: 'Refunded' },
 ];
 
-function statusTone(status: OrderStatus) {
-  if (status === 'paid') return 'success';
-  if (status === 'refunded') return 'error';
-  return 'brand';
-}
+const STATUS_OPTIONS: StatusOption<OrderStatus>[] = [
+  { value: 'pending', label: 'Pending', tone: 'brand', hint: 'Payment not confirmed yet. The learner has no access.' },
+  { value: 'paid', label: 'Paid', tone: 'success', hint: 'Payment received. The course is unlocked for the learner.' },
+  { value: 'refunded', label: 'Refunded', tone: 'error', hint: 'Money returned. The learner loses access to the course.' },
+];
 
 export default function Orders() {
   const toast = useToast();
@@ -37,6 +38,7 @@ export default function Orders() {
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Order | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -59,6 +61,15 @@ export default function Orders() {
 
   async function changeStatus(order: Order, status: OrderStatus) {
     if (order.status === status) return;
+    // A refund takes the course away from the learner, so it is confirmed first.
+    if (status === 'refunded') {
+      setRefundTarget(order);
+      return;
+    }
+    await runStatusChange(order, status);
+  }
+
+  async function runStatusChange(order: Order, status: OrderStatus) {
     setBusyId(order._id);
     try {
       await api.updateOrder(order._id, status);
@@ -150,18 +161,14 @@ export default function Orders() {
                     </td>
                     <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{formatDateTime(order.createdAt)}</td>
                     <td className="border-b border-line-soft px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Badge tone={statusTone(order.status)}>{order.status}</Badge>
-                        <Select
+                      <div>
+                        <StatusMenu<OrderStatus>
+                          label={`Status of order ${order._id}`}
                           value={order.status}
+                          options={STATUS_OPTIONS}
                           disabled={busyId === order._id}
-                          onChange={(e) => changeStatus(order, e.target.value as OrderStatus)}
-                          className="h-8 w-28 text-[13px]"
-                        >
-                          <option value="pending">pending</option>
-                          <option value="paid">paid</option>
-                          <option value="refunded">refunded</option>
-                        </Select>
+                          onChange={(next) => changeStatus(order, next)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -174,6 +181,19 @@ export default function Orders() {
           <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
+
+      <ConfirmDialog
+        open={refundTarget !== null}
+        title="Refund this order?"
+        message="The learner loses access to this course. Use this only after the money has gone back to the learner."
+        confirmLabel="Refund order"
+        onCancel={() => setRefundTarget(null)}
+        onConfirm={() => {
+          const order = refundTarget;
+          setRefundTarget(null);
+          if (order) void runStatusChange(order, 'refunded');
+        }}
+      />
     </div>
   );
 }

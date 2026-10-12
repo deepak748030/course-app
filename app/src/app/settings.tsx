@@ -14,7 +14,7 @@ export default function SettingsScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { state, setPreference, resetDemoData, signOut } = useStore();
+  const { state, setPreference, resetDeviceData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -43,7 +43,7 @@ export default function SettingsScreen() {
               onChange={(value) => setPreference('productNews', value)}
             />
           </DataList>
-          <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>{t("Push delivery is not wired up in this prototype, so these switches only control what the app would send.")}</Text>
+          <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>{t("Push delivery is not connected yet. These switches save your choice for when it is.")}</Text>
         </View>
 
         <View style={styles.section}>
@@ -51,8 +51,8 @@ export default function SettingsScreen() {
           <DataList>
             <ListRow
               icon={RefreshCcw}
-              label={t("Reset demo data")}
-              subtitle={t("Clears purchases, progress, notes and saved items. Keeps your session.")}
+              label={t("Clear data on this device")}
+              subtitle={t("Clears notes, saved items and cached progress from this phone. Your purchases and progress come back from your account.")}
               onPress={() => setResetOpen(true)}
             />
             <ListRow
@@ -69,19 +69,18 @@ export default function SettingsScreen() {
           <Text style={[type.label, { color: colors.textSubtle }]}>
             YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
           </Text>
-          <Text style={[type.label, { color: colors.textSubtle }]}>{t("Prototype build: sample catalog, demo authentication, demo payments.")}</Text>
         </View>
       </Screen>
 
       <ConfirmSheet
         visible={resetOpen}
-        title={t("Reset demo data?")}
-        body={t("Purchases, lesson progress, notes and saved items on this device are cleared. You stay signed in.")}
-        confirmLabel={t("Reset data")}
+        title={t("Clear data on this device?")}
+        body={t("Notes, saved items and cached progress on this phone are cleared. Your purchases and progress are restored from your account. You stay signed in.")}
+        confirmLabel={t("Clear data")}
         destructive
         onConfirm={() => {
           setResetOpen(false);
-          resetDemoData();
+          resetDeviceData();
         }}
         onCancel={() => setResetOpen(false)}
       />
