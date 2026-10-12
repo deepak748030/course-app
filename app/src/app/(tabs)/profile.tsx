@@ -4,7 +4,6 @@ import {
   Bell,
   Bookmark,
   BookOpen,
-  CalendarDays,
   CircleCheck,
   Clock,
   LogOut,
@@ -43,7 +42,7 @@ import {
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useCatalog } from '@/services/catalog-context';
 import { LANGUAGES, useT } from '@/i18n';
-import { ageFromDateOfBirth, formatDateOfBirth, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
 import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
@@ -88,10 +87,8 @@ export default function ProfileScreen() {
   const joined = profile?.joinedAt
     ? new Date(profile.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : null;
-  const birthDate = formatDateOfBirth(profile?.dateOfBirth);
-  const age = ageFromDateOfBirth(profile?.dateOfBirth);
   /** True once at least one field filled in from the Edit sheet exists — otherwise the card invites it. */
-  const hasDetails = Boolean(profile?.email || profile?.city || profile?.goal || birthDate);
+  const hasDetails = Boolean(profile?.email || profile?.city || profile?.goal);
 
   async function changePhoto() {
     if (photoBusy) return;
@@ -158,14 +155,6 @@ export default function ProfileScreen() {
                 rather than an empty one; the pencil in the header is the way in. */}
             <DataList dividerInset={layout.screen + 32 + spacing.md}>
               {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
-              {birthDate ? (
-                <ListRow
-                  icon={CalendarDays}
-                  label={t("Date of birth")}
-                  subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
-                  chevron={false}
-                />
-              ) : null}
               {profile.city ? <ListRow icon={MapPin} label={t("City")} subtitle={profile.city} chevron={false} /> : null}
               {profile.goal ? <ListRow icon={Target} label={t("Dairy goal")} subtitle={profile.goal} chevron={false} /> : null}
             </DataList>

@@ -120,7 +120,6 @@ export type ServerUser = {
   email: string;
   phone?: string;
   avatarUrl?: string;
-  dateOfBirth?: string;
   city?: string;
   goal?: string;
   interests?: string[];
@@ -275,7 +274,7 @@ export const api = {
       body: { phone, code },
     }),
   me: () => request<{ user: ServerUser }>('/api/auth/me'),
-  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'dateOfBirth' | 'city' | 'goal' | 'interests'>>) =>
+  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
 
   // ---- catalog ----

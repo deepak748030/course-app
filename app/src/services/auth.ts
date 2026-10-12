@@ -61,7 +61,6 @@ export function sessionFromUser(token: string, user: ServerUser): Session {
       phone: user.phone ?? '',
       joinedAt: user.createdAt,
       email: user.email || undefined,
-      dateOfBirth: user.dateOfBirth || undefined,
       city: user.city || undefined,
       goal: user.goal || undefined,
       avatarUrl: user.avatarUrl || undefined,

@@ -144,7 +144,6 @@ export interface UserProfile {
   /* Optional: the user fills these in from Profile -> Edit. */
   email?: string;
   /** ISO calendar date, `YYYY-MM-DD`. */
-  dateOfBirth?: string;
   city?: string;
   /** Short cooking goal picked from a fixed list — see profile editor. */
   goal?: string;

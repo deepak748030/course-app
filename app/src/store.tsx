@@ -428,7 +428,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                     avatarUrl: user.avatarUrl || prev.profile.avatarUrl,
                     city: user.city || prev.profile.city,
                     goal: user.goal || prev.profile.goal,
-                    dateOfBirth: user.dateOfBirth || prev.profile.dateOfBirth,
                   },
                 }
               : prev,

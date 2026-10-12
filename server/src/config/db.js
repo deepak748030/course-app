@@ -38,6 +38,8 @@ export async function connectDb({ retries = 10, delayMs = 3000 } = {}) {
       await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 5000 });
       const { flattenLegacySections } = await import('../models/Course.js');
       await flattenLegacySections().catch((err) => console.error('[db] section migration failed:', err.message));
+      const { removeLegacyDateOfBirth } = await import('../models/User.js');
+      await removeLegacyDateOfBirth().catch((err) => console.error('[db] user migration failed:', err.message));
       return true;
     } catch (err) {
       console.warn(`[db] connect attempt ${attempt}/${retries} failed: ${err.message}`);

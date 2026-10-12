@@ -337,7 +337,7 @@ onboarding completion and app preferences are kept.
 - `bun scripts/selfcheck.ts` (`npm run check`) — 19 checks: phone normalisation/validation/masking,
   quantity scaling, INR/clock/duration formatting, the greeting helper, the server→app catalog
   mapping (ids, offer math, curriculum grouping), the search/filter/sort helpers that act on any
-  catalog, the profile field validators (email, date of birth), and a source scan that fails the
+  catalog, the profile field validators (email), and a source scan that fails the
   build if any Reanimated animation callback or animated-style body touches React state (see "Native
   worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route

@@ -16,7 +16,6 @@ const userSchema = new Schema(
     blocked: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
     /** Optional profile fields the app edits from Profile → Edit. */
-    dateOfBirth: { type: String, default: '', trim: true, maxlength: 10 },
     city: { type: String, default: '', trim: true, maxlength: 80 },
     goal: { type: String, default: '', trim: true, maxlength: 120 },
     /** Category slugs the learner picked on the interests step. */
@@ -45,3 +44,12 @@ userSchema.set('toJSON', {
 });
 
 export const User = mongoose.model('User', userSchema);
+
+/** Date of birth was removed from the product: drop the stored field from existing accounts once. */
+export async function removeLegacyDateOfBirth() {
+  const result = await User.collection.updateMany(
+    { dateOfBirth: { $exists: true } },
+    { $unset: { dateOfBirth: '' } },
+  );
+  if (result.modifiedCount) console.log(`[db] removed date of birth from ${result.modifiedCount} account(s)`);
+}

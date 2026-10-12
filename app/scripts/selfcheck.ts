@@ -33,12 +33,9 @@ if (typeof Bun !== 'undefined') {
 }
 
 import {
-  ageFromDateOfBirth,
-  buildDateOfBirth,
   formatClock,
   formatDuration,
   formatIndianMobile,
-  formatDateOfBirth,
   formatInr,
   maskPhone,
   normalizePhone,
@@ -603,11 +600,6 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     ...content.ratingHighlights,
     // The two theme names and their descriptions, rendered through t() by the picker on Profile.
     ...THEMES.flatMap((theme) => [theme.label, theme.description]),
-    // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).
-    buildDateOfBirth('31', '02', '1996', today).error!,
-    buildDateOfBirth('05', '10', '2030', today).error!,
-    buildDateOfBirth('05', '10', '2020', today).error!,
-    buildDateOfBirth('05', '10', '1890', today).error!,
   ];
   dataKeys.push(...i18n.LANGUAGES.map((language) => language.description));
   for (const key of dataKeys) used.add(key);
@@ -738,29 +730,11 @@ check('the offer mark is plain text, and it owns the card corner', () => {
   assert.ok(/<OfferMark percent=\{offer\} color=\{colors\.textInverse\} \/>/.test(course), 'the course hero uses it too');
 });
 
-check('profile fields validate email and date of birth', () => {
+check('profile fields validate email', () => {
   assert.equal(validateEmail(''), null);
   assert.equal(validateEmail('deepak@example.com'), null);
   assert.ok(validateEmail('deepak@example'));
   assert.ok(validateEmail('deepak example.com'));
-
-  const today = new Date(2026, 9, 5); // 5 October 2026
-  assert.equal(ageFromDateOfBirth('1996-03-12', today), 30);
-  assert.equal(ageFromDateOfBirth('1996-10-05', today), 30);
-  assert.equal(ageFromDateOfBirth('1996-10-06', today), 29);
-  assert.equal(ageFromDateOfBirth('1996-02-30', today), null);
-  assert.equal(formatDateOfBirth('1996-03-12'), '12 March 1996');
-  assert.equal(formatDateOfBirth(undefined), null);
-
-  assert.deepEqual(buildDateOfBirth('', '', '', today), { ok: false, error: null });
-  assert.equal(buildDateOfBirth('12', '', '1996', today).ok, false);
-  // One-digit month/day is accepted on purpose: "3" means March.
-  assert.deepEqual(buildDateOfBirth('12', '3', '1996', today), { ok: true, date: '1996-03-12' });
-  assert.deepEqual(buildDateOfBirth('12', '03', '1996', today), { ok: true, date: '1996-03-12' });
-  assert.deepEqual(buildDateOfBirth('31', '02', '1996', today), { ok: false, error: 'That date does not exist.' });
-  assert.equal(buildDateOfBirth('05', '10', '2030', today).ok, false);
-  assert.equal(buildDateOfBirth('05', '10', '2020', today).ok, false);
-  assert.equal(buildDateOfBirth('05', '10', '1890', today).ok, false);
 });
 
 void formatIndianMobile;
