@@ -209,7 +209,7 @@ export default function Layout() {
           >
             <div
               title={user?.name || 'Admin'}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-white"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-on-brand"
             >
               {initials(user?.name || 'Admin')}
             </div>
@@ -289,7 +289,7 @@ export default function Layout() {
                 resetDemoDb();
                 window.location.reload();
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-ink hover:bg-brand/30"
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-ink-ink hover:bg-brand/30"
             >
               <RefreshCw size={12} /> Reset demo data
             </button>

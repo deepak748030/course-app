@@ -170,7 +170,7 @@ function PreviewLimit({
         <button
           type="button"
           onClick={() => onChange(durationSec)}
-          className="h-9 rounded-md border border-line px-2 hover:bg-brand-soft hover:text-brand"
+          className="h-9 rounded-md border border-line px-2 hover:bg-brand-soft hover:text-brand-ink"
         >
           Whole
         </button>
@@ -233,7 +233,7 @@ function LessonVideos({
           >
             <label
               className={`inline-flex h-8 cursor-pointer items-center gap-1 whitespace-nowrap rounded px-2 ${
-                anyBusy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand'
+                anyBusy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand-ink'
               }`}
               title={
                 uploading

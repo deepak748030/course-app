@@ -5,7 +5,46 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings } from '../api/types';
+import { ADMIN_THEMES, useAdminTheme, type AdminThemeId } from '../theme/adminTheme';
 import { Button, Card, CardHeader, Field, Input, LoadingBlock, Select, Textarea, Toggle, useToast } from '../components/ui';
+
+/** Colour theme of this admin console. Stored on this browser only; changes apply at once. */
+function AppearanceCard() {
+  const [theme, setTheme] = useAdminTheme();
+  return (
+    <Card>
+      <CardHeader title="Appearance" subtitle="Colour theme for this admin console, saved on this browser" />
+      <div className="grid grid-cols-1 gap-3 p-5 sm:grid-cols-2">
+        {(Object.keys(ADMIN_THEMES) as AdminThemeId[]).map((id) => {
+          const option = ADMIN_THEMES[id];
+          const selected = theme === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setTheme(id)}
+              aria-pressed={selected}
+              className={`flex items-center gap-3 rounded-lg border p-4 text-left transition-colors ${
+                selected ? 'border-brand bg-brand-soft' : 'border-line hover:bg-surface-alt'
+              }`}
+            >
+              <span
+                className="h-9 w-9 shrink-0 rounded-lg border border-line"
+                style={{ background: option.swatch }}
+                aria-hidden
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">{option.label}</span>
+                <span className="mt-0.5 block text-[13px] leading-relaxed text-muted">{option.description}</span>
+              </span>
+              {selected && <span className="text-xs font-bold text-brand-ink">Selected</span>}
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 /** Admin login: the username is the login email. Changing either needs the current password, then a fresh sign-in. */
 function AdminAccountCard() {
@@ -158,6 +197,8 @@ export default function Settings() {
         </div>
       </Card>
 
+      <AppearanceCard />
+
       <Card>
         <CardHeader title="Platform controls" subtitle="Take effect the next time the app syncs" />
         <div className="divide-y divide-line-soft">
@@ -178,7 +219,7 @@ export default function Settings() {
           <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div className="flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft">
-                <CreditCard size={16} className="text-brand" />
+                <CreditCard size={16} className="text-brand-ink" />
               </div>
               <div>
                 <p className="text-sm font-semibold">Checkout mode</p>

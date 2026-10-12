@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalSectionEntry } from '../api/types';
 import { Button, Card, CardHeader, Field, Input, LoadingBlock, Textarea, useToast } from '../components/ui';
+import { BUILT_IN_CONTENT } from '../data/builtInContent';
 
 /**
  * What the app's Help, policy and checkout screens show. Every field starts with the text the app
@@ -94,19 +95,22 @@ export default function Content() {
   const [draft, setDraft] = useState<ContentState | null>(null);
   const [tab, setTab] = useState<DocKey>('terms');
   const [saving, setSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(() => {
+    setLoadError(null);
     api
       .getSettingsWithDefaults()
       .then(({ settings, contentDefaults }) => {
-        const d = contentDefaults ?? EMPTY_DEFAULTS;
+        // An older server does not send contentDefaults: fall back to the copy bundled in this console.
+        const d = contentDefaults ?? BUILT_IN_CONTENT;
         setDefaults(d);
         const next = fromSettings(settings, d);
         setSaved(next);
         setDraft(next);
       })
-      .catch((e) => toast('error', e instanceof Error ? e.message : 'Failed to load content'));
-  }, [toast]);
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Could not load the content.'));
+  }, []);
 
   useEffect(() => {
     load();
@@ -117,7 +121,22 @@ export default function Content() {
     [saved, draft]
   );
 
-  if (!saved || !draft) return <Card><LoadingBlock label="Loading content…" /></Card>;
+  if (!saved || !draft) {
+    if (loadError) {
+      return (
+        <Card>
+          <div className="flex flex-col items-start gap-3 p-6">
+            <p className="text-sm font-semibold text-error">Content could not be loaded</p>
+            <p className="text-[13px] leading-relaxed text-muted">{loadError}</p>
+            <Button variant="outline" icon={RotateCcw} onClick={load}>
+              Try again
+            </Button>
+          </div>
+        </Card>
+      );
+    }
+    return <Card><LoadingBlock label="Loading content…" /></Card>;
+  }
 
   const faqsValid = draft.faqs.every((faq) => faq.question.trim().length > 0);
 

@@ -47,7 +47,7 @@ export function Button({
     'inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-colors select-none disabled:opacity-45 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink';
   const sizes = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-sm' };
   const variants: Record<ButtonVariant, string> = {
-    primary: 'bg-brand text-white hover:bg-brand-pressed',
+    primary: 'bg-brand text-on-brand hover:bg-brand-pressed',
     dark: 'bg-ink text-white hover:bg-ink/85',
     outline: 'border border-line bg-surface text-ink hover:bg-surface-alt',
     ghost: 'text-muted hover:bg-ink/5 hover:text-ink',

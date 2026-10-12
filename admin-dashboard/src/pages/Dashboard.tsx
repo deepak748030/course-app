@@ -26,9 +26,8 @@ import {
   formatDateTime,
   formatInr,
 } from '../components/ui';
+import { ADMIN_THEMES, useAdminTheme } from '../theme/adminTheme';
 
-const GOLD = '#2F6B47';
-const BRAND = '#14532D';
 
 function Delta({ value }: { value: number }) {
   const up = value >= 0;
@@ -85,6 +84,8 @@ const tooltipStyle = {
 };
 
 export default function Dashboard() {
+  const [chartTheme] = useAdminTheme();
+  const { brand: BRAND, gold: GOLD } = ADMIN_THEMES[chartTheme].chart;
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState('');
 
@@ -110,8 +111,8 @@ export default function Dashboard() {
   const maxCategoryEnroll = Math.max(1, ...data.categoryBreakdown.map((c) => c.enrollments30));
   const totalRatings = data.ratingDistribution.reduce((s, r) => s + r.count, 0) || 1;
   const donutColors: Record<number, string> = {
-    5: '#2F6B47',
-    4: '#14532D',
+    5: GOLD,
+    4: BRAND,
     3: '#FFDF87',
     2: '#EFE8D2',
     1: '#DCD5C2',

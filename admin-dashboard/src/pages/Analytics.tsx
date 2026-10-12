@@ -15,10 +15,8 @@ import { api } from '../api/client';
 import { isRealtimeConnected, useRealtimeRefresh, usePresence } from '../api/realtime';
 import type { AnalyticsOverview } from '../api/types';
 import { Card, CardHeader, LoadingBlock, formatInr } from '../components/ui';
+import { ADMIN_THEMES, useAdminTheme } from '../theme/adminTheme';
 
-const GOLD = '#2F6B47';
-const BRAND = '#14532D';
-const INK = '#0F231A';
 
 const tooltipStyle = {
   borderRadius: 10,
@@ -77,6 +75,8 @@ function FunnelStep({ label, value, pct, tone }: { label: string; value: number;
 }
 
 export default function Analytics() {
+  const [chartTheme] = useAdminTheme();
+  const { brand: BRAND, gold: GOLD, ink: INK } = ADMIN_THEMES[chartTheme].chart;
   const [days, setDays] = useState(30);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [error, setError] = useState('');
@@ -118,7 +118,7 @@ export default function Analytics() {
               key={p.days}
               onClick={() => setDays(p.days)}
               className={`rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
-                days === p.days ? 'bg-brand text-white' : 'text-muted hover:text-ink'
+                days === p.days ? 'bg-brand text-on-brand' : 'text-muted hover:text-ink'
               }`}
             >
               {p.label}
