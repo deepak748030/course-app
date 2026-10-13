@@ -15,7 +15,7 @@
  * socket simply stays disconnected and everything keeps working against the demo store.
  */
 import { io, type Socket } from 'socket.io-client';
-import { getToken } from './client';
+import { getToken, SERVER_URL } from './client';
 
 export type RealtimeEvent =
   | 'order.created'
@@ -96,8 +96,8 @@ export function connectRealtime() {
   const token = getToken();
   if (!token) return;
 
-  // Same origin serves the API (Vite proxies /api and /socket.io to the server).
-  socket = io(window.location.origin, {
+  // Straight to the backend server (VITE_API_URL in .env) — no proxy in between.
+  socket = io(SERVER_URL, {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],

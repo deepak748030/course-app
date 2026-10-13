@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowDown, ArrowUp, ImagePlus, Images, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, uploadImage } from '../api/client';
+import { api, resolveAssetUrl, uploadImage } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings, Course, HomeBanner } from '../api/types';
 import { Button, Card, CardHeader, EmptyState, Field, Input, LoadingBlock, Select, Textarea, Toggle, useToast } from '../components/ui';
@@ -162,9 +162,9 @@ export default function Banners() {
                     <div>
                       <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-line-soft bg-surface-alt">
                         {banner.imageUrl ? (
-                          <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />
+                          <img src={resolveAssetUrl(banner.imageUrl)} alt="" className="h-full w-full object-cover" />
                         ) : linked?.coverUrl ? (
-                          <img src={linked.coverUrl} alt="" className="h-full w-full object-cover opacity-90" />
+                          <img src={resolveAssetUrl(linked.coverUrl)} alt="" className="h-full w-full object-cover opacity-90" />
                         ) : (
                           <span className="px-2 text-center text-xs text-subtle">No picture yet</span>
                         )}
@@ -264,7 +264,7 @@ export default function Banners() {
                     const title = b.title.trim() || linked?.title || 'Untitled banner';
                     return (
                       <div key={n} className="relative aspect-[16/10] overflow-hidden rounded-xl bg-ink">
-                        {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
+                        {image ? <img src={resolveAssetUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="line-clamp-1 text-[15px] font-bold">{title}</p>

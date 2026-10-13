@@ -1,10 +1,12 @@
 /**
  * API client for the YDU Academy server.
  *
- * All requests go to /api (proxied to the Express server by Vite in dev). When the
- * server or its database is unreachable, the client transparently falls back to the
- * in-browser demo store so the dashboard stays usable — the layout shows a banner
- * while demo mode is active.
+ * There is no dev-server proxy: every request goes straight to the backend whose
+ * URL is set in .env as VITE_API_URL (e.g. VITE_API_URL=http://localhost:5000 or
+ * https://api.example.com — without a trailing /api). When the server or its
+ * database is unreachable, the client transparently falls back to the in-browser
+ * demo store so the dashboard stays usable — the layout shows a banner while
+ * demo mode is active.
  */
 
 import { DemoApiError, demoRequest } from './demo';
@@ -23,6 +25,28 @@ import type {
   AdminNotification,
   NotificationKind,
 } from './types';
+
+/**
+ * Base URL of the backend server, from .env (VITE_API_URL). A trailing slash or
+ * a trailing /api in the value is tolerated. Falls back to the local dev server
+ * so a fresh checkout still works without a .env file.
+ */
+export const SERVER_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'http://localhost:5000')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
+
+/** Absolute URL for an API path such as '/admin/courses'. */
+export const apiUrl = (path: string) => `${SERVER_URL}/api${path}`;
+
+/**
+ * The server returns paths like /uploads/<file> for locally stored images.
+ * Those live on the server, not on this dashboard's host, so resolve them
+ * against SERVER_URL. Absolute http(s)/data/blob URLs pass through untouched.
+ */
+export function resolveAssetUrl(url?: string | null): string {
+  if (!url) return '';
+  return url.startsWith('/') ? `${SERVER_URL}${url}` : url;
+}
 
 const TOKEN_KEY = 'ydu.admin.token';
 
@@ -91,7 +115,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
   let res: Response;
   try {
-    res = await fetch(`/api${path}${queryString(query)}`, {
+    res = await fetch(apiUrl(`${path}${queryString(query)}`), {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -170,7 +194,7 @@ export async function uploadCourseVideo(
       poll = null;
     };
 
-    xhr.open('POST', '/api/admin/uploads/video');
+    xhr.open('POST', apiUrl('/admin/uploads/video'));
     xhr.setRequestHeader('X-Upload-Id', uploadId);
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.upload.onprogress = (event) => {
@@ -181,7 +205,7 @@ export async function uploadCourseVideo(
       onProgress({ stage: 'storing', percent: 0 });
       poll = setInterval(async () => {
         try {
-          const res = await fetch(`/api/admin/uploads/video/progress/${uploadId}`, {
+          const res = await fetch(apiUrl(`/admin/uploads/video/progress/${uploadId}`), {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (!res.ok) return;
@@ -215,7 +239,7 @@ export async function uploadCourseVideo(
 
 /**
  * Multipart image upload (cover art, anything the dashboard needs hosted).
- * Goes straight to the server's /api/uploads; returns the stored URL.
+ * Goes straight to the server's /api/uploads (on SERVER_URL); returns the stored URL.
  */
 export async function uploadImage(file: File, folder = 'covers'): Promise<{ url: string; provider: string }> {
   if (demoMode) throw new ApiError(503, 'Uploads need the real server — demo mode cannot store files.');
@@ -224,7 +248,7 @@ export async function uploadImage(file: File, folder = 'covers'): Promise<{ url:
   body.append('folder', folder);
   let res: Response;
   try {
-    res = await fetch('/api/uploads', {
+    res = await fetch(apiUrl('/uploads'), {
       method: 'POST',
       headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
       body,

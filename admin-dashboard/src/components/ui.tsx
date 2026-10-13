@@ -5,6 +5,7 @@
 import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Info, Loader2, Search, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { HoldToConfirm } from './HoldToConfirm';
+import { resolveAssetUrl } from '../api/client';
 import type { LucideIcon } from 'lucide-react';
 
 // ---------- formatting helpers -------------------------------------------------------
@@ -549,7 +550,7 @@ export function CourseCover({
   className?: string;
 }) {
   if (coverUrl) {
-    return <img src={coverUrl} alt="" className={`${className} shrink-0 rounded-md border border-line-soft object-cover`} />;
+    return <img src={resolveAssetUrl(coverUrl)} alt="" className={`${className} shrink-0 rounded-md border border-line-soft object-cover`} />;
   }
   // Same brand-mark.png the learner app shows when a course has no image.
   return (
