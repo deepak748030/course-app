@@ -14,16 +14,16 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_PROXY_TARGET || 'https://course-app-na94.onrender.com',
         changeOrigin: true,
       },
       '/uploads': {
-        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_PROXY_TARGET || 'https://course-app-na94.onrender.com',
         changeOrigin: true,
       },
       // Realtime (socket.io). Without this the dashboard socket never reaches the server.
       '/socket.io': {
-        target: process.env.VITE_PROXY_TARGET || 'http://localhost:5000',
+        target: process.env.VITE_PROXY_TARGET || 'https://course-app-na94.onrender.com',
         changeOrigin: true,
         ws: true,
       },
