@@ -21,8 +21,11 @@ import {
   Badge,
   Card,
   CardHeader,
+  ChartSkeleton,
   CourseCover,
-  LoadingBlock,
+  ListSkeleton,
+  Skeleton,
+  StatCardsSkeleton,
   formatDateTime,
   formatInr,
 } from '../components/ui';
@@ -104,7 +107,67 @@ export default function Dashboard() {
   useRealtimeRefresh(['order.created', 'user.registered', 'review.created'], load);
 
   if (error) return <Card className="p-6 text-sm text-error">{error}</Card>;
-  if (!data) return <Card><LoadingBlock label="Crunching the numbers…" /></Card>;
+  if (!data)
+    return (
+      <div className="space-y-5">
+        <StatCardsSkeleton count={4} />
+        <div className="flex flex-wrap gap-2.5" aria-hidden="true">
+          <Skeleton className="h-6 w-40 rounded-full" />
+          <Skeleton className="h-6 w-44 rounded-full" />
+          <Skeleton className="h-6 w-36 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+          <ChartSkeleton className="xl:col-span-3" />
+          <ChartSkeleton className="xl:col-span-2" />
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-2 h-3 w-44" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="mt-2 h-3 w-32" />
+            </div>
+            <div className="flex items-center gap-4 p-5" aria-hidden="true">
+              <Skeleton className="h-40 w-40 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-3 w-full" />
+                ))}
+              </div>
+            </div>
+          </Card>
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-3 w-48" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-2 h-3 w-52" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-2 h-3 w-28" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+        </div>
+      </div>
+    );
 
   const { kpis } = data;
   const maxTopRevenue = Math.max(1, ...data.topCourses.map((c) => c.revenue30));

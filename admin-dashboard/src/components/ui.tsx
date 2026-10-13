@@ -481,19 +481,187 @@ export function EmptyState({
   );
 }
 
-export function LoadingBlock({ label = 'Loading…' }: { label?: string }) {
+// ---------- Skeleton loading -----------------------------------------------------------------------------------
+// Pulsing placeholders shaped like the real content, so a page keeps its layout
+// while its data is on the way instead of showing a lone spinner.
+
+export function Skeleton({ className = '' }: { className?: string }) {
+  return <div aria-hidden="true" className={`animate-pulse rounded-md bg-ink/10 ${className}`} />;
+}
+
+function SkeletonSrLabel() {
+  return <span className="sr-only">Loading…</span>;
+}
+
+/** KPI / stat cards row (Dashboard, Analytics). */
+export function StatCardsSkeleton({
+  count = 4,
+  gridClassName = 'sm:grid-cols-2 xl:grid-cols-4',
+}: {
+  count?: number;
+  gridClassName?: string;
+}) {
   return (
-    <div className="flex items-center justify-center gap-2 px-6 py-16 text-muted">
-      <Loader2 size={17} className="animate-spin" />
-      <span className="text-sm">{label}</span>
+    <div role="status" className={`grid grid-cols-1 gap-4 ${gridClassName}`}>
+      <SkeletonSrLabel />
+      {Array.from({ length: count }).map((_, i) => (
+        <Card key={i} className="p-5">
+          <div className="flex items-start justify-between gap-3">
+            <Skeleton className="h-10 w-10 rounded-lg" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+          </div>
+          <Skeleton className="mt-5 h-3 w-28" />
+          <Skeleton className="mt-2 h-7 w-32" />
+          <Skeleton className="mt-2 h-3 w-20" />
+        </Card>
+      ))}
     </div>
   );
 }
 
-export function PageSpinner() {
+/** Chart card: header lines plus a bar-chart-shaped body. */
+export function ChartSkeleton({ className = '' }: { className?: string }) {
+  const bars = [42, 68, 50, 82, 58, 92, 64, 76, 48, 88, 60, 72];
   return (
-    <div className="flex h-full min-h-[50vh] items-center justify-center">
-      <Loader2 size={26} className="animate-spin text-brand-ink" />
+    <Card className={className}>
+      <div className="border-b border-line-soft px-5 py-4">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="mt-2 h-3 w-52 max-w-full" />
+      </div>
+      <div className="flex h-[280px] items-end gap-3 px-5 pb-6 pt-8" aria-hidden="true">
+        {bars.map((h, i) => (
+          <div key={i} className="flex-1 animate-pulse rounded-t-md bg-ink/10" style={{ height: `${h}%` }} />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/** Table body: a header strip plus avatar + line rows. Use inside a Card. */
+export function TableSkeleton({ rows = 6 }: { rows?: number }) {
+  const widths = ['w-40', 'w-24', 'w-32', 'w-20'];
+  return (
+    <div role="status">
+      <SkeletonSrLabel />
+      <div className="flex items-center gap-4 border-b border-line px-4 py-3" aria-hidden="true">
+        {widths.map((w, i) => (
+          <Skeleton key={i} className={`h-3 ${w} ${i > 1 ? 'hidden lg:block' : ''}`} />
+        ))}
+        <Skeleton className="ml-auto h-3 w-16" />
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b border-line-soft px-4 py-3.5" aria-hidden="true">
+          <Skeleton className="h-10 w-12 shrink-0 rounded-lg" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-44 max-w-full" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+          <Skeleton className={`h-3.5 w-20 ${i % 2 ? 'hidden lg:block' : 'hidden md:block'}`} />
+          <Skeleton className="hidden h-6 w-16 rounded-full lg:block" />
+          <Skeleton className="h-3.5 w-14" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Divided list rows (reviews, notifications, recent activity). Use inside a Card. */
+export function ListSkeleton({ rows = 5 }: { rows?: number }) {
+  return (
+    <div role="status" className="divide-y divide-line-soft">
+      <SkeletonSrLabel />
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-start gap-3 px-4 py-4 md:px-5" aria-hidden="true">
+          <Skeleton className="h-9 w-9 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-3.5 w-48 max-w-full" />
+            <Skeleton className="h-3 w-full max-w-md" />
+            <Skeleton className="h-3 w-32" />
+          </div>
+          <Skeleton className="h-8 w-20 shrink-0 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Stacked form cards (Settings, Content, Banners editors). */
+export function FormSkeleton({
+  sections = 3,
+  fieldsPerSection = 3,
+  className = '',
+}: {
+  sections?: number;
+  fieldsPerSection?: number;
+  className?: string;
+}) {
+  return (
+    <div role="status" className={`space-y-4 ${className}`}>
+      <SkeletonSrLabel />
+      {Array.from({ length: sections }).map((_, s) => (
+        <Card key={s}>
+          <div className="border-b border-line-soft px-5 py-4">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="mt-2 h-3 w-56 max-w-full" />
+          </div>
+          <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2">
+            {Array.from({ length: fieldsPerSection }).map((_, f) => (
+              <div key={f} className={f === fieldsPerSection - 1 && fieldsPerSection % 2 === 1 ? 'sm:col-span-2' : ''}>
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="mt-2 h-10 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+/** Whole-shell placeholder while the signed-in session is being restored. */
+export function AppShellSkeleton() {
+  return (
+    <div role="status" className="flex h-screen overflow-hidden bg-canvas">
+      <SkeletonSrLabel />
+      {/* sidebar */}
+      <div className="hidden w-60 shrink-0 flex-col border-r border-line bg-surface md:flex" aria-hidden="true">
+        <div className="flex items-center gap-2.5 px-4 py-4">
+          <Skeleton className="h-9 w-9 rounded-lg" />
+          <div className="space-y-2">
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </div>
+        <div className="flex-1 space-y-1 px-3 py-2">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="flex items-center gap-3 border-t border-line-soft px-4 py-3">
+          <Skeleton className="h-9 w-9 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-3 w-28" />
+          </div>
+        </div>
+      </div>
+      {/* main column */}
+      <div className="flex min-w-0 flex-1 flex-col" aria-hidden="true">
+        <div className="flex items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 md:px-6">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-56 max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-28 rounded-full" />
+        </div>
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 md:p-6">
+          <StatCardsSkeleton count={4} />
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-5">
+            <ChartSkeleton className="xl:col-span-3" />
+            <ChartSkeleton className="xl:col-span-2" />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

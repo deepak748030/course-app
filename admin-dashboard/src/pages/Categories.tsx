@@ -11,7 +11,7 @@ import {
   EmptyState,
   Field,
   Input,
-  LoadingBlock,
+  TableSkeleton,
   Modal,
   Pagination,
   SearchInput,
@@ -124,7 +124,7 @@ export default function Categories() {
 
       <Card>
         {categories === null ? (
-          <LoadingBlock label="Loading categories…" />
+          <TableSkeleton rows={6} />
         ) : categories.length === 0 ? (
           <EmptyState icon={Shapes} title="No categories yet" message="Create the first track for the catalog." action={<Button icon={Plus} onClick={openCreate}>New category</Button>} />
         ) : (

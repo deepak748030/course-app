@@ -7,7 +7,7 @@ import {
   Card,
   ConfirmDialog,
   EmptyState,
-  LoadingBlock,
+  TableSkeleton,
   Pagination,
   SearchInput,
   Select,
@@ -98,7 +98,7 @@ export default function Users() {
 
       <Card>
         {users === null ? (
-          <LoadingBlock label="Loading learners…" />
+          <TableSkeleton rows={7} />
         ) : users.length === 0 ? (
           <EmptyState icon={UsersIcon} title="No learners found" message="Adjust the search or filters, or wait for new sign-ups from the app." />
         ) : (

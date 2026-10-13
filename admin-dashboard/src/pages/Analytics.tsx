@@ -14,7 +14,7 @@ import {
 import { api } from '../api/client';
 import { isRealtimeConnected, useRealtimeRefresh, usePresence } from '../api/realtime';
 import type { AnalyticsOverview } from '../api/types';
-import { Card, CardHeader, LoadingBlock, formatInr } from '../components/ui';
+import { Card, CardHeader, ChartSkeleton, ListSkeleton, Skeleton, StatCardsSkeleton, formatInr } from '../components/ui';
 import { ADMIN_THEMES, useAdminTheme } from '../theme/adminTheme';
 
 
@@ -98,7 +98,53 @@ export default function Analytics() {
   useRealtimeRefresh(['order.created', 'user.registered'], load);
 
   if (error) return <Card className="p-6 text-sm text-error">{error}</Card>;
-  if (!data) return <Card><LoadingBlock label="Crunching the numbers…" /></Card>;
+  if (!data)
+    return (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3" aria-hidden="true">
+          <Skeleton className="h-4 w-96 max-w-full" />
+          <Skeleton className="h-9 w-56 rounded-lg" />
+        </div>
+        <StatCardsSkeleton count={4} gridClassName="sm:grid-cols-2 lg:grid-cols-4" />
+        <StatCardsSkeleton count={5} gridClassName="sm:grid-cols-2 lg:grid-cols-5" />
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <ChartSkeleton className="xl:col-span-2" />
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-36" />
+              <Skeleton className="mt-2 h-3 w-48" />
+            </div>
+            <div className="space-y-6 p-5" aria-hidden="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i}>
+                  <div className="flex justify-between gap-3">
+                    <Skeleton className="h-3.5 w-28" />
+                    <Skeleton className="h-3.5 w-14" />
+                  </div>
+                  <Skeleton className="mt-2 h-2.5 w-full rounded-full" />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+          <Card className="xl:col-span-2">
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="mt-2 h-3 w-44" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="mt-2 h-3 w-36" />
+            </div>
+            <ListSkeleton rows={4} />
+          </Card>
+        </div>
+      </div>
+    );
 
   const { kpis, funnel } = data;
   const presenceNow = presence;

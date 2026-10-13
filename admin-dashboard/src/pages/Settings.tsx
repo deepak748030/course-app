@@ -6,7 +6,7 @@ import { api } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings } from '../api/types';
 import { ADMIN_THEMES, useAdminTheme, type AdminThemeId } from '../theme/adminTheme';
-import { Button, Card, CardHeader, Field, Input, LoadingBlock, PasswordInput, Select, Textarea, Toggle, useToast } from '../components/ui';
+import { Button, Card, CardHeader, Field, FormSkeleton, Input, PasswordInput, Select, Textarea, Toggle, useToast } from '../components/ui';
 
 /** Colour theme of this admin console. Stored on this browser only; changes apply at once. */
 function AppearanceCard() {
@@ -177,7 +177,7 @@ export default function Settings() {
     };
   }, [load]);
 
-  if (!settings || !form) return <Card><LoadingBlock label="Loading settings…" /></Card>;
+  if (!settings || !form) return <FormSkeleton sections={3} fieldsPerSection={3} className="max-w-3xl" />;
 
   async function save() {
     if (!form) return;
