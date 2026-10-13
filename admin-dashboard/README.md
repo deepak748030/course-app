@@ -43,13 +43,6 @@ its `CORS_ORIGIN` setting (defaults to `*`).
 
 Seeded admin login: `admin@yduacademy.com / Admin@123`.
 
-## Demo mode
-
-If the server (or its database) is unreachable, the dashboard transparently switches to a
-built-in demo dataset — a banner says so and offers a reset button. CRUD keeps working and
-persists to `localStorage`, which makes the console demoable without any infrastructure.
-Point it at a live server + MongoDB for real control.
-
 ## Build
 
 ```bash

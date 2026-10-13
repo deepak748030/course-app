@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, clearToken, getToken, onDemoModeChange, onUnauthorized, setToken } from '../api/client';
-import { connectRealtime, disconnectRealtime, setRealtimeDemoMode } from '../api/realtime';
+import { api, clearToken, getToken, onUnauthorized, setToken } from '../api/client';
+import { connectRealtime, disconnectRealtime } from '../api/realtime';
 import type { AdminUser } from '../api/types';
 
 interface AuthState {
@@ -20,7 +20,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     async function restore() {
-      if (!getToken()) {
+      const token = getToken();
+      if (!token || token === 'demo-token') {
+        if (token === 'demo-token') clearToken();
         setReady(true);
         return;
       }
@@ -37,15 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     restore();
     return () => {
       cancelled = true;
-    };
-  }, []);
-
-  // Realtime follows the session: connect once an admin is signed in, drop on logout.
-  // In demo mode (server unreachable) the client tells us and the socket stays down.
-  useEffect(() => {
-    const off = onDemoModeChange((on) => setRealtimeDemoMode(on));
-    return () => {
-      off();
     };
   }, []);
 

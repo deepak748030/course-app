@@ -7,7 +7,6 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
-  RefreshCw,
   ScrollText,
   Images,
   X,
@@ -18,14 +17,11 @@ import {
   TicketPercent,
   UserPlus,
   Users,
-  Wrench,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { isDemoMode, onDemoModeChange } from '../api/client';
 import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus, usePresence } from '../api/realtime';
-import { resetDemoDb } from '../api/demo';
 import { useAuth } from '../auth/AuthContext';
 import { initials } from './ui';
 
@@ -83,7 +79,6 @@ let toastSeq = 0;
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [demo, setDemo] = useState(isDemoMode());
   const [live, setLive] = useState(isRealtimeConnected());
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -119,13 +114,6 @@ export default function Layout() {
     ];
     return () => {
       offs.forEach((off) => off());
-    };
-  }, []);
-
-  useEffect(() => {
-    const off = onDemoModeChange(setDemo);
-    return () => {
-      off();
     };
   }, []);
 
@@ -252,7 +240,7 @@ export default function Layout() {
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
-            {presence && !demo && (
+            {presence && (
               <span
                 className="hidden items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink sm:inline-flex"
                 title="Signed-in accounts online right now"
@@ -261,44 +249,19 @@ export default function Layout() {
                 {presence.signedIn} online
               </span>
             )}
-            {!demo && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                live ? 'bg-success-soft text-success' : 'bg-ink/5 text-subtle'
+              }`}
+              title={live ? 'Realtime channel connected' : 'Realtime channel connecting…'}
+            >
               <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-                  live ? 'bg-success-soft text-success' : 'bg-ink/5 text-subtle'
-                }`}
-                title={live ? 'Realtime channel connected' : 'Realtime channel connecting…'}
-              >
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-success' : 'bg-subtle'}`}
-                />
-                <span className="hidden sm:inline">{live ? 'Live' : 'Connecting…'}</span>
-              </span>
-            )}
-            {demo && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-xs font-semibold text-brand-ink sm:px-3">
-                <Wrench size={12} /> <span className="hidden sm:inline">Demo data</span>
-              </span>
-            )}
+                className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-success' : 'bg-subtle'}`}
+              />
+              <span className="hidden sm:inline">{live ? 'Live' : 'Connecting…'}</span>
+            </span>
           </div>
         </header>
-
-        {demo && (
-          <div className="flex flex-col gap-2 border-b border-line bg-brand-soft px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
-            <p className="text-[13px] leading-snug font-medium text-brand-ink">
-              The server or its database is unreachable — showing the built-in demo dataset. Start the API with
-              MongoDB to control live data. Changes here persist in this browser only.
-            </p>
-            <button
-              onClick={() => {
-                resetDemoDb();
-                window.location.reload();
-              }}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-md px-3 text-xs font-semibold text-brand-ink transition-colors hover:bg-brand/20 sm:h-9 sm:self-auto"
-            >
-              <RefreshCw size={12} /> Reset demo data
-            </button>
-          </div>
-        )}
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
