@@ -1,9 +1,9 @@
 import { AlertTriangle, ArrowDown, ArrowUp, ImagePlus, Images, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, uploadImage } from '../api/client';
+import { api, resolveAssetUrl, uploadImage } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings, Course, HomeBanner } from '../api/types';
-import { Button, Card, CardHeader, EmptyState, Field, Input, LoadingBlock, Select, Textarea, Toggle, useToast } from '../components/ui';
+import { Button, Card, CardHeader, EmptyState, Field, Input, Skeleton, Select, Textarea, Toggle, useToast } from '../components/ui';
 
 /** Poster slider at the top of the app's home screen. Up to MAX_BANNERS; the first active ones show first. */
 const MAX_BANNERS = 5;
@@ -53,7 +53,47 @@ export default function Banners() {
     return () => off();
   }, [load]);
 
-  if (!saved || !draft || !settings) return <Card><LoadingBlock label="Loading banners…" /></Card>;
+  if (!saved || !draft || !settings)
+    return (
+      <div className="space-y-4" role="status">
+        <span className="sr-only">Loading banners…</span>
+        <Card className="flex flex-wrap items-center gap-3 px-5 py-4">
+          <Skeleton className="h-9 w-9 rounded-lg" />
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-48" />
+            <Skeleton className="h-3 w-64 max-w-full" />
+          </div>
+          <Skeleton className="ml-auto h-10 w-32 rounded-lg" />
+        </Card>
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_300px]">
+          <div className="space-y-4">
+            {Array.from({ length: 2 }).map((_, i) => (
+              <Card key={i} className="p-5">
+                <div className="grid gap-4 md:grid-cols-[200px_1fr]">
+                  <Skeleton className="aspect-video w-full rounded-lg" />
+                  <div className="space-y-3">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-10 w-full rounded-lg" />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <Card>
+            <div className="border-b border-line-soft px-5 py-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-3 w-40" />
+            </div>
+            <div className="space-y-3 p-4">
+              <Skeleton className="aspect-[16/10] w-full rounded-xl" />
+              <Skeleton className="aspect-[16/10] w-full rounded-xl" />
+            </div>
+          </Card>
+        </div>
+      </div>
+    );
 
   const invalid = draft.some((b) => bannerProblem(b) !== null);
   const activeCount = draft.filter((b) => b.active).length;
@@ -162,9 +202,9 @@ export default function Banners() {
                     <div>
                       <div className="flex aspect-video items-center justify-center overflow-hidden rounded-lg border border-line-soft bg-surface-alt">
                         {banner.imageUrl ? (
-                          <img src={banner.imageUrl} alt="" className="h-full w-full object-cover" />
+                          <img src={resolveAssetUrl(banner.imageUrl)} alt="" className="h-full w-full object-cover" />
                         ) : linked?.coverUrl ? (
-                          <img src={linked.coverUrl} alt="" className="h-full w-full object-cover opacity-90" />
+                          <img src={resolveAssetUrl(linked.coverUrl)} alt="" className="h-full w-full object-cover opacity-90" />
                         ) : (
                           <span className="px-2 text-center text-xs text-subtle">No picture yet</span>
                         )}
@@ -264,7 +304,7 @@ export default function Banners() {
                     const title = b.title.trim() || linked?.title || 'Untitled banner';
                     return (
                       <div key={n} className="relative aspect-[16/10] overflow-hidden rounded-xl bg-ink">
-                        {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
+                        {image ? <img src={resolveAssetUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                         <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
                           <p className="line-clamp-1 text-[15px] font-bold">{title}</p>

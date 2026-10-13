@@ -1,6 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Layout from './components/Layout';
-import { PageSpinner } from './components/ui';
+import { AppShellSkeleton } from './components/ui';
 import { useAuth } from './auth/AuthContext';
 import Categories from './pages/Categories';
 import Coupons from './pages/Coupons';
@@ -19,7 +19,7 @@ import Notifications from './pages/Notifications';
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, ready } = useAuth();
   const location = useLocation();
-  if (!ready) return <PageSpinner />;
+  if (!ready) return <AppShellSkeleton />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   return <>{children}</>;
 }

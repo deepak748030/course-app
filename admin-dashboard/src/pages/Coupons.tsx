@@ -11,7 +11,7 @@ import {
   EmptyState,
   Field,
   Input,
-  LoadingBlock,
+  TableSkeleton,
   Modal,
   Pagination,
   SearchInput,
@@ -157,7 +157,7 @@ export default function Coupons() {
 
       <Card>
         {coupons === null ? (
-          <LoadingBlock label="Loading coupons…" />
+          <TableSkeleton rows={6} />
         ) : coupons.length === 0 ? (
           <EmptyState icon={TicketPercent} title="No coupons yet" message="Create a discount code to run a promotion." action={<Button icon={Plus} onClick={openCreate}>New coupon</Button>} />
         ) : (
