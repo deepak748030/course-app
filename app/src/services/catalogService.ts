@@ -4,34 +4,24 @@
  * app shows, and the catalog context refreshes in realtime when admins change it.
  */
 
-import { API_URL, api, type ServerCourse } from '@/services/api';
+import { COVER_PLACEHOLDER } from '@/constants/covers';
+import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
+import { api, type ServerCourse } from '@/services/api';
 
-import type { Category, Course, Lesson, Recipe, VideoKey } from '@/types';
-
-/**
- * Lesson videos still ship with the app (bundled demo footage). Each category maps to one
- * clip; courses without a category clip fall back to the ferments reel.
- */
-const CATEGORY_CLIP: Record<string, VideoKey> = {
-  milk: 'milk',
-  paneer: 'paneer',
-  ghee: 'ghee',
-  ferments: 'curd-ferments',
-  cheese: 'curd-ferments',
-  frozen: 'ghee',
-  farming: 'milk',
-  business: 'curd-ferments',
-};
+import type { Category, Course, Lesson, Recipe } from '@/types';
 
 /** expo-image accepts { uri } sources; the web needs a plain string in some cases. */
-function coverSource(coverUrl: string) {
-  if (!coverUrl) return require('@/assets/images/placeholder-panel-4x3.jpg');
+export function coverSource(coverUrl: string) {
+  if (!coverUrl) return COVER_PLACEHOLDER;
   // The local upload provider (no Cloudinary configured) answers /uploads/... paths.
-  const url = coverUrl.startsWith('/') ? `${API_URL}${coverUrl}` : coverUrl;
+  const url = coverUrl.startsWith('/') ? `${apiUrl()}${coverUrl}` : coverUrl;
   return { uri: url };
 }
 
-function mapRecipe(server: ServerCourse['sections'][number]['lessons'][number]['recipe']): Recipe | undefined {
+/** Any media URL (banner image, cover) as an expo-image source, with the shared fallback. */
+export const mediaSource = coverSource;
+
+function mapRecipe(server: ServerCourse['lessons'][number]['recipe']): Recipe | undefined {
   if (!server) return undefined;
   return {
     id: server.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -47,25 +37,19 @@ function mapRecipe(server: ServerCourse['sections'][number]['lessons'][number]['
 
 export function mapCourse(server: ServerCourse): Course {
   const categorySlug = typeof server.category === 'string' ? '' : server.category.slug;
-  const video: VideoKey = CATEGORY_CLIP[categorySlug] ?? 'curd-ferments';
 
-  const lessons: Lesson[] = [];
-  const sections = server.sections.map((section) => {
-    section.lessons.forEach((lesson) => {
-      lessons.push({
-        id: lesson._id,
-        courseId: server.slug,
-        sectionId: section._id,
-        title: lesson.title,
-        description: lesson.description,
-        minutes: lesson.minutes,
-        isPreview: lesson.isPreview,
-        video,
-        recipe: mapRecipe(lesson.recipe),
-      });
-    });
-    return { id: section._id, title: section.title, summary: section.summary };
-  });
+  const lessons: Lesson[] = server.lessons.map((lesson) => ({
+    id: lesson._id,
+    courseId: server.slug,
+    title: lesson.title,
+    description: lesson.description,
+    minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
+    seconds: lesson.durationSec || undefined,
+    isPreview: lesson.isPreview,
+    previewSec: lesson.previewSec || undefined,
+    hasCourseVideo: Boolean(lesson.videoKey),
+    recipe: mapRecipe(lesson.recipe),
+  }));
 
   return {
     id: server.slug,
@@ -74,7 +58,6 @@ export function mapCourse(server: ServerCourse): Course {
     promise: server.promise,
     description: server.description,
     cover: coverSource(server.coverUrl),
-    video,
     categoryId: categorySlug,
     level: server.level,
     language: server.language === 'Hindi' || server.language === 'English + Hindi' ? server.language : 'English',
@@ -87,7 +70,6 @@ export function mapCourse(server: ServerCourse): Course {
     outcomes: server.outcomes,
     equipment: server.equipment,
     audience: server.audience,
-    sections,
     lessons,
     reviews: [],
     isPopular: server.isPopular,
@@ -156,7 +138,8 @@ export type CatalogRefreshResult =
   | { notModified: false; data: CatalogData; etag: string };
 
 async function fetchWithEtag(path: string, etag: string | null): Promise<{ status: number; body?: unknown; etag: string | null }> {
-  const response = await fetch(`${API_URL}${path}`, {
+  await serverUrlReady;
+  const response = await fetch(`${apiUrl()}${path}`, {
     headers: etag ? { 'If-None-Match': etag } : {},
   });
   if (response.status === 304) return { status: 304, etag };

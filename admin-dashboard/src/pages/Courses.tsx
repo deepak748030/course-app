@@ -1,25 +1,28 @@
-import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, Video, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, uploadImage } from '../api/client';
+import { api, uploadCourseVideo, uploadImage } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
-import type { Category, Course, Section } from '../api/types';
+import type { Category, Course, Lesson, LessonVideo, VideoQuality } from '../api/types';
 import {
   Badge,
   Button,
   Card,
   ConfirmDialog,
+  PrefixInput,
   CourseCover,
   Drawer,
   EmptyState,
   Field,
   Input,
   LoadingBlock,
+  Pagination,
   SearchInput,
   Select,
   Stars,
   Textarea,
   Toggle,
   formatInr,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -40,7 +43,7 @@ type FormState = {
   published: boolean;
   isPopular: boolean;
   isBeginnerPick: boolean;
-  sections: Section[];
+  lessons: Lesson[];
 };
 
 const emptyForm: FormState = {
@@ -60,7 +63,7 @@ const emptyForm: FormState = {
   published: false,
   isPopular: false,
   isBeginnerPick: false,
-  sections: [],
+  lessons: [],
 };
 
 function formFromCourse(course: Course): FormState {
@@ -81,7 +84,11 @@ function formFromCourse(course: Course): FormState {
     published: course.published,
     isPopular: course.isPopular,
     isBeginnerPick: course.isBeginnerPick,
-    sections: JSON.parse(JSON.stringify(course.sections)),
+    // Older free lessons were all-or-nothing, so they stay whole until the admin sets a length.
+    lessons: course.lessons.map((lesson) => ({
+      ...(JSON.parse(JSON.stringify(lesson)) as Lesson),
+      previewSec: lesson.previewSec ?? (lesson.isPreview ? lesson.durationSec || 86400 : 0),
+    })),
   };
 }
 
@@ -103,8 +110,171 @@ function payloadFromForm(form: FormState) {
     published: form.published,
     isPopular: form.isPopular,
     isBeginnerPick: form.isBeginnerPick,
-    sections: form.sections,
+    lessons: form.lessons,
   };
+}
+
+const VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
+
+/** Length of a video file in whole seconds, read in the browser before it is uploaded (0 if unknown). */
+function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    video.preload = 'metadata';
+    const done = (seconds: number) => {
+      URL.revokeObjectURL(url);
+      resolve(seconds);
+    };
+    video.onloadedmetadata = () => done(Number.isFinite(video.duration) ? Math.round(video.duration) : 0);
+    video.onerror = () => done(0);
+    video.src = url;
+  });
+}
+
+/** Free-preview length for one lesson, typed in seconds or minutes and stored in seconds. 0 = locked. */
+function PreviewLimit({
+  value,
+  durationSec,
+  onChange,
+}: {
+  value: number;
+  durationSec?: number;
+  onChange: (seconds: number) => void;
+}) {
+  const [unit, setUnit] = useState<'sec' | 'min'>(value >= 60 && value % 60 === 0 ? 'min' : 'sec');
+  const factor = unit === 'min' ? 60 : 1;
+  const max = durationSec && durationSec > 0 ? durationSec : 86400;
+  return (
+    <div
+      className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted"
+      title="How much of this lesson anyone can watch without buying. 0 = locked."
+    >
+      <span>Free</span>
+      <Input
+        type="number"
+        min={0}
+        step={1}
+        value={Number((value / factor).toFixed(1))}
+        onChange={(e) => onChange(Math.min(max, Math.max(0, Math.round(Number(e.target.value) * factor))))}
+        className="h-9 w-20"
+      />
+      <select
+        value={unit}
+        onChange={(e) => setUnit(e.target.value as 'sec' | 'min')}
+        className="h-9 rounded-md border border-line bg-transparent px-1.5 text-xs"
+      >
+        <option value="sec">sec</option>
+        <option value="min">min</option>
+      </select>
+      {durationSec ? (
+        <button
+          type="button"
+          onClick={() => onChange(durationSec)}
+          className="h-9 rounded-md border border-line px-2 hover:bg-brand-soft hover:text-brand-ink"
+        >
+          Whole
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+/** `4:05` style length taken from the video; the admin never types it. */
+function formatLength(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+/** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
+const VIDEO_QUALITIES: VideoQuality[] = ['360', '480', '720', '1080'];
+
+/** One upload slot per quality. Each quality is its own file in the private bucket. */
+function LessonVideos({
+  courseId,
+  value,
+  onChange,
+}: {
+  courseId?: string;
+  value: LessonVideo[];
+  onChange: (videos: LessonVideo[], durationSec?: number) => void;
+}) {
+  const toast = useToast();
+  const [busy, setBusy] = useState<{ quality: VideoQuality; stage: 'sending' | 'storing'; percent: number } | null>(null);
+
+  async function pick(quality: VideoQuality, file: File) {
+    if (!VIDEO_TYPES.includes(file.type)) {
+      toast('error', 'Use an MP4, WebM or MOV video.');
+      return;
+    }
+    setBusy({ quality, stage: 'sending', percent: 0 });
+    try {
+      const durationSec = await readVideoDuration(file);
+      const key = await uploadCourseVideo(file, courseId, quality, (progress) => setBusy({ quality, ...progress }));
+      onChange([...value.filter((v) => v.quality !== quality), { quality, videoKey: key }], durationSec || undefined);
+      toast('success', `${quality}p video uploaded. Click Save changes to publish it to the app.`);
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Video upload failed');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const anyBusy = busy !== null;
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {VIDEO_QUALITIES.map((quality) => {
+        const uploaded = value.some((v) => v.quality === quality);
+        const uploading = busy?.quality === quality;
+        return (
+          <div
+            key={quality}
+            className={`inline-flex h-9 items-center gap-0.5 rounded-md border px-0.5 text-xs font-semibold ${
+              uploaded ? 'border-success bg-success-soft text-success' : 'border-line text-muted'
+            }`}
+          >
+            <label
+              className={`inline-flex h-8 cursor-pointer items-center gap-1 whitespace-nowrap rounded px-2 ${
+                anyBusy ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand-ink'
+              }`}
+              title={
+                uploading
+                  ? busy?.stage === 'storing'
+                    ? 'Server is copying the video to storage'
+                    : 'Sending the video to the server'
+                  : uploaded
+                    ? `Replace the ${quality}p video`
+                    : `Upload the ${quality}p video`
+              }
+            >
+              <input
+                type="file"
+                accept="video/mp4,video/webm,video/quicktime"
+                className="hidden"
+                disabled={anyBusy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void pick(quality, file);
+                }}
+              />
+              {uploading ? <Loader2 size={13} className="animate-spin" /> : <Video size={13} />}
+              {uploading ? `${busy?.stage === 'storing' ? 'Saving' : 'Uploading'} ${busy?.percent ?? 0}%` : `${quality}p`}
+            </label>
+            {uploaded && !anyBusy && (
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((v) => v.quality !== quality))}
+                className="rounded p-1 hover:bg-error-soft hover:text-error"
+                title={`Remove the ${quality}p video`}
+              >
+                <X size={12} />
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function Courses() {
@@ -121,6 +291,7 @@ export default function Courses() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Course | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
+  const pager = usePagination(courses, 10, `${search}|${categoryFilter}|${statusFilter}`);
 
   const load = useCallback(async () => {
     try {
@@ -203,53 +374,34 @@ export default function Courses() {
     }
   }
 
-  const sectionOps = useMemo(
+  const lessonOps = useMemo(
     () => ({
-      add: () => set('sections', [...form.sections, { title: '', summary: '', lessons: [] }]),
-      remove: (i: number) => set('sections', form.sections.filter((_, idx) => idx !== i)),
-      patch: (i: number, patch: Partial<Section>) =>
-        set('sections', form.sections.map((s, idx) => (idx === i ? { ...s, ...patch } : s))),
-      addLesson: (i: number) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) =>
-            idx === i ? { ...s, lessons: [...s.lessons, { title: '', description: '', minutes: 10, isPreview: false }] } : s
-          )
-        ),
-      removeLesson: (i: number, j: number) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) => (idx === i ? { ...s, lessons: s.lessons.filter((_, l) => l !== j) } : s))
-        ),
-      patchLesson: (i: number, j: number, patch: Partial<Section['lessons'][number]>) =>
-        set(
-          'sections',
-          form.sections.map((s, idx) =>
-            idx === i ? { ...s, lessons: s.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson)) } : s
-          )
-        ),
+      add: () => set('lessons', [...form.lessons, { title: '', description: '', minutes: 10, isPreview: false, previewSec: 0 }]),
+      remove: (j: number) => set('lessons', form.lessons.filter((_, l) => l !== j)),
+      patch: (j: number, patch: Partial<Lesson>) =>
+        set('lessons', form.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson))),
     }),
-    [form.sections]
+    [form.lessons]
   );
 
   return (
     <div className="space-y-4">
       {/* toolbar */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <SearchInput value={search} onChange={setSearch} placeholder="Search courses…" className="w-64" />
-        <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-48">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search courses…" className="w-full sm:w-64" />
+        <Select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full sm:w-48">
           <option value="">All categories</option>
           {categories.map((c) => (
             <option key={c._id} value={c._id}>{c.label}</option>
           ))}
         </Select>
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-36">
+        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="w-full sm:w-36">
           <option value="">All statuses</option>
           <option value="true">Published</option>
           <option value="false">Draft</option>
         </Select>
-        <div className="flex-1" />
-        <Button icon={Plus} onClick={openCreate}>New course</Button>
+        <div className="hidden flex-1 md:block" />
+        <Button icon={Plus} onClick={openCreate} className="w-full sm:w-auto">New course</Button>
       </div>
 
       {/* table */}
@@ -269,14 +421,14 @@ export default function Courses() {
               <thead>
                 <tr>
                   {['Course', 'Category', 'Level', 'Price', 'Rating', 'Enrolled', 'Status', ''].map((h, i) => (
-                    <th key={i} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={i} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${['Category', 'Level', 'Rating', 'Enrolled'].includes(h) ? 'hidden lg:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {courses.map((course) => {
+                {pager.rows.map((course) => {
                   const category = typeof course.category === 'string' ? null : course.category;
                   return (
                     <tr key={course._id} className="group hover:bg-canvas/60">
@@ -290,26 +442,26 @@ export default function Courses() {
                               {course.isBeginnerPick && <Badge tone="success">Beginner pick</Badge>}
                             </div>
                             <p className="truncate text-xs text-subtle">
-                              /{course.slug} · {course.sections.reduce((s, x) => s + x.lessons.length, 0)} lessons · {course.language}
+                              /{course.slug} · {course.lessons.length} lessons · {course.language}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3">
+                      <td className="hidden border-b border-line-soft px-4 py-3 lg:table-cell">
                         <Badge tone="outline">{category?.label || '—'}</Badge>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3 text-muted">{course.level}</td>
+                      <td className="hidden border-b border-line-soft px-4 py-3 text-muted lg:table-cell">{course.level}</td>
                       <td className="border-b border-line-soft px-4 py-3">
                         <p className="font-semibold">{formatInr(course.priceInr)}</p>
                         {course.listPriceInr != null && <p className="text-xs text-subtle line-through">{formatInr(course.listPriceInr)}</p>}
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3">
+                      <td className="hidden border-b border-line-soft px-4 py-3 lg:table-cell">
                         <div className="flex items-center gap-1.5">
                           <Stars rating={course.rating} />
                           <span className="text-xs text-subtle">({course.reviewCount})</span>
                         </div>
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3 font-semibold">{course.enrollmentCount ?? 0}</td>
+                      <td className="hidden border-b border-line-soft px-4 py-3 font-semibold lg:table-cell">{course.enrollmentCount ?? 0}</td>
                       <td className="border-b border-line-soft px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Toggle checked={course.published} onChange={() => togglePublish(course)} label={`Publish ${course.title}`} />
@@ -319,7 +471,7 @@ export default function Courses() {
                         </div>
                       </td>
                       <td className="border-b border-line-soft px-4 py-3">
-                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                           <button title={course.published ? 'Unpublish' : 'Publish'} onClick={() => togglePublish(course)} className="rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink">
                             {course.published ? <EyeOff size={15} /> : <Eye size={15} />}
                           </button>
@@ -337,6 +489,9 @@ export default function Courses() {
               </tbody>
             </table>
           </div>
+        )}
+        {courses && courses.length > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
 
@@ -367,7 +522,7 @@ export default function Courses() {
             <Textarea rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} />
           </Field>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Category">
               <Select value={form.category} onChange={(e) => set('category', e.target.value)}>
                 <option value="" disabled>Choose…</option>
@@ -383,11 +538,11 @@ export default function Courses() {
                 <option>Advanced</option>
               </Select>
             </Field>
-            <Field label="Price (₹)">
-              <Input type="number" min={0} value={form.priceInr} onChange={(e) => set('priceInr', e.target.value)} />
+            <Field label="Price">
+              <PrefixInput prefix="₹" type="number" min={0} value={form.priceInr} onChange={(e) => set('priceInr', e.target.value)} />
             </Field>
-            <Field label="List price (₹)" hint="Optional — shown struck through.">
-              <Input type="number" min={0} value={form.listPriceInr} onChange={(e) => set('listPriceInr', e.target.value)} />
+            <Field label="List price" hint="Optional — shown struck through.">
+              <PrefixInput prefix="₹" type="number" min={0} value={form.listPriceInr} onChange={(e) => set('listPriceInr', e.target.value)} />
             </Field>
             <Field label="Language">
               <Select value={form.language} onChange={(e) => set('language', e.target.value)}>
@@ -447,7 +602,7 @@ export default function Courses() {
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 rounded-xl border border-line-soft bg-surface-alt p-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-xl border border-line-soft bg-surface-alt p-4">
             <label className="flex items-center gap-2 text-[13px] font-semibold">
               <Toggle checked={form.published} onChange={(v) => set('published', v)} label="Published" /> Published
             </label>
@@ -462,7 +617,7 @@ export default function Courses() {
           <Field label="Who is this for">
             <Textarea rows={2} value={form.audience} onChange={(e) => set('audience', e.target.value)} />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Outcomes" hint="One per line.">
               <Textarea rows={4} value={form.outcomesText} onChange={(e) => set('outcomesText', e.target.value)} />
             </Field>
@@ -471,67 +626,57 @@ export default function Courses() {
             </Field>
           </div>
 
-          {/* curriculum */}
+          {/* lessons */}
           <div>
             <div className="mb-2 flex items-center justify-between">
-              <h4 className="text-sm font-semibold">Curriculum</h4>
-              <Button size="sm" variant="outline" icon={Plus} onClick={sectionOps.add}>Add section</Button>
+              <h4 className="text-sm font-semibold">Lessons</h4>
+              <Button size="sm" variant="outline" icon={Plus} onClick={lessonOps.add}>Add lesson</Button>
             </div>
-            <div className="space-y-3">
-              {form.sections.length === 0 && (
+            <div className="space-y-2">
+              {form.lessons.length === 0 && (
                 <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[13px] text-subtle">
-                  No sections yet — add sections and lessons to build the course.
+                  No lessons yet — add lessons to build the course.
                 </p>
               )}
-              {form.sections.map((section, i) => (
-                <div key={i} className="rounded-xl border border-line p-4">
-                  <div className="flex items-center gap-2">
-                    <Input
-                      value={section.title}
-                      onChange={(e) => sectionOps.patch(i, { title: e.target.value })}
-                      placeholder={`Section ${i + 1} title`}
-                      className="font-semibold"
-                    />
-                    <button onClick={() => sectionOps.remove(i)} className="shrink-0 rounded-md p-2 text-subtle hover:bg-error-soft hover:text-error">
-                      <X size={15} />
-                    </button>
-                  </div>
-                  <Input
-                    value={section.summary}
-                    onChange={(e) => sectionOps.patch(i, { summary: e.target.value })}
-                    placeholder="Short section summary"
-                    className="mt-2"
-                  />
-                  <div className="mt-3 space-y-2">
-                    {section.lessons.map((lesson, j) => (
-                      <div key={j} className="flex items-center gap-2">
+                    {form.lessons.map((lesson, j) => (
+                  <div key={j} className="flex flex-wrap items-center gap-2">
                         <Input
                           value={lesson.title}
-                          onChange={(e) => sectionOps.patchLesson(i, j, { title: e.target.value })}
+                          onChange={(e) => lessonOps.patch(j, { title: e.target.value })}
                           placeholder="Lesson title"
                           className="h-9"
                         />
-                        <Input
-                          type="number"
-                          min={1}
-                          value={lesson.minutes}
-                          onChange={(e) => sectionOps.patchLesson(i, j, { minutes: Number(e.target.value) })}
-                          className="h-9 w-20"
-                          title="Minutes"
+                        <span
+                          title="Measured from the uploaded video"
+                          className="flex h-9 w-24 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 px-2 text-xs font-semibold tabular-nums text-muted">
+                          {lesson.durationSec
+                            ? formatLength(lesson.durationSec)
+                            : (lesson.videos?.length ?? 0) > 0
+                              ? 'Re-upload'
+                              : 'Upload video'}
+                        </span>
+                        <LessonVideos
+                          courseId={editing?._id}
+                          value={lesson.videos ?? []}
+                          onChange={(videos, durationSec) =>
+                            lessonOps.patch(j, {
+                              videos,
+                              videoKey: '',
+                              // The real length replaces the typed minutes, so course totals match the video.
+                              ...(durationSec ? { durationSec, minutes: Math.max(1, Math.ceil(durationSec / 60)) } : {}),
+                            })
+                          }
                         />
-                        <label className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-muted">
-                          <Toggle checked={lesson.isPreview} onChange={(v) => sectionOps.patchLesson(i, j, { isPreview: v })} label="Free preview" />
-                          Preview
-                        </label>
-                        <button onClick={() => sectionOps.removeLesson(i, j)} className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error">
+                        <PreviewLimit
+                          value={lesson.previewSec ?? 0}
+                          durationSec={lesson.durationSec}
+                          onChange={(seconds) => lessonOps.patch(j, { previewSec: seconds, isPreview: seconds > 0 })}
+                        />
+                        <button onClick={() => lessonOps.remove(j)} className="rounded-md p-1.5 text-subtle hover:bg-error-soft hover:text-error">
                           <X size={14} />
                         </button>
                       </div>
                     ))}
-                    <Button size="sm" variant="ghost" icon={Plus} onClick={() => sectionOps.addLesson(i)}>Add lesson</Button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>

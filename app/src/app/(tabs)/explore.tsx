@@ -30,6 +30,7 @@ import {
 } from '@/lib/catalog';
 import { CatalogGate, useCatalog } from '@/services/catalog-context';
 import { track } from '@/services/analytics';
+import { useInfiniteList } from '@/lib/infinite';
 import { clearRecentSearches, readRecentSearches, rememberSearch } from '@/lib/recent-searches';
 import { useStore } from '@/store';
 
@@ -59,6 +60,7 @@ export default function ExploreScreen() {
   }, [filters.query]);
 
   const results = useMemo(() => browseCourses(courses, filters), [filters, courses]);
+  const resultPages = useInfiniteList(results, { resetKey: JSON.stringify(filters) });
 
   // Focus shows what to search instead of an empty field (search rule: recents, then suggestions).
   const searchPanelOpen = searchFocused && filters.query.trim().length === 0;
@@ -142,6 +144,7 @@ export default function ExploreScreen() {
   return (
     <Screen
       contentStyle={styles.content}
+      onEndReached={resultPages.loadMore}
       header={
         <View style={styles.headerBlock}>
           <TabHeader overline={t("Discover")} title={t("What will you make today?")} />
@@ -283,13 +286,12 @@ export default function ExploreScreen() {
           </View>
         ) : (
           <DataList>
-            {results.map((course) => (
+            {resultPages.visible.map((course) => (
               <CourseRow key={course.id} course={course} />
             ))}
           </DataList>
         )}
 
-        <Text style={[type.label, styles.disclaimer, { color: colors.textSubtle }]}>{t("Catalog, ratings and reviews are sample data for this prototype.")}</Text>
         </>
       )}
 

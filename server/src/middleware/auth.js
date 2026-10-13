@@ -16,7 +16,7 @@ export const requireAuth = asyncHandler(async (req, _res, next) => {
   }
 
   const user = await User.findById(payload.sub);
-  if (!user) throw new HttpError(401, 'Account no longer exists');
+  if (!user) throw new HttpError(401, 'Your session has expired. Please sign in again.');
   if (user.blocked) throw new HttpError(403, 'This account is blocked');
 
   req.user = user;

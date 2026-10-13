@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { ArrowRight, BookOpen, Bookmark, CircleCheck, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -21,6 +21,7 @@ import { createStyles, colors, layout, radius, spacing, tabularNums, type } from
 import { useCatalog } from '@/services/catalog-context';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
+import { useInfiniteList } from '@/lib/infinite';
 import { useStore } from '@/store';
 
 type Segment = 'progress' | 'completed';
@@ -52,9 +53,11 @@ export default function MyLearningScreen() {
   }, [enrolled, state.progress]);
 
   const list = segment === 'progress' ? inProgress : completed;
+  const listPages = useInfiniteList(list, { resetKey: segment });
 
   return (
     <Screen
+      onEndReached={listPages.loadMore}
       contentStyle={styles.content}
       header={
         /* The tab says where you are; the header says how it is going. */
@@ -111,7 +114,7 @@ export default function MyLearningScreen() {
         )
       ) : segment === 'progress' ? (
         <DataList>
-          {list.map((course) => {
+          {listPages.visible.map((course) => {
             const nextLesson = resumeLesson(course)?.lesson ?? course.lessons[0];
             return (
               <ContinueCard
@@ -131,7 +134,7 @@ export default function MyLearningScreen() {
         </DataList>
       ) : (
         <DataList>
-          {list.map((course) => {
+          {listPages.visible.map((course) => {
             const rating = ratingFor(course.id);
             return (
               /* Two stacked rows, not one nested one: the top row reopens the course, the bar under

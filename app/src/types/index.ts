@@ -5,7 +5,6 @@ export type Id = string;
 
 export type Level = 'Beginner' | 'Intermediate' | 'Advanced';
 export type Language = 'English' | 'Hindi' | 'English + Hindi';
-export type VideoKey = 'milk' | 'paneer' | 'ghee' | 'curd-ferments';
 
 export interface Ingredient {
   item: string;
@@ -26,20 +25,17 @@ export interface Recipe {
 export interface Lesson {
   id: Id;
   courseId: Id;
-  /** The section this lesson belongs to, or `null` when it was authored as a standalone lesson. */
-  sectionId: Id | null;
   title: string;
   description: string;
   minutes: number;
+  /** Exact length in seconds when the lesson's video was measured on upload. */
+  seconds?: number;
   isPreview: boolean;
-  video: VideoKey;
+  /** Seconds anyone may watch without buying. Unset on older lessons: then the whole lesson is free when `isPreview`. */
+  previewSec?: number;
+  /** The lesson has its own video in private storage (fetched as a signed link). Without one, nothing plays. */
+  hasCourseVideo?: boolean;
   recipe?: Recipe;
-}
-
-export interface CurriculumSection {
-  id: Id;
-  title: string;
-  summary: string;
 }
 
 export interface Review {
@@ -77,7 +73,6 @@ export interface Course {
   promise: string;
   description: string;
   cover: ImageSource;
-  video: VideoKey;
   categoryId: Id;
   level: Level;
   language: Language;
@@ -91,7 +86,6 @@ export interface Course {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: CurriculumSection[];
   lessons: Lesson[];
   reviews: Review[];
   isPopular?: boolean;
@@ -127,15 +121,6 @@ export interface CourseProgress {
   scope: Record<Id, LessonProgress>;
 }
 
-export interface NotificationItem {
-  id: Id;
-  kind: 'course-update' | 'learning-reminder' | 'product';
-  title: string;
-  body: string;
-  minutesAgo: number;
-  courseId?: Id;
-}
-
 export interface FaqItem {
   id: Id;
   question: string;
@@ -150,7 +135,6 @@ export interface UserProfile {
   /* Optional: the user fills these in from Profile -> Edit. */
   email?: string;
   /** ISO calendar date, `YYYY-MM-DD`. */
-  dateOfBirth?: string;
   city?: string;
   /** Short cooking goal picked from a fixed list — see profile editor. */
   goal?: string;

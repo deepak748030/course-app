@@ -14,6 +14,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/s3-request-presigner": "^3.1149.0",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.11.0",
     "compression": "^1.8.2",
@@ -24,6 +26,7 @@
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
     "multer": "^2.4.0",
+    "razorpay": "^2.9.8",
     "socket.io": "^4.8.4",
     "zod": "^3.24.1"
   }

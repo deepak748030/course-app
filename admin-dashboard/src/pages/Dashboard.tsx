@@ -26,9 +26,8 @@ import {
   formatDateTime,
   formatInr,
 } from '../components/ui';
+import { ADMIN_THEMES, useAdminTheme } from '../theme/adminTheme';
 
-const GOLD = '#D9A400';
-const BRAND = '#FFC629';
 
 function Delta({ value }: { value: number }) {
   const up = value >= 0;
@@ -77,7 +76,7 @@ function KpiCard({
 
 const tooltipStyle = {
   borderRadius: 10,
-  border: '1px solid rgba(23,21,15,0.12)',
+  border: '1px solid rgba(16,35,26,0.12)',
   background: '#fff',
   fontSize: 12,
   fontFamily: "'DM Sans', sans-serif",
@@ -85,6 +84,8 @@ const tooltipStyle = {
 };
 
 export default function Dashboard() {
+  const [chartTheme] = useAdminTheme();
+  const { brand: BRAND, gold: GOLD } = ADMIN_THEMES[chartTheme].chart;
   const [data, setData] = useState<Overview | null>(null);
   const [error, setError] = useState('');
 
@@ -110,8 +111,8 @@ export default function Dashboard() {
   const maxCategoryEnroll = Math.max(1, ...data.categoryBreakdown.map((c) => c.enrollments30));
   const totalRatings = data.ratingDistribution.reduce((s, r) => s + r.count, 0) || 1;
   const donutColors: Record<number, string> = {
-    5: '#D9A400',
-    4: '#FFC629',
+    5: GOLD,
+    4: BRAND,
     3: '#FFDF87',
     2: '#EFE8D2',
     1: '#DCD5C2',
@@ -147,13 +148,13 @@ export default function Dashboard() {
                     <stop offset="100%" stopColor={BRAND} stopOpacity={0.04} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="rgba(23,21,15,0.07)" />
+                <CartesianGrid vertical={false} stroke="rgba(16,35,26,0.07)" />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} interval={4} />
                 <YAxis tickLine={false} axisLine={false} width={52} tickFormatter={(v: number) => (v >= 1000 ? `₹${Math.round(v / 1000)}k` : `₹${v}`)} />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   formatter={(value) => [formatInr(Number(value)), 'Revenue']}
-                  labelStyle={{ fontWeight: 600, color: '#17150F' }}
+                  labelStyle={{ fontWeight: 600, color: '#0F231A' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke={GOLD} strokeWidth={2} fill="url(#revFill)" />
               </AreaChart>
@@ -166,10 +167,10 @@ export default function Dashboard() {
           <div className="px-2 py-4">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={data.enrollmentSeries} margin={{ top: 5, right: 16, left: -14, bottom: 0 }}>
-                <CartesianGrid vertical={false} stroke="rgba(23,21,15,0.07)" />
+                <CartesianGrid vertical={false} stroke="rgba(16,35,26,0.07)" />
                 <XAxis dataKey="date" tickLine={false} axisLine={false} interval={1} />
                 <YAxis tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value, 'Enrollments']} labelStyle={{ fontWeight: 600, color: '#17150F' }} cursor={{ fill: 'rgba(23,21,15,0.04)' }} />
+                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [value, 'Enrollments']} labelStyle={{ fontWeight: 600, color: '#0F231A' }} cursor={{ fill: 'rgba(16,35,26,0.04)' }} />
                 <Bar dataKey="enrollments" fill={BRAND} radius={[4, 4, 0, 0]} maxBarSize={26} />
               </BarChart>
             </ResponsiveContainer>

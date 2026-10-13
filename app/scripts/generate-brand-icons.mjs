@@ -8,17 +8,12 @@
  * not use. The only way the favicon, the launcher icons and the splash can be *the same logo* is to
  * cut every one of them out of the one file. So this script reads logo.png's pixels and writes:
  *
- *   assets/images/icon.png                    1024, the logo as-is (iOS icon and store listings)
  *   assets/images/favicon.png                  196, the logo as-is (web tab icon)
  *   assets/images/splash-icon.png              512, the logo as-is (splash screen; app.json paints white behind it)
- *   assets/images/brand-logo.png               512, the logo as-is (the in-app lockup raster)
  *   assets/images/android-icon-background.png  432, flat field in the logo's own corner green
  *   assets/images/android-icon-foreground.png  432, the logo with its corner field made transparent
  *   assets/images/android-icon-monochrome.png  432, white silhouette of the logo's artwork, for themed icons
  *   assets/images/brand-mark.png               256, the churn and leaves alone (no wordmark), transparent
- *   assets/brand/ydu-logo.svg                  the lockup as an SVG: the logo's own 1024px pixels embedded,
- *                                              so vector contexts show exactly logo.png, never a redrawing
- *   assets/brand/ydu-mark.svg                  the text-free mark as an SVG, embedded the same way at 512
  *
  * The Android pair composes back to the logo exactly: the background layer is the logo's corner green
  * and the foreground is everything inside the disc, at the logo's own proportions, so a square, a
@@ -289,10 +284,8 @@ const logo1024 = downscale(opaque, 1024);
 const mark512 = downscale(layers.mark, 512);
 
 const targets = [
-  ['icon.png', logo1024],
   ['favicon.png', downscale(opaque, 196)],
   ['splash-icon.png', downscale(opaque, 512)],
-  ['brand-logo.png', downscale(opaque, 512)],
   ['android-icon-background.png', flat(432, FIELD)],
   // The foreground is the disc at the logo's own proportions: the field behind it is the background
   // layer, so every mask shape — circle, squircle, rounded square — composes back to the logo.
@@ -324,8 +317,6 @@ const svgWrap = (size, png) =>
 
 mkdirSync(BRAND_DIR, { recursive: true });
 const svgs = [
-  ['ydu-logo.svg', svgWrap(1024, encodePng(logo1024))],
-  ['ydu-mark.svg', svgWrap(512, encodePng(mark512))],
 ];
 for (const [name, svg] of svgs) {
   writeFileSync(resolve(BRAND_DIR, name), svg);

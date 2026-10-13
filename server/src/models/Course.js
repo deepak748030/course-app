@@ -24,23 +24,31 @@ const recipeSchema = new Schema(
   { _id: false }
 );
 
+/** One encoded version of a lesson video. Each quality is its own private B2 object. */
+const lessonVideoSchema = new Schema(
+  {
+    quality: { type: String, enum: ['360', '480', '720', '1080'], required: true },
+    videoKey: { type: String, required: true, trim: true, maxlength: 300 },
+  },
+  { _id: false }
+);
+
 const lessonSchema = new Schema(
   {
     title: { type: String, required: true, trim: true, maxlength: 140 },
     description: { type: String, default: '', trim: true },
     minutes: { type: Number, required: true, min: 1, max: 600 },
-    /** Free preview lesson — playable without purchase. */
+    /** Exact length of the uploaded video in seconds (0 = not measured). */
+    durationSec: { type: Number, default: 0, min: 0, max: 86400 },
+    /** Seconds of this lesson anyone can watch without buying (0 = locked). Set from the admin. */
+    previewSec: { type: Number, default: 0, min: 0, max: 86400 },
+    /** Free preview lesson — derived from previewSec > 0 on save; playable without purchase. */
     isPreview: { type: Boolean, default: false },
+    /** Object key of the lesson video in the private B2 bucket. Empty = bundled demo clip. */
+    videoKey: { type: String, default: '', trim: true, maxlength: 300 },
+    /** Qualities (360/480/720/1080). `videoKey` mirrors the best one, for older app builds. */
+    videos: { type: [lessonVideoSchema], default: [] },
     recipe: { type: recipeSchema },
-  },
-  { _id: true, timestamps: false }
-);
-
-const sectionSchema = new Schema(
-  {
-    title: { type: String, required: true, trim: true, maxlength: 140 },
-    summary: { type: String, default: '', trim: true },
-    lessons: { type: [lessonSchema], default: [] },
   },
   { _id: true, timestamps: false }
 );
@@ -67,7 +75,8 @@ const courseSchema = new Schema(
     outcomes: { type: [String], default: [] },
     equipment: { type: [String], default: [] },
     audience: { type: String, default: '', trim: true },
-    sections: { type: [sectionSchema], default: [] },
+    /** The course curriculum, in order. */
+    lessons: { type: [lessonSchema], default: [] },
   },
   {
     timestamps: true,
@@ -77,14 +86,11 @@ const courseSchema = new Schema(
 );
 
 courseSchema.virtual('lessonCount').get(function lessonCount() {
-  return this.sections.reduce((sum, section) => sum + section.lessons.length, 0);
+  return this.lessons.length;
 });
 
 courseSchema.virtual('totalMinutes').get(function totalMinutes() {
-  return this.sections.reduce(
-    (sum, section) => sum + section.lessons.reduce((s, lesson) => s + lesson.minutes, 0),
-    0
-  );
+  return this.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
 });
 
 /*
@@ -101,3 +107,19 @@ courseSchema.index(
 );
 
 export const Course = mongoose.model('Course', courseSchema);
+
+/**
+ * One-time move for courses saved before sections were removed: their lessons are appended to the
+ * flat `lessons` list (in section order) and the `sections` field is dropped. Safe to run on every boot.
+ */
+export async function flattenLegacySections() {
+  const collection = mongoose.connection.db.collection('courses');
+  const legacy = await collection.find({ sections: { $exists: true } }).toArray();
+  for (const doc of legacy) {
+    const fromSections = (doc.sections || []).flatMap((section) => section.lessons || []);
+    const lessons = [...(doc.lessons || []), ...fromSections];
+    await collection.updateOne({ _id: doc._id }, { $set: { lessons }, $unset: { sections: '' } });
+  }
+  if (legacy.length) console.log(`[db] moved lessons out of sections for ${legacy.length} course(s)`);
+  return legacy.length;
+}

@@ -30,6 +30,31 @@ let socket: Socket | null = null;
 let connected = false;
 let demoModeActive = false;
 
+/** Live presence pushed by the server (online learners, admins, visitors). */
+export type Presence = {
+  total: number;
+  signedIn: number;
+  learners: number;
+  admins: number;
+  visitors: number;
+  at?: string;
+};
+let presence: Presence | null = null;
+const presenceListeners = new Set<(p: Presence | null) => void>();
+
+function setPresence(next: Presence | null) {
+  presence = next;
+  presenceListeners.forEach((cb) => cb(next));
+}
+
+export const getPresence = () => presence;
+export function onPresence(cb: (p: Presence | null) => void) {
+  presenceListeners.add(cb);
+  return () => {
+    presenceListeners.delete(cb);
+  };
+}
+
 const statusListeners = new Set<(on: boolean) => void>();
 const handlers = new Map<RealtimeEvent, Set<Handler>>();
 
@@ -81,8 +106,15 @@ export function connectRealtime() {
   });
 
   socket.on('connect', () => setConnected(true));
-  socket.on('disconnect', () => setConnected(false));
-  socket.on('connect_error', () => setConnected(false));
+  socket.on('disconnect', () => {
+    setConnected(false);
+    setPresence(null);
+  });
+  socket.on('connect_error', () => {
+    setConnected(false);
+    setPresence(null);
+  });
+  socket.on('presence.updated', (p: Presence) => setPresence(p));
   wire(socket);
 }
 
@@ -90,6 +122,7 @@ export function disconnectRealtime() {
   socket?.disconnect();
   socket = null;
   setConnected(false);
+  setPresence(null);
 }
 
 /** Demo mode means no server — keep the socket down so it does not retry forever. */
@@ -98,7 +131,7 @@ export function setRealtimeDemoMode(on: boolean) {
   if (on) disconnectRealtime();
 }
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Re-run `reload` whenever one of the given server events arrives.
@@ -119,4 +152,11 @@ export function useRealtimeRefresh(events: RealtimeEvent[], reload: () => void) 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events.join(','), reload]);
+}
+
+/** Live presence for the dashboard; `null` while the socket is down. */
+export function usePresence() {
+  const [value, setValue] = useState<Presence | null>(getPresence());
+  useEffect(() => onPresence(setValue), []);
+  return value;
 }

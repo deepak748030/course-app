@@ -1,5 +1,5 @@
 import { Eye, EyeOff, Star, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Review } from '../api/types';
@@ -10,8 +10,11 @@ import {
   ConfirmDialog,
   EmptyState,
   LoadingBlock,
+  Pagination,
+  SearchInput,
   Stars,
   formatDate,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -26,6 +29,18 @@ export default function Reviews() {
   const [reviews, setReviews] = useState<Review[] | null>(null);
   const [visibleFilter, setVisibleFilter] = useState('');
   const [deleting, setDeleting] = useState<Review | null>(null);
+  const [search, setSearch] = useState('');
+
+  const matches = useMemo(() => {
+    if (!reviews) return null;
+    const q = search.trim().toLowerCase();
+    if (!q) return reviews;
+    return reviews.filter((r) => {
+      const course = typeof r.course === 'string' ? '' : r.course?.title || '';
+      return [r.author, r.body, course, r.user?.email].some((v) => (v || '').toLowerCase().includes(q));
+    });
+  }, [reviews, search]);
+  const pager = usePagination(matches, 10, `${visibleFilter}|${search}`);
 
   const load = useCallback(async () => {
     try {
@@ -67,36 +82,39 @@ export default function Reviews() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5 sm:w-auto">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setVisibleFilter(tab.id)}
               className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                visibleFilter === tab.id ? 'bg-brand text-ink' : 'text-muted hover:text-ink'
+                visibleFilter === tab.id ? 'bg-brand text-white' : 'text-muted hover:text-ink'
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-        <p className="text-[13px] text-muted">
-          Hidden reviews stay stored but stop counting toward the course rating.
-        </p>
+        <SearchInput value={search} onChange={setSearch} placeholder="Search author, course or feedback…" className="w-full sm:w-72" />
       </div>
+      <p className="text-[13px] text-muted">
+        Hidden reviews stay stored but stop counting toward the course rating.
+      </p>
 
       <Card>
         {reviews === null ? (
           <LoadingBlock label="Loading reviews…" />
         ) : reviews.length === 0 ? (
           <EmptyState icon={Star} title="No reviews" message="Reviews written in the app will appear here for moderation." />
+        ) : pager.total === 0 ? (
+          <EmptyState icon={Star} title="No matching reviews" message="Try a different search or filter." />
         ) : (
           <div className="divide-y divide-line-soft">
-            {reviews.map((review) => {
+            {pager.rows.map((review) => {
               const course = typeof review.course === 'string' ? null : review.course;
               return (
-                <div key={review._id} className="flex items-start gap-4 px-5 py-4">
+                <div key={review._id} className="flex flex-col items-start gap-3 px-4 py-4 sm:flex-row md:px-5">
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-soft text-xs font-bold text-brand-ink">
                     {review.author.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
                   </div>
@@ -110,7 +128,7 @@ export default function Reviews() {
                     <p className="mt-1.5 text-sm leading-relaxed text-muted">{review.body || <span className="italic text-subtle">No written feedback</span>}</p>
                     <p className="mt-1 text-xs text-subtle">{formatDate(review.createdAt)} · {review.user?.email || 'unknown user'}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex shrink-0 items-center gap-1 self-end sm:self-auto">
                     <Button size="sm" variant="outline" icon={review.visible ? EyeOff : Eye} onClick={() => toggleVisible(review)}>
                       {review.visible ? 'Hide' : 'Show'}
                     </Button>
@@ -122,6 +140,9 @@ export default function Reviews() {
               );
             })}
           </div>
+        )}
+        {pager.total > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
         )}
       </Card>
 

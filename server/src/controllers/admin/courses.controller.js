@@ -75,7 +75,7 @@ export const setPublished = asyncHandler(async (req, res) => {
     req.params.id,
     { published: req.body.published },
     { new: true }
-  );
+  ).populate('category', 'slug label icon');
   if (!course) throw new HttpError(404, 'Course not found');
   catalogChanged(req.body.published ? 'published' : 'unpublished', String(course._id));
   res.json({ course });

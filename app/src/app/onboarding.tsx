@@ -21,7 +21,7 @@
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { ArrowRight } from 'lucide-react-native';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
@@ -107,7 +107,7 @@ export default function OnboardingScreen() {
 
   const finish = useCallback(() => {
     completeOnboarding();
-    router.replace('/auth/signin');
+    router.replace('/auth/phone');
   }, [completeOnboarding, router]);
 
   const onScroll = useAnimatedScrollHandler((event) => {

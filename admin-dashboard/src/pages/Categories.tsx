@@ -1,5 +1,5 @@
 import { Pencil, Plus, Shapes, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Category } from '../api/types';
@@ -13,7 +13,10 @@ import {
   Input,
   LoadingBlock,
   Modal,
+  Pagination,
+  SearchInput,
   Select,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -28,6 +31,15 @@ export default function Categories() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Category | null>(null);
+  const [search, setSearch] = useState('');
+
+  const matches = useMemo(() => {
+    if (!categories) return null;
+    const q = search.trim().toLowerCase();
+    if (!q) return categories;
+    return categories.filter((c) => `${c.label} ${c.slug}`.toLowerCase().includes(q));
+  }, [categories, search]);
+  const pager = usePagination(matches, 10, search);
 
   const load = useCallback(async () => {
     try {
@@ -100,11 +112,14 @@ export default function Categories() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">
           Tracks learners can browse in the app. Deleting is blocked while courses still use a category.
         </p>
-        <Button icon={Plus} onClick={openCreate}>New category</Button>
+        <div className="flex w-full items-center gap-2.5 sm:w-auto">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search categories…" className="min-w-0 flex-1 sm:w-64 sm:flex-none" />
+          <Button icon={Plus} onClick={openCreate} className="shrink-0">New category</Button>
+        </div>
       </div>
 
       <Card>
@@ -118,14 +133,14 @@ export default function Categories() {
               <thead>
                 <tr>
                   {['', 'Category', 'Slug', 'Icon', 'Order', 'Courses', ''].map((h, i) => (
-                    <th key={i} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={i} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${['Slug', 'Icon', 'Order'].includes(h) ? 'hidden md:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {categories.map((category) => (
+                {pager.rows.map((category) => (
                   <tr key={category._id} className="group hover:bg-canvas/60">
                     <td className="w-12 border-b border-line-soft px-4 py-3">
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-soft">
@@ -133,12 +148,12 @@ export default function Categories() {
                       </div>
                     </td>
                     <td className="border-b border-line-soft px-4 py-3 font-semibold">{category.label}</td>
-                    <td className="border-b border-line-soft px-4 py-3 font-mono text-[13px] text-muted">/{category.slug}</td>
-                    <td className="border-b border-line-soft px-4 py-3 text-muted">{category.icon}</td>
-                    <td className="border-b border-line-soft px-4 py-3 text-muted">{category.sortOrder}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 font-mono text-[13px] text-muted md:table-cell">/{category.slug}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{category.icon}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{category.sortOrder}</td>
                     <td className="border-b border-line-soft px-4 py-3 font-semibold">{category.courseCount ?? 0}</td>
                     <td className="border-b border-line-soft px-4 py-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                         <button title="Edit" onClick={() => openEdit(category)} className="rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink">
                           <Pencil size={15} />
                         </button>
@@ -158,6 +173,12 @@ export default function Categories() {
             </table>
           </div>
         )}
+        {categories && categories.length > 0 && pager.total === 0 && (
+          <EmptyState icon={Shapes} title="No matching categories" message="Try a different search." />
+        )}
+        {pager.total > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
+        )}
       </Card>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? 'Edit category' : 'New category'}>
@@ -168,7 +189,7 @@ export default function Categories() {
           <Field label="Slug" hint="Leave empty to generate from the label.">
             <Input value={form.slug} onChange={(e) => setForm((f) => ({ ...f, slug: e.target.value }))} placeholder="milk" />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Icon">
               <Select value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))}>
                 {CATEGORY_ICON_NAMES.map((name) => (

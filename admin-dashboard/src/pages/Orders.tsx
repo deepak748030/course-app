@@ -1,17 +1,21 @@
-import { IndianRupee, ShoppingBag, Tag } from 'lucide-react';
+import { Copy, IndianRupee, ReceiptText, ShoppingBag, Tag } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Order, OrderStatus } from '../api/types';
+import { StatusMenu, type StatusOption } from '../components/StatusMenu';
 import {
   Badge,
   Card,
+  ConfirmDialog,
   EmptyState,
   LoadingBlock,
+  Modal,
+  Pagination,
   SearchInput,
-  Select,
   formatDateTime,
   formatInr,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -22,19 +26,86 @@ const STATUS_TABS: { id: string; label: string }[] = [
   { id: 'refunded', label: 'Refunded' },
 ];
 
-function statusTone(status: OrderStatus) {
-  if (status === 'paid') return 'success';
-  if (status === 'refunded') return 'error';
-  return 'brand';
+const STATUS_OPTIONS: StatusOption<OrderStatus>[] = [
+  { value: 'pending', label: 'Pending', tone: 'brand', hint: 'Payment not confirmed yet. The learner has no access.' },
+  { value: 'paid', label: 'Paid', tone: 'success', hint: 'Payment received. The course is unlocked for the learner.' },
+  { value: 'refunded', label: 'Refunded', tone: 'error', hint: 'Money returned. The learner loses access to the course.' },
+];
+
+/** A payment reference shown in full, with a copy button. Shortens on narrow screens via truncate. */
+function CopyId({ value }: { value: string }) {
+  const toast = useToast();
+  return (
+    <div className="mt-0.5 flex max-w-[220px] items-center gap-1">
+      <code className="min-w-0 truncate rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink">{value}</code>
+      <button
+        type="button"
+        aria-label="Copy payment ID"
+        title="Copy"
+        onClick={() => {
+          void navigator.clipboard
+            ?.writeText(value)
+            .then(() => toast('success', 'Copied'))
+            .catch(() => toast('error', 'Could not copy. Select the text and copy it instead.'));
+        }}
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-subtle hover:bg-ink/5 hover:text-ink"
+      >
+        <Copy size={12} />
+      </button>
+    </div>
+  );
+}
+
+function PaymentDetails({ order, onClose }: { order: Order; onClose: () => void }) {
+  const rows: [string, string | undefined][] = [
+    ['Payment ID', order.paymentReference],
+    ['Razorpay order ID', order.razorpayOrderId],
+    ['Payment link ID', order.paymentLinkId],
+  ];
+  return (
+    <Modal open onClose={onClose} title="Payment details" width="max-w-xl">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Learner</p>
+            <p className="font-semibold">{order.user?.name || 'Deleted learner'}</p>
+            <p className="text-xs text-subtle">{order.user?.email || ''}</p>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-subtle">Course</p>
+            <p className="font-semibold">{order.courseTitle}</p>
+            <p className="text-xs text-subtle">{formatInr(order.amountInr)} · {order.paymentMethod.toUpperCase()} · {order.status}</p>
+          </div>
+        </div>
+        <div className="divide-y divide-line-soft rounded-lg border border-line">
+          {rows.map(([label, value]) => (
+            <div key={label} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-muted">{label}</p>
+              {value ? (
+                <CopyId value={value} />
+              ) : (
+                <p className="text-sm text-subtle">{label === 'Payment ID' ? 'Not confirmed yet' : 'Not created'}</p>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-subtle">
+          Use the Payment ID to find this payment in the Razorpay dashboard. Order ID #{order._id.slice(-8)} · {formatDateTime(order.createdAt)}
+        </p>
+      </div>
+    </Modal>
+  );
 }
 
 export default function Orders() {
+  const [paymentOrder, setPaymentOrder] = useState<Order | null>(null);
   const toast = useToast();
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [totals, setTotals] = useState({ count: 0, paid: 0, discounts: 0 });
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [refundTarget, setRefundTarget] = useState<Order | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -53,9 +124,19 @@ export default function Orders() {
 
   useRealtimeRefresh(['order.created'], load);
 
+  const pager = usePagination(orders, 10, `${statusFilter}|${search}`);
 
   async function changeStatus(order: Order, status: OrderStatus) {
     if (order.status === status) return;
+    // A refund takes the course away from the learner, so it is confirmed first.
+    if (status === 'refunded') {
+      setRefundTarget(order);
+      return;
+    }
+    await runStatusChange(order, status);
+  }
+
+  async function runStatusChange(order: Order, status: OrderStatus) {
     setBusyId(order._id);
     try {
       await api.updateOrder(order._id, status);
@@ -72,22 +153,22 @@ export default function Orders() {
     <div className="space-y-4">
       {/* summary + filters */}
       <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
+        <div className="flex w-full overflow-x-auto rounded-lg border border-line bg-surface p-0.5 sm:w-auto">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
               className={`rounded-md px-3.5 py-1.5 text-[13px] font-semibold transition-colors ${
-                statusFilter === tab.id ? 'bg-brand text-ink' : 'text-muted hover:text-ink'
+                statusFilter === tab.id ? 'bg-brand text-white' : 'text-muted hover:text-ink'
               }`}
             >
               {tab.label}
             </button>
           ))}
         </div>
-        <SearchInput value={search} onChange={setSearch} placeholder="Search course, learner or coupon…" className="w-72" />
-        <div className="flex-1" />
-        <div className="flex items-center gap-4 text-[13px]">
+        <SearchInput value={search} onChange={setSearch} placeholder="Search course, learner or coupon…" className="w-full sm:w-72" />
+        <div className="hidden flex-1 md:block" />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px]">
           <span className="inline-flex items-center gap-1.5 text-muted">
             <ShoppingBag size={14} /> {totals.count} orders
           </span>
@@ -111,25 +192,37 @@ export default function Orders() {
               <thead>
                 <tr>
                   {['Order', 'Learner', 'Course', 'Coupon', 'Amount', 'Paid at', 'Status'].map((h) => (
-                    <th key={h} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={h} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${h === 'Coupon' || h === 'Paid at' ? 'hidden md:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order) => (
+                {pager.rows.map((order) => (
                   <tr key={order._id} className="hover:bg-canvas/60">
                     <td className="border-b border-line-soft px-4 py-3 font-mono text-xs text-subtle">
                       #{order._id.slice(-8)}
                       <p className="font-sans text-xs">{order.paymentMethod.toUpperCase()}</p>
+                      {order.paymentReference ? (
+                        <CopyId value={order.paymentReference} />
+                      ) : (
+                        <p className="font-sans text-[11px] text-subtle">No payment ID</p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setPaymentOrder(order)}
+                        className="mt-1 inline-flex h-7 items-center gap-1 rounded-md px-2 font-sans text-xs font-semibold text-brand-ink hover:bg-brand-soft"
+                      >
+                        <ReceiptText size={13} /> Payment details
+                      </button>
                     </td>
                     <td className="border-b border-line-soft px-4 py-3">
                       <p className="font-semibold">{order.user?.name || 'Deleted learner'}</p>
                       <p className="truncate text-xs text-subtle">{order.user?.email || ''}</p>
                     </td>
                     <td className="border-b border-line-soft px-4 py-3 font-medium">{order.courseTitle}</td>
-                    <td className="border-b border-line-soft px-4 py-3">
+                    <td className="hidden border-b border-line-soft px-4 py-3 md:table-cell">
                       {order.couponCode ? (
                         <div>
                           <Badge tone="brand">{order.couponCode}</Badge>
@@ -145,20 +238,16 @@ export default function Orders() {
                         <p className="text-xs text-subtle line-through">{formatInr(order.listAmountInr)}</p>
                       )}
                     </td>
-                    <td className="border-b border-line-soft px-4 py-3 text-muted">{formatDateTime(order.createdAt)}</td>
+                    <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{formatDateTime(order.createdAt)}</td>
                     <td className="border-b border-line-soft px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Badge tone={statusTone(order.status)}>{order.status}</Badge>
-                        <Select
+                      <div>
+                        <StatusMenu<OrderStatus>
+                          label={`Status of order ${order._id}`}
                           value={order.status}
+                          options={STATUS_OPTIONS}
                           disabled={busyId === order._id}
-                          onChange={(e) => changeStatus(order, e.target.value as OrderStatus)}
-                          className="h-8 w-28 text-[13px]"
-                        >
-                          <option value="pending">pending</option>
-                          <option value="paid">paid</option>
-                          <option value="refunded">refunded</option>
-                        </Select>
+                          onChange={(next) => changeStatus(order, next)}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -167,7 +256,24 @@ export default function Orders() {
             </table>
           </div>
         )}
+        {orders && orders.length > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
+        )}
       </Card>
+
+      {paymentOrder && <PaymentDetails order={paymentOrder} onClose={() => setPaymentOrder(null)} />}
+      <ConfirmDialog
+        open={refundTarget !== null}
+        title="Refund this order?"
+        message="The learner loses access to this course. Use this only after the money has gone back to the learner."
+        confirmLabel="Refund order"
+        onCancel={() => setRefundTarget(null)}
+        onConfirm={() => {
+          const order = refundTarget;
+          setRefundTarget(null);
+          if (order) void runStatusChange(order, 'refunded');
+        }}
+      />
     </div>
   );
 }

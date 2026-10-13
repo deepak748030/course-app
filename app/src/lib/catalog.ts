@@ -4,49 +4,7 @@
  */
 
 import type { Course, Id, Lesson } from '@/types';
-
-/**
- * One block of a course's curriculum: either an authored section or — when a lesson was created
- * without one — a single unnumbered group of standalone lessons.
- */
-export interface LessonGroup {
-  id: Id;
-  title: string;
-  summary?: string;
-  /** True for the group that holds lessons outside every section. */
-  standalone: boolean;
-  lessons: Lesson[];
-}
-
-/**
- * The curriculum as the screens render it: the sections in authored order, then one group for the
- * lessons that belong to no section. A course may use sections only, standalone lessons only, or both.
- */
-export function courseLessonGroups(course: Course): LessonGroup[] {
-  const groups: LessonGroup[] = course.sections.map((section) => ({
-    id: section.id,
-    title: section.title,
-    summary: section.summary,
-    standalone: false,
-    lessons: course.lessons.filter((lesson) => lesson.sectionId === section.id),
-  }));
-
-  const standalone = course.lessons.filter((lesson) => lesson.sectionId === null);
-  if (standalone.length > 0) {
-    groups.push({
-      id: `${course.id}-standalone`,
-      title: course.sections.length > 0 ? 'Standalone lessons' : 'Lessons',
-      summary:
-        course.sections.length > 0
-          ? 'Lessons created without a section — open them in any order.'
-          : undefined,
-      standalone: true,
-      lessons: standalone,
-    });
-  }
-
-  return groups;
-}
+import { formatClock, lessonLength } from '@/lib/format';
 
 /**
  * Percent off when the catalog models a real discount, else null. Derived so a price change
@@ -64,6 +22,21 @@ export function courseIn(courses: Course[], id: string | undefined): Course | un
 export function nextLesson(course: Course, lessonId: string): Lesson | undefined {
   const index = course.lessons.findIndex((lesson) => lesson.id === lessonId);
   return index === -1 ? undefined : course.lessons[index + 1];
+}
+
+/**
+ * Seconds of a lesson a non-buyer may watch: the set preview length; Infinity for an older free lesson
+ * that has no length (the whole lesson is free); 0 for a locked one.
+ */
+export function freePreviewSec(lesson: Lesson): number {
+  if (!lesson.isPreview) return 0;
+  return lesson.previewSec && lesson.previewSec > 0 ? lesson.previewSec : Number.POSITIVE_INFINITY;
+}
+
+/** The length shown for a free-preview lesson: the admin's preview length when it is capped, else the whole lesson. */
+export function previewClock(lesson: Lesson): string {
+  const cap = freePreviewSec(lesson);
+  return Number.isFinite(cap) ? formatClock(cap) : lessonLength(lesson);
 }
 
 export function firstPlayableLesson(course: Course): Lesson {

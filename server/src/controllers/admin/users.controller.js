@@ -1,4 +1,6 @@
+import { revokeUserSockets } from '../../realtime/socket.js';
 import { Enrollment } from '../../models/Enrollment.js';
+import { PushToken } from '../../models/PushToken.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
 import { User } from '../../models/User.js';
@@ -17,7 +19,8 @@ export const listUsers = asyncHandler(async (req, res) => {
     filter.$or = [{ name: rx }, { email: rx }, { phone: rx }];
   }
 
-  const users = await User.find(filter).sort({ createdAt: -1 }).limit(500).lean();
+  // passwordHash never leaves the server: .lean() skips the model's toJSON that strips it.
+  const users = await User.find(filter).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(500).lean();
   const counts = await Enrollment.aggregate([
     { $match: { user: { $in: users.map((u) => u._id) } } },
     { $group: { _id: '$user', count: { $sum: 1 } } },
@@ -40,7 +43,7 @@ export const listUsers = asyncHandler(async (req, res) => {
 
 /** GET /api/admin/users/:id — detail drawer: profile, enrollments, orders. */
 export const getUser = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).lean();
+  const user = await User.findById(req.params.id).select('-passwordHash -__v').lean();
   if (!user) throw new HttpError(404, 'User not found');
 
   const [enrollments, orders] = await Promise.all([
@@ -58,6 +61,11 @@ export const updateUser = asyncHandler(async (req, res) => {
   }
   const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
   if (!user) throw new HttpError(404, 'User not found');
+  if (user.blocked) {
+    revokeUserSockets(String(user._id));
+    // A blocked learner's phones must stop receiving pushes for the account.
+    await PushToken.deleteMany({ user: user._id });
+  }
   res.json({ user });
 });
 
@@ -72,6 +80,7 @@ export const deleteUser = asyncHandler(async (req, res) => {
     Order.deleteMany({ user: user._id }),
     Enrollment.deleteMany({ user: user._id }),
     Review.deleteMany({ user: user._id }),
+    PushToken.deleteMany({ user: user._id }),
   ]);
   res.json({ ok: true, deleted: user.email });
 });

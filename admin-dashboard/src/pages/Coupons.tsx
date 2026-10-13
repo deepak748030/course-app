@@ -1,5 +1,5 @@
 import { Pencil, Plus, TicketPercent, Trash2 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { Coupon } from '../api/types';
 import {
@@ -7,14 +7,18 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  PrefixInput,
   EmptyState,
   Field,
   Input,
   LoadingBlock,
   Modal,
+  Pagination,
+  SearchInput,
   Select,
   Toggle,
   formatDate,
+  usePagination,
   useToast,
 } from '../components/ui';
 
@@ -44,6 +48,15 @@ export default function Coupons() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState<Coupon | null>(null);
+  const [search, setSearch] = useState('');
+
+  const matches = useMemo(() => {
+    if (!coupons) return null;
+    const q = search.trim().toLowerCase();
+    if (!q) return coupons;
+    return coupons.filter((c) => `${c.code} ${c.description}`.toLowerCase().includes(q));
+  }, [coupons, search]);
+  const pager = usePagination(matches, 10, search);
 
   const load = useCallback(async () => {
     try {
@@ -134,9 +147,12 @@ export default function Coupons() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted">Codes learners can apply at checkout in the app.</p>
-        <Button icon={Plus} onClick={openCreate}>New coupon</Button>
+        <div className="flex w-full items-center gap-2.5 sm:w-auto">
+          <SearchInput value={search} onChange={setSearch} placeholder="Search code or description…" className="min-w-0 flex-1 sm:w-64 sm:flex-none" />
+          <Button icon={Plus} onClick={openCreate} className="shrink-0">New coupon</Button>
+        </div>
       </div>
 
       <Card>
@@ -150,14 +166,14 @@ export default function Coupons() {
               <thead>
                 <tr>
                   {['Code', 'Discount', 'Usage', 'Expires', 'Status', ''].map((h) => (
-                    <th key={h} className="whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle">
+                    <th key={h} className={`whitespace-nowrap border-b border-line px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-subtle ${h === 'Expires' ? 'hidden md:table-cell' : ''}`}>
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {coupons.map((coupon) => {
+                {pager.rows.map((coupon) => {
                   const live = isLive(coupon);
                   return (
                     <tr key={coupon._id} className="group hover:bg-canvas/60">
@@ -176,7 +192,7 @@ export default function Coupons() {
                           </div>
                         )}
                       </td>
-                      <td className="border-b border-line-soft px-4 py-3 text-muted">{coupon.expiresAt ? formatDate(coupon.expiresAt) : 'Never'}</td>
+                      <td className="hidden border-b border-line-soft px-4 py-3 text-muted md:table-cell">{coupon.expiresAt ? formatDate(coupon.expiresAt) : 'Never'}</td>
                       <td className="border-b border-line-soft px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Toggle checked={coupon.active} onChange={() => toggleActive(coupon)} label={`${coupon.code} active`} />
@@ -184,7 +200,7 @@ export default function Coupons() {
                         </div>
                       </td>
                       <td className="border-b border-line-soft px-4 py-3">
-                        <div className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <div className="flex items-center justify-end gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                           <button title="Edit" onClick={() => openEdit(coupon)} className="rounded-md p-1.5 text-muted hover:bg-ink/5 hover:text-ink">
                             <Pencil size={15} />
                           </button>
@@ -200,11 +216,17 @@ export default function Coupons() {
             </table>
           </div>
         )}
+        {coupons && coupons.length > 0 && pager.total === 0 && (
+          <EmptyState icon={TicketPercent} title="No matching coupons" message="Try a different search." />
+        )}
+        {pager.total > 0 && (
+          <Pagination page={pager.page} pageCount={pager.pageCount} pageSize={pager.pageSize} total={pager.total} onPage={pager.setPage} />
+        )}
       </Card>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editing ? `Edit ${editing.code}` : 'New coupon'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Code" hint="Learners type this at checkout.">
               <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value.toUpperCase() }))} placeholder="DIWALI20" disabled={Boolean(editing)} />
             </Field>
@@ -218,15 +240,19 @@ export default function Coupons() {
           <Field label="Description">
             <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Shown to admins only" />
           </Field>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Type">
               <Select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value as FormState['type'] }))}>
                 <option value="percent">Percent off</option>
                 <option value="flat">Flat ₹ off</option>
               </Select>
             </Field>
-            <Field label={form.type === 'percent' ? 'Percent (1–90)' : 'Amount (₹)'}>
-              <Input type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+            <Field label={form.type === 'percent' ? 'Percent (1–90)' : 'Amount'}>
+              {form.type === 'percent' ? (
+                <Input type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+              ) : (
+                <PrefixInput prefix="₹" type="number" min={1} value={form.value} onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))} />
+              )}
             </Field>
             <Field label="Max uses" hint="0 = unlimited.">
               <Input type="number" min={0} value={form.maxUses} onChange={(e) => setForm((f) => ({ ...f, maxUses: e.target.value }))} />

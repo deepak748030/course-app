@@ -2,6 +2,8 @@ import { Order } from '../../models/Order.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 import { grantEnrollment } from '../shared.js';
 import { Enrollment } from '../../models/Enrollment.js';
+import { Course } from '../../models/Course.js';
+import { User } from '../../models/User.js';
 
 /** GET /api/admin/orders — filterable order book with user lookups. */
 export const listOrders = asyncHandler(async (req, res) => {
@@ -10,24 +12,31 @@ export const listOrders = asyncHandler(async (req, res) => {
   const filter = {};
   if (status) filter.status = status;
 
-  let orders = await Order.find(filter)
+  // Search runs in the query, so it covers every order (not just the first `limit`) and the limit applies
+  // to the matches. Learners and courses are matched by their own indexed-by-id lookups, then by id.
+  if (search) {
+    const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    const [people, courses] = await Promise.all([
+      User.find({ $or: [{ name: rx }, { email: rx }] }).select('_id').lean(),
+      Course.find({ title: rx }).select('_id').lean(),
+    ]);
+    filter.$or = [
+      { courseTitle: rx },
+      { couponCode: rx },
+      { paymentReference: rx },
+      { razorpayOrderId: rx },
+      { paymentLinkId: rx },
+      { user: { $in: people.map((person) => person._id) } },
+      { course: { $in: courses.map((course) => course._id) } },
+    ];
+  }
+
+  const orders = await Order.find(filter)
     .sort({ createdAt: -1 })
     .limit(limit)
     .populate('user', 'name email')
     .populate('course', 'title slug')
     .lean();
-
-  if (search) {
-    const rx = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-    orders = orders.filter(
-      (o) =>
-        rx.test(o.courseTitle) ||
-        rx.test(o.course?.title || '') ||
-        rx.test(o.user?.name || '') ||
-        rx.test(o.user?.email || '') ||
-        rx.test(o.couponCode || '')
-    );
-  }
 
   const totals = orders.reduce(
     (acc, o) => {

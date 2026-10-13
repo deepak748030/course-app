@@ -11,7 +11,7 @@ import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import type { LucideIcon } from 'lucide-react-native';
 import { ArrowLeft, ChevronDown, ChevronRight, CircleAlert, Info, Search, WifiOff, X } from 'lucide-react-native';
 import { Children, type ReactNode, useEffect, useRef, useState } from 'react';
@@ -81,6 +81,7 @@ export function Screen({
   footer,
   contentStyle,
   style,
+  onEndReached,
 }: {
   children: ReactNode;
   scroll?: boolean;
@@ -88,7 +89,14 @@ export function Screen({
   footer?: ReactNode;
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
+  /** Infinite scroll: called when the scroller gets near its end. */
+  onEndReached?: () => void;
 }) {
+  const scrollMetrics = useRef({ offset: 0, viewport: 0, content: 0 });
+  const checkEnd = () => {
+    const m = scrollMetrics.current;
+    if (onEndReached && m.viewport > 0 && m.content > 0 && m.offset + m.viewport >= m.content - 240) onEndReached();
+  };
   // The header is measured once it lays out; until then the content sits under it, hidden by it.
   const [headerHeight, setHeaderHeight] = useState(0);
   const ownPaddingTop = StyleSheet.flatten(contentStyle)?.paddingTop;
@@ -118,7 +126,25 @@ export function Screen({
               header ? { paddingTop: headerHeight + contentPaddingTop } : null,
             ]}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={120}
+            onLayout={(event) => {
+              scrollMetrics.current.viewport = event.nativeEvent.layout.height;
+              checkEnd();
+            }}
+            onContentSizeChange={(_, height) => {
+              scrollMetrics.current.content = height;
+              checkEnd();
+            }}
+            onScroll={(event) => {
+              const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+              scrollMetrics.current = {
+                offset: contentOffset.y,
+                viewport: layoutMeasurement.height,
+                content: contentSize.height,
+              };
+              checkEnd();
+            }}>
             {children}
           </ScrollView>
           {header ? (
@@ -339,6 +365,9 @@ export function MetaItem({ icon: Icon, label, color = colors.textMuted }: { icon
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 
+/** Taps closer together than this are one press. */
+const BUTTON_DOUBLE_TAP_MS = 600;
+
 export function Button({
   label,
   onPress,
@@ -353,7 +382,8 @@ export function Button({
   accessibilityHint,
 }: {
   label: string;
-  onPress: () => void;
+  /** May return a promise: the button then shows its busy state until it settles. */
+  onPress: () => void | Promise<unknown>;
   variant?: ButtonVariant;
   icon?: LucideIcon;
   /** Rendered instead of `icon` — used for animated icons. */
@@ -368,8 +398,13 @@ export function Button({
 }) {
   const press = usePressScale(0.985);
   const reduced = useReducedMotion();
-  const inactive = disabled || loading;
+  // Async presses keep the button busy until they settle, so every tap shows it is working.
+  const [pending, setPending] = useState(false);
+  const busy = loading || pending;
+  const inactive = disabled || busy;
   const sheenValue = useSharedValue(0);
+  // A second tap within this window is the same press again: ignored (double-tap protection).
+  const lastPress = useRef(0);
 
   useEffect(() => {
     if (!sheen || inactive || reduced || variant !== 'primary') {
@@ -405,11 +440,18 @@ export function Button({
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityHint={accessibilityHint}
-        accessibilityState={{ disabled: inactive, busy: loading }}
+        accessibilityState={{ disabled: inactive, busy }}
         disabled={inactive}
         onPress={() => {
+          const now = Date.now();
+          if (now - lastPress.current < BUTTON_DOUBLE_TAP_MS) return;
+          lastPress.current = now;
           feedback.tap();
-          onPress();
+          const result = onPress();
+          if (result && typeof (result as Promise<unknown>).finally === 'function') {
+            setPending(true);
+            void (result as Promise<unknown>).catch(() => {}).finally(() => setPending(false));
+          }
         }}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
@@ -425,8 +467,13 @@ export function Button({
           },
         ]}>
         {sheen ? <Animated.View style={[styles.buttonSheen, sheenStyle]} /> : null}
-        {loading ? (
-          <ActivityIndicator color={tones.fg} size="small" />
+        {busy ? (
+          <>
+            <ActivityIndicator color={tones.fg} size="small" />
+            <Text style={[type.bodyStrong, { color: tones.fg }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </>
         ) : (
           <>
             {Icon ? <Icon size={18} color={tones.fg} strokeWidth={1.9} /> : null}

@@ -1,7 +1,10 @@
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { Image, type ImageSource } from 'expo-image';
+import { CourseImage } from '@/components/course-image';
+import { mediaSource } from '@/services/catalogService';
+import { useFocusEffect } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Platform,
   Pressable,
@@ -30,11 +33,11 @@ import {
   TabHeader,
   usePressScale,
 } from '@/components/ui';
-import { BrandLockup, BrandMark } from '@/components/marks';
+import { images } from '@/media';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { discountPercent } from '@/lib/catalog';
 import { CatalogGate, useCatalog } from '@/services/catalog-context';
-import { notifications } from '@/data/content';
+import { api } from '@/services/api';
 import { useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { useStore } from '@/store';
@@ -44,7 +47,7 @@ export default function HomeScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { session, state, courseProgressRatio, resumeLesson } = useStore();
+  const { session, state, courseProgressRatio, resumeLesson, settings, setNotificationsUnread } = useStore();
   const { courses, categories, status } = useCatalog();
   const interestIds = state.interests;
 
@@ -58,6 +61,27 @@ export default function HomeScreen() {
     return [...ranked, ...rest].slice(0, 3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interestIds, courses]);
+
+  // Poster slider: the admin's active home banners when there are any, else the featured courses.
+  const heroSlides = useMemo<HeroItem[]>(() => {
+    const active = (settings?.homeBanners ?? []).filter((banner) => banner.active);
+    if (active.length === 0) {
+      return featured.map((course) => ({ id: course.id, course, title: course.title, subtitle: '', image: course.cover }));
+    }
+    return active.flatMap((banner, i): HeroItem[] => {
+      const course = courses.find((entry) => entry.id === banner.courseSlug);
+      if (!course && !banner.imageUrl) return [];
+      return [
+        {
+          id: `banner-${i}`,
+          course,
+          title: banner.title || course?.title || '',
+          subtitle: banner.subtitle,
+          image: banner.imageUrl ? mediaSource(banner.imageUrl) : course!.cover,
+        },
+      ];
+    });
+  }, [settings, featured, courses]);
 
   const popular = useMemo(
     () =>
@@ -77,7 +101,18 @@ export default function HomeScreen() {
   }, [state.enrollments, courses]);
 
   const resume = activeCourse ? resumeLesson(activeCourse) : null;
-  const unread = state.notificationsRead ? 0 : notifications.length;
+  const unread = state.notificationsUnread;
+
+  // The badge is the server's count of messages the learner has not opened yet; re-read each time Home is shown.
+  useFocusEffect(
+    useCallback(() => {
+      if (!session) return;
+      api
+        .inbox({ limit: 1, since: state.notificationsSeenAt })
+        .then((page) => setNotificationsUnread(page.unreadCount))
+        .catch(() => {});
+    }, [session, state.notificationsSeenAt, setNotificationsUnread]),
+  );
 
   return (
     <Screen
@@ -87,11 +122,8 @@ export default function HomeScreen() {
         <TabHeader
           style={styles.headerCompact}
           leading={
-            /* The supplied logo, the file itself: at 40px it is the app's own icon sitting in its
-               own header, next to the name it already carries. The vector mark below is the same
-               artwork cut from the same file — it keeps the small spots (the footer) legible, where
-               a 14px wordmark would be a smudge. */
-            <BrandLockup width={40} />
+            /* The brand-mark.png artwork, shown whole at 40px in the header. */
+            <Image source={images.brandMark} style={{ width: 40, height: 40 }} contentFit="contain" />
           }
           title="YDU Academy"
           meta={
@@ -129,7 +161,7 @@ export default function HomeScreen() {
       }>
       <CatalogGate>
       {/* Banner: full-bleed — zero left/right gap by design. It scrolls, and it pages itself. */}
-      <HeroCarousel courses={featured} />
+      <HeroCarousel slides={heroSlides} />
 
       {activeCourse && resume ? (
         <View style={styles.block}>
@@ -217,7 +249,7 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.brandFooter}>
-        <BrandMark size={20} />
+        <Image source={images.brandMark} style={{ width: 20, height: 20 }} contentFit="contain" />
         <Text style={[type.label, { color: colors.textSubtle }]}>{t("Live catalog \u2014 synced from the academy server in real time.")}</Text>
       </View>
       </CatalogGate>
@@ -232,7 +264,7 @@ const SLIDE_MS = 4500;
  * Featured carousel: full-bleed, one slide per featured course. It scrolls by hand *and* pages
  * itself forever. Reduced-motion users get the first slide, static and swipeable.
  */
-function HeroCarousel({ courses: slides }: { courses: Course[] }) {
+function HeroCarousel({ slides }: { slides: HeroItem[] }) {
   const reduced = useReducedMotion();
   const window = useWindowDimensions();
   const scroller = useRef<ScrollView>(null);
@@ -290,9 +322,9 @@ function HeroCarousel({ courses: slides }: { courses: Course[] }) {
           paused.current = false;
           settle(event.nativeEvent.contentOffset.x);
         }}>
-        {slides.map((course) => (
-          <View key={course.id} style={[styles.hero, { width: page }, Platform.OS === 'web' && styles.snap]}>
-            <HeroSlide course={course} />
+        {slides.map((item) => (
+          <View key={item.id} style={[styles.hero, { width: page }, Platform.OS === 'web' && styles.snap]}>
+            <HeroSlide item={item} />
           </View>
         ))}
       </ScrollView>
@@ -309,24 +341,36 @@ function HeroCarousel({ courses: slides }: { courses: Course[] }) {
 }
 
 /** One slide: artwork fills the frame edge to edge, native copy sits on the scrim. */
-function HeroSlide({ course }: { course: Course }) {
+type HeroItem = {
+  id: string;
+  /** The course the banner opens. Undefined for an info-only banner. */
+  course: Course | undefined;
+  title: string;
+  subtitle: string;
+  image: ImageSource;
+};
+
+function HeroSlide({ item }: { item: HeroItem }) {
   const t = useT();
 
   const router = useRouter();
   const press = usePressScale(0.99);
-  const heroOffer = discountPercent(course);
+  const { course, title, subtitle, image } = item;
+  const heroOffer = course ? discountPercent(course) : 0;
 
   return (
     <Animated.View style={[styles.flex, press.style]}>
       <Pressable
         accessible
         accessibilityRole="button"
-        accessibilityLabel={`Featured course: ${course.title}. ${course.promise}`}
-        onPress={() => router.push({ pathname: '/course/[id]', params: { id: course.id } })}
+        accessibilityLabel={`Featured course: ${title}. ${subtitle || course?.promise || ''}`}
+        onPress={() => {
+          if (course) router.push({ pathname: '/course/[id]', params: { id: course.id } });
+        }}
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={styles.flex}>
-        <Image source={course.cover} style={styles.heroImage} contentFit="cover" transition={200} />
+        <CourseImage source={image} style={styles.heroImage} transition={200} />
         <Scrim to={colors.scrim} />
         {heroOffer ? (
           <View style={styles.heroOffer}>
@@ -336,22 +380,31 @@ function HeroSlide({ course }: { course: Course }) {
         <View style={styles.heroCopy}>
           <Text style={[type.overline, { color: colors.onPlayerMuted }]}>{t("Featured this week")}</Text>
           <Text style={[type.display, { color: colors.textInverse }]} numberOfLines={2}>
-            {course.title}
+            {title}
           </Text>
-          <View style={styles.heroMeta}>
-            <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color={colors.onPlayerMuted} />
-            <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color={colors.onPlayerMuted} />
-            <View style={styles.heroRating}>
-              <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
-              <Text style={[type.labelStrong, tabularNums, { color: colors.textInverse }]}>
-                {course.rating.toFixed(1)}
-              </Text>
+          {subtitle ? (
+            <Text style={[type.body, { color: colors.onPlayerMuted }]} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+          {course ? (
+            <View style={styles.heroMeta}>
+              <MetaItem icon={Clapperboard} label={`${course.lessonCount} lessons`} color={colors.onPlayerMuted} />
+              <MetaItem icon={Clock} label={formatDuration(course.hours * 60)} color={colors.onPlayerMuted} />
+              <View style={styles.heroRating}>
+                <Star size={12} color={colors.gold} strokeWidth={0} fill={colors.gold} />
+                <Text style={[type.labelStrong, tabularNums, { color: colors.textInverse }]}>
+                  {course.rating.toFixed(1)}
+                </Text>
+              </View>
             </View>
-          </View>
-          <View style={styles.heroCta}>
-            <Text style={[type.labelStrong, { color: colors.text }]}>{t("View course")}</Text>
-            <Play size={13} color={colors.text} strokeWidth={2} fill={colors.text} />
-          </View>
+          ) : null}
+          {course ? (
+            <View style={styles.heroCta}>
+              <Text style={[type.labelStrong, { color: colors.text }]}>{t("View course")}</Text>
+              <Play size={13} color={colors.text} strokeWidth={2} fill={colors.text} />
+            </View>
+          ) : null}
         </View>
       </Pressable>
     </Animated.View>

@@ -25,7 +25,7 @@ export default function Index() {
   }
 
   if (!state.onboardingDone) return <Redirect href="/onboarding" />;
-  if (!session) return <Redirect href="/auth/signin" />;
+  if (!session) return <Redirect href="/auth/phone" />;
   return <Redirect href="/home" />;
 }
 

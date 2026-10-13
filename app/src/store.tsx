@@ -8,14 +8,17 @@
  * lives in the auth service, which uses the platform secure store.
  */
 
+import { AppState } from 'react-native';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/constants/theme';
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
-import { api, type ServerSettings } from '@/services/api';
+import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
+import { applyServerUrl } from '@/lib/serverUrl';
 import { authService } from '@/services/auth';
-import { connectRealtime, disconnectRealtime, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
+import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
+import { forgetPushToken, syncPushToken, watchPushTokenChanges } from '@/services/push';
 import type {
   Course,
   Enrollment,
@@ -42,6 +45,10 @@ type PersistedState = {
   progress: Record<Id, Record<Id, LessonProgress>>;
   notes: Record<Id, string>;
   notificationsRead: boolean;
+  /** Unread messages in the inbox, as last counted by the server. */
+  notificationsUnread: number;
+  /** When the learner last opened the inbox; messages after this are unread. */
+  notificationsSeenAt?: string;
   preferences: NotificationPrefs;
   /**
    * Profile photo chosen on this device, as a data URI (web) or a local file URI (native).
@@ -76,6 +83,7 @@ function seedState(): PersistedState {
     progress: {},
     notes: {},
     notificationsRead: false,
+    notificationsUnread: 0,
     preferences: { courseUpdates: true, learningReminders: true, productNews: false },
     profileAvatarUri: null,
     theme: DEFAULT_THEME,
@@ -108,6 +116,8 @@ type StoreValue = {
   state: PersistedState;
   /** App-wide settings from the server (maintenance mode, support details), live-updated. */
   settings: ServerSettings | null;
+  /** Fetches the settings again now (the maintenance and update screens' "check again"). */
+  reloadSettings: () => Promise<ServerSettings | null>;
 
   signIn: (session: Session) => void;
   signOut: () => Promise<void>;
@@ -122,6 +132,8 @@ type StoreValue = {
   completeOnboarding: () => void;
 
   toggleInterest: (id: string) => void;
+  /** Adopts the interests saved on the account, unless this device already has its own choice. */
+  restoreInterests: (ids: string[]) => void;
   isInterestSelected: (id: string) => boolean;
 
   toggleSavedCourse: (id: Id) => void;
@@ -150,7 +162,9 @@ type StoreValue = {
 
   setPreference: (key: keyof NotificationPrefs, value: boolean) => void;
   markNotificationsRead: () => void;
-  resetDemoData: () => void;
+  setNotificationsUnread: (count: number) => void;
+  /** Clears this device's cached learning data. Signed-in learners get their purchases and progress back from the server. */
+  resetDeviceData: () => void;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -253,10 +267,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     api
       .settings()
-      .then(({ settings: next }) => setSettings(next))
+      .then(({ settings: next }) => {
+        setSettings(next);
+        applyServerUrl(next.apiBaseUrl);
+      })
       .catch(() => {});
     return onSettingsUpdated((payload) => {
-      if (payload.settings) setSettings(payload.settings as ServerSettings);
+      if (!payload.settings) return;
+      const next = payload.settings as ServerSettings;
+      setSettings(next);
+      applyServerUrl(next.apiBaseUrl);
     });
   }, []);
 
@@ -295,6 +315,63 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Ends the local account: realtime, stored session and learning data. Shared by sign-out and by
+  // a blocked account, so neither leaves the account's data on the device.
+  const endAccountSession = useCallback(async () => {
+    // While the session still exists: remove this phone from the account, so it gets no more of its pushes.
+    await forgetPushToken();
+    disconnectRealtime();
+    await authService.clearSession();
+    setSession(null);
+    // Learning data belongs to the account, so it goes with the session.
+    setState((prev) => ({
+      ...seedState(),
+      onboardingDone: true,
+      interests: prev.interests,
+      preferences: prev.preferences,
+      // The look and the language belong to the device, not to the account.
+      theme: prev.theme,
+      language: prev.language,
+    }));
+  }, []);
+
+  // A blocked account is signed out at once, even while the app is open: the server pushes the
+  // news on the realtime socket, and every request it rejects with 403 ends the session too.
+  useEffect(() => {
+    setAccountBlockedHandler(() => {
+      void endAccountSession();
+    });
+    const unsubscribe = onAccountBlocked(() => {
+      void endAccountSession();
+    });
+    return () => {
+      setAccountBlockedHandler(null);
+      unsubscribe();
+    };
+  }, [endAccountSession]);
+
+  // Coming back to the app re-checks the account, so a block made while it was in the background
+  // takes effect without waiting for the next screen to load data.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (status === 'active' && sessionRef.current) {
+        void api.me().catch(() => {});
+        void syncPushToken();
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // A token the server no longer accepts ends the local session, so the user signs in again
+  // instead of hitting the same 401 on every payment or lesson request.
+  useEffect(() => {
+    setSessionExpiredHandler(() => {
+      void authService.clearSession();
+      setSession(null);
+    });
+    return () => setSessionExpiredHandler(null);
+  }, []);
+
   // Session lifecycle: realtime socket + server hydration follow sign-in/sign-out.
   useEffect(() => {
     connectRealtime(session?.token ?? null);
@@ -303,6 +380,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!session) disconnectRealtime();
     };
   }, [session?.token, hydrateLearning]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Push: this phone is registered for the signed-in learner, and kept current when the OS rotates its token.
+  useEffect(() => {
+    if (!session) return;
+    void syncPushToken();
+    return watchPushTokenChanges(() => void syncPushToken());
+  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // An enrollment granted somewhere else (e.g. admin marks an order paid) refreshes access here.
   useEffect(
@@ -332,6 +416,40 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const reloadSettings = useCallback(async (): Promise<ServerSettings | null> => {
+    try {
+      const { settings: next } = await api.settings();
+      setSettings(next);
+      applyServerUrl(next.apiBaseUrl);
+      return next;
+    } catch {
+      // Offline or the server is down: keep the last known settings.
+      return null;
+    }
+  }, []);
+
+  // Stable identities. Effects depend on these, and the store value is rebuilt on every state change:
+  // a new function here would re-run those effects, which change state again, in a loop. A call that
+  // changes nothing returns the previous state, so React does not re-render at all.
+  const markNotificationsRead = useCallback(
+    () =>
+      setState((prev) =>
+        prev.notificationsRead && prev.notificationsUnread === 0
+          ? prev
+          : { ...prev, notificationsRead: true, notificationsUnread: 0, notificationsSeenAt: new Date().toISOString() },
+      ),
+    [],
+  );
+  const setNotificationsUnread = useCallback(
+    (count: number) =>
+      setState((prev) =>
+        prev.notificationsUnread === count && prev.notificationsRead === (count === 0)
+          ? prev
+          : { ...prev, notificationsUnread: count, notificationsRead: count === 0 },
+      ),
+    [],
+  );
+
   const value = useMemo<StoreValue>(() => {
     const lessonProgress = (courseId: Id, lessonId: Id) =>
       state.progress[courseId]?.[lessonId] ?? { completed: false, positionSec: 0 };
@@ -341,6 +459,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       session,
       state,
       settings,
+      reloadSettings,
 
       signIn: (next) => setSession(next),
       updateProfile: async (patch) => {
@@ -360,7 +479,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                     avatarUrl: user.avatarUrl || prev.profile.avatarUrl,
                     city: user.city || prev.profile.city,
                     goal: user.goal || prev.profile.goal,
-                    dateOfBirth: user.dateOfBirth || prev.profile.dateOfBirth,
                   },
                 }
               : prev,
@@ -390,23 +508,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, language: id }));
       },
 
-      signOut: async () => {
-        disconnectRealtime();
-        await authService.clearSession();
-        setSession(null);
-        // Learning data belongs to the account, so it goes with the session.
-        setState((prev) => ({
-          ...seedState(),
-          onboardingDone: true,
-          interests: prev.interests,
-          preferences: prev.preferences,
-          // The look and the language belong to the device, not to the account.
-          theme: prev.theme,
-          language: prev.language,
-        }));
-      },
+      signOut: endAccountSession,
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),
 
+      restoreInterests: (ids) =>
+        setState((prev) => (prev.interests.length === 0 && ids.length > 0 ? { ...prev, interests: ids } : prev)),
       toggleInterest: (id) => {
         setState((prev) => {
           const interests = prev.interests.includes(id)
@@ -484,14 +590,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           ...prev,
           preferences: { ...prev.preferences, [key]: value },
         })),
-      markNotificationsRead: () => setState((prev) => ({ ...prev, notificationsRead: true })),
-      resetDemoData: () =>
+      markNotificationsRead,
+      setNotificationsUnread,
+      resetDeviceData: () => {
+        // Local-only fields go back to their defaults; the account's own data is fetched again below.
         setState((prev) => ({
           ...seedState(),
-          onboardingDone: true,
+          onboardingDone: prev.onboardingDone,
           interests: prev.interests,
           preferences: prev.preferences,
-        })),
+          ratings: prev.ratings,
+          theme: prev.theme,
+          themeChosen: prev.themeChosen,
+          language: prev.language,
+          profileAvatarUri: prev.profileAvatarUri,
+        }));
+        if (session) void hydrateLearning();
+      },
     };
   }, [ready, session, state, settings, patchProgress, scheduleProgressSync, hydrateLearning]);
 

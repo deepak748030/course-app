@@ -16,18 +16,20 @@
  * and the note at the foot of the screen says so in whichever language the interface is in.
  */
 
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { LifeBuoy, TriangleAlert } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
-import { legalDocs } from '@/data/content';
+import { useAppContent, type LegalKey } from '@/services/app-content';
 import { useT } from '@/i18n';
 
-type DocKey = keyof typeof legalDocs;
+type DocKey = LegalKey;
 
 export default function LegalScreen() {
+  const { legalDocs } = useAppContent();
   const t = useT();
 
   const { doc } = useLocalSearchParams<{ doc?: string }>();
@@ -45,7 +47,7 @@ export default function LegalScreen() {
         <View style={styles.docHead}>
           <Text style={[type.subheading, { color: colors.text }]}>{document.heading}</Text>
           <Text style={[type.label, { color: colors.textSubtle }]}>
-            {t('Sample document · not legally binding')}
+            {t('Official policy')}
           </Text>
         </View>
 
@@ -86,7 +88,7 @@ export default function LegalScreen() {
 
         <View style={styles.footNote}>
           <Text style={[docText, { color: colors.textSubtle }]}>
-            {t('Course titles, lesson copy and the policy documents are sample content and stay in English.')}
+            {t('Course titles and lesson copy stay in English.')}
           </Text>
         </View>
       </View>

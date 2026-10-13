@@ -1,16 +1,20 @@
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { Bell, BellRing, Clapperboard, Sparkles } from 'lucide-react-native';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, Badge, DataList, EmptyState, Screen, SectionHeader } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeletons';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
-import { notifications } from '@/data/content';
 import { useT } from '@/i18n';
-import { useStore } from '@/store';
 import { minutesAgoLabel } from '@/lib/format';
+import { api, type InboxItem } from '@/services/api';
+import { useStore } from '@/store';
+
+const PAGE_SIZE = 20;
 
 const kindIcon = {
+  announcement: Bell,
   'course-update': Clapperboard,
   'learning-reminder': BellRing,
   product: Sparkles,
@@ -21,32 +25,83 @@ export default function NotificationsScreen() {
 
   const router = useRouter();
   const { state, markNotificationsRead } = useStore();
-  const wasUnread = !state.notificationsRead;
+  // Captured on mount: the badge says "Marked as read" only when this visit is the one that cleared it.
+  const [wasUnread] = useState(() => !state.notificationsRead);
+
+  const [items, setItems] = useState<InboxItem[] | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(async () => {
+    setFailed(false);
+    try {
+      const page = await api.inbox({ limit: PAGE_SIZE });
+      setItems(page.items);
+      setHasMore(page.hasMore);
+    } catch {
+      setFailed(true);
+      setItems((current) => current ?? []);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   // Opening the screen is the read receipt — the badge on Home clears from here.
   useEffect(() => {
     markNotificationsRead();
   }, [markNotificationsRead]);
 
-  const today = notifications.filter((item) => item.minutesAgo < 60 * 24);
-  const earlier = notifications.filter((item) => item.minutesAgo >= 60 * 24);
+  // Infinite scroll: the next page starts after the oldest message shown so far.
+  const loadMore = useCallback(async () => {
+    if (!hasMore || loadingMore || !items || items.length === 0) return;
+    const oldest = items[items.length - 1];
+    setLoadingMore(true);
+    try {
+      const page = await api.inbox({ limit: PAGE_SIZE, before: oldest.createdAt });
+      setItems((current) => {
+        const seen = new Set((current ?? []).map((item) => item.id));
+        return [...(current ?? []), ...page.items.filter((item) => !seen.has(item.id))];
+      });
+      setHasMore(page.hasMore);
+    } catch {
+      /* keep what is shown; scrolling down again retries */
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, items, loadingMore]);
+
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+  const today = (items ?? []).filter((item) => Date.parse(item.createdAt) >= dayAgo);
+  const earlier = (items ?? []).filter((item) => Date.parse(item.createdAt) < dayAgo);
+  const openCourse = (id: string) => router.push({ pathname: '/course/[id]', params: { id } });
 
   return (
     <Screen
+      onEndReached={loadMore}
       header={<AppBar title={t("Notifications")} right={wasUnread ? <Badge label={t("Marked as read")} tone="sage" /> : undefined} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
-      {notifications.length === 0 ? (
+      {items === null ? (
+        <ListSkeleton rows={4} />
+      ) : failed && items.length === 0 ? (
+        <EmptyState
+          icon={Bell}
+          title={t("Can't reach the academy")}
+          body={t("Check your connection and try again.")}
+          actionLabel={t("Try again")}
+          onAction={() => void load()}
+        />
+      ) : items.length === 0 ? (
         <EmptyState icon={Bell} title={t("Nothing new")} body={t("Course updates and learning reminders will appear here.")} />
       ) : (
         <>
-          <Group title={t("Today")} items={today} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
-          <Group title={t("Earlier")} items={earlier} onOpenCourse={(id) => router.push({ pathname: '/course/[id]', params: { id } })} />
+          <Group title={t("Today")} items={today} onOpenCourse={openCourse} />
+          <Group title={t("Earlier")} items={earlier} onOpenCourse={openCourse} />
+          {loadingMore ? <ActivityIndicator color={colors.textSubtle} style={styles.more} /> : null}
         </>
       )}
-
-      <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
-        {t('These notifications are sample content generated by the prototype. No push notification service is connected, so nothing is delivered outside the app.')}
-      </Text>
     </Screen>
   );
 }
@@ -57,7 +112,7 @@ function Group({
   onOpenCourse,
 }: {
   title: string;
-  items: typeof notifications;
+  items: InboxItem[];
   onOpenCourse: (courseId: string) => void;
 }) {
   const t = useT();
@@ -69,8 +124,9 @@ function Group({
       <SectionHeader title={title} />
       <DataList dividerInset={layout.screen + 40 + spacing.md}>
         {items.map((item) => {
-          const Icon = kindIcon[item.kind];
+          const Icon = kindIcon[item.kind] ?? Bell;
           const openable = Boolean(item.courseId);
+          const minutesAgo = Math.max(0, Math.round((Date.now() - Date.parse(item.createdAt)) / 60000));
           return (
             <Pressable
               key={item.id}
@@ -85,7 +141,7 @@ function Group({
               <View style={styles.flex}>
                 <View style={styles.rowHead}>
                   <Text style={[type.bodyStrong, { color: colors.text, flex: 1 }]}>{item.title}</Text>
-                  <Text style={[type.label, { color: colors.textSubtle }]}>{minutesAgoLabel(item.minutesAgo)}</Text>
+                  <Text style={[type.label, { color: colors.textSubtle }]}>{minutesAgoLabel(minutesAgo)}</Text>
                 </View>
                 <Text style={[type.label, { color: colors.textMuted }]}>{item.body}</Text>
                 {openable ? <Text style={[type.labelStrong, styles.openLink, { color: colors.accentText }]}>{t("Open course")}</Text> : null}
@@ -101,6 +157,7 @@ function Group({
 const styles = createStyles(() => StyleSheet.create({
   flex: { flex: 1 },
   group: { gap: layout.gap },
+  more: { paddingVertical: spacing.md },
   row: { flexDirection: 'row', gap: spacing.md, paddingVertical: spacing.sm, minHeight: layout.touchTarget },
   rowHead: { flexDirection: 'row', alignItems: 'baseline', gap: spacing.sm },
   icon: {
@@ -112,5 +169,4 @@ const styles = createStyles(() => StyleSheet.create({
     justifyContent: 'center',
   },
   openLink: { marginTop: spacing.xs },
-  note: { paddingHorizontal: layout.section, paddingTop: spacing.sm },
 }));

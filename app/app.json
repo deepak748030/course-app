@@ -3,7 +3,7 @@
     "name": "YDU Academy",
     "slug": "courses-app",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/logo.png",
     "scheme": "coursesapp",
     "userInterfaceStyle": "light",
@@ -44,7 +44,15 @@
           "photosPermission": "YDU Academy uses your photo library so you can add a picture to your profile."
         }
       ],
-      "expo-system-ui"
+      "expo-system-ui",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#14532D",
+          "defaultChannel": "default"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -55,6 +63,15 @@
       "backgroundColor": "#FFFFFF",
       "barStyle": "dark-content",
       "translucent": false
+    },
+    "ios": {
+      "infoPlist": {
+        "LSApplicationQueriesSchemes": [
+          "tez",
+          "phonepe",
+          "paytmmp"
+        ]
+      }
     }
   }
 }

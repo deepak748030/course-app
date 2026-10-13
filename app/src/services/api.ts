@@ -1,15 +1,13 @@
 /**
  * HTTP client for the YDU Academy server (see /server in the repo).
  *
- * One base URL — set EXPO_PUBLIC_API_URL to point elsewhere (device builds need the LAN
- * IP of the machine running the server; emulators can use http://localhost:5000).
- * Every endpoint the app uses lives in the `api` object at the bottom so screens never
- * build URLs themselves.
+ * The base URL comes from lib/serverUrl: the built-in EXPO_PUBLIC_API_URL, or the server URL the
+ * admin set in Settings. Device builds need the LAN IP of the machine running the server; emulators
+ * can use http://localhost:5000. Every endpoint the app uses lives in the `api` object at the bottom,
+ * so screens never build URLs themselves.
  */
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000').replace(/\/$/, '');
-/** Same origin serves the socket.io realtime endpoint. */
-export const SOCKET_URL = API_URL;
+import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
 
 export class ApiError extends Error {
   constructor(
@@ -30,6 +28,28 @@ let authToken: string | null = null;
 /** The auth service injects the session token here after restoring it. */
 export function setApiToken(token: string | null) {
   authToken = token;
+}
+
+let onSessionExpired: (() => void) | null = null;
+
+/**
+ * The store registers a handler that drops the local session when the server rejects the token
+ * (e.g. the account was removed or the database was reseeded). Without it the app keeps sending a
+ * dead token and every protected action fails with the same 401.
+ */
+export function setSessionExpiredHandler(handler: (() => void) | null) {
+  onSessionExpired = handler;
+}
+
+let onAccountBlocked: (() => void) | null = null;
+
+/**
+ * The server answers 403 "This account is blocked" to every request from a blocked account. The
+ * store registers a handler that ends the local session, so a blocked user cannot keep using the
+ * app (learning data, lessons, purchases) on a token that is still on the device.
+ */
+export function setAccountBlockedHandler(handler: (() => void) | null) {
+  onAccountBlocked = handler;
 }
 
 interface Options {
@@ -53,9 +73,10 @@ function queryString(query?: Options['query']) {
 async function request<T>(path: string, options: Options = {}): Promise<T> {
   const { method = 'GET', body, query, formData } = options;
 
+  await serverUrlReady;
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}${queryString(query)}`, {
+    response = await fetch(`${apiUrl()}${path}${queryString(query)}`, {
       method,
       headers: {
         ...(formData ? {} : { 'Content-Type': 'application/json' }),
@@ -77,11 +98,31 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
     } catch {
       /* non-JSON error body */
     }
+    if (response.status === 401 && authToken && !path.includes('/otp/')) {
+      onSessionExpired?.();
+      message = 'Your session has expired. Please sign in again.';
+    }
+    if (response.status === 403 && authToken && message === 'This account is blocked') {
+      onAccountBlocked?.();
+      message = 'Your account has been blocked. Contact the academy for help.';
+    }
     throw new ApiError(response.status, message, details);
   }
 
   return (await response.json()) as T;
 }
+
+export type InboxItem = {
+  id: string;
+  title: string;
+  body: string;
+  kind: 'announcement' | 'course-update' | 'learning-reminder' | 'product';
+  /** Course slug (the app's course id) when the message is about one course. */
+  courseId: string | null;
+  createdAt: string;
+};
+
+export type InboxPage = { items: InboxItem[]; hasMore: boolean; unreadCount: number };
 
 /** Server-side shapes the app consumes (mirrors the Mongoose models). */
 export type ServerUser = {
@@ -90,7 +131,6 @@ export type ServerUser = {
   email: string;
   phone?: string;
   avatarUrl?: string;
-  dateOfBirth?: string;
   city?: string;
   goal?: string;
   interests?: string[];
@@ -114,11 +154,15 @@ export type ServerLesson = {
   _id: string;
   title: string;
   description: string;
+  /** Public https URL of the lesson video on Backblaze B2; empty = bundled demo clip. */
+  /** Object key of the course video in private storage; the app gets a signed link from the server. */
+  videoKey?: string;
   minutes: number;
+  durationSec?: number;
   isPreview: boolean;
+  previewSec?: number;
   recipe?: ServerRecipe | null;
 };
-export type ServerSection = { _id: string; title: string; summary: string; lessons: ServerLesson[] };
 
 export type ServerCourse = {
   _id: string;
@@ -140,7 +184,7 @@ export type ServerCourse = {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: ServerSection[];
+  lessons: ServerLesson[];
   lessonCount: number;
   totalMinutes: number;
   hours?: number;
@@ -157,6 +201,17 @@ export type ServerOrder = {
   discountInr: number;
   status: 'pending' | 'paid' | 'refunded';
   createdAt: string;
+};
+
+/** What the app needs to open Razorpay Checkout. The key id is public; the secret never leaves the server. */
+export type RazorpayOrderConfig = {
+  keyId: string;
+  orderId: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  prefill: { name?: string; email?: string; contact?: string };
 };
 
 export type ServerEnrollment = {
@@ -176,30 +231,71 @@ export type ServerReview = {
   createdAt: string;
 };
 
+export interface AvailableCoupon {
+  code: string;
+  type: 'percent' | 'flat';
+  value: number;
+  description: string;
+  expiresAt: string | null;
+}
+
 export type ServerSettings = {
   appName: string;
+  /** Server URL the admin set for the app. Empty = the built-in URL. */
+  apiBaseUrl?: string;
   tagline: string;
   supportEmail: string;
   supportPhone: string;
   currency: string;
   maintenanceMode: boolean;
   minAppVersion: string;
+  /** Poster slider on the home screen; empty = featured courses. */
+  homeBanners?: { imageUrl: string; title: string; subtitle: string; courseSlug: string; active: boolean }[];
+  /** 'web' = Razorpay hosted page in the browser (works in Expo Go); 'sdk' = native SDK (dev build). */
+  checkoutMode?: 'web' | 'sdk';
+  /** Help questions set in the admin; empty = the built-in FAQ. */
+  faqs?: { question: string; answer: string }[];
+  /** Policy documents set in the admin; a missing one = the built-in text. */
+  legalDocs?: {
+    terms?: ServerLegalDoc | null;
+    refund?: ServerLegalDoc | null;
+    privacy?: ServerLegalDoc | null;
+  };
+  /** Checkout lines set in the admin; empty = the built-in list. */
+  purchaseTerms?: string[];
+};
+
+export type ServerLegalDoc = {
+  title: string;
+  heading: string;
+  summary: string;
+  sections: { heading: string; body?: string[]; points?: string[] }[];
 };
 
 export const api = {
   // ---- auth ----
-  register: (name: string, email: string, password: string) =>
-    request<{ token: string; user: ServerUser }>('/api/auth/register', {
+  /** Sends a one-time code to an Indian mobile (+91). The server returns the resend wait. */
+  requestOtp: (phone: string) =>
+    request<{ ok: boolean; expiresInSeconds: number; resendInSeconds: number }>('/api/auth/otp/request', {
       method: 'POST',
-      body: { name, email, password },
+      body: { phone },
     }),
-  login: (email: string, password: string) =>
-    request<{ token: string; user: ServerUser }>('/api/auth/login', {
+  /** Checks the code; a number seen for the first time gets a learner account. */
+  verifyOtp: (phone: string, code: string) =>
+    request<{ token: string; user: ServerUser }>('/api/auth/otp/verify', {
       method: 'POST',
-      body: { email, password },
+      body: { phone, code },
     }),
   me: () => request<{ user: ServerUser }>('/api/auth/me'),
-  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'dateOfBirth' | 'city' | 'goal' | 'interests'>>) =>
+  /** Registers this phone's push token for the signed-in learner (the server keeps it up to date). */
+  registerPushToken: (data: { token: string; platform: 'ios' | 'android' | 'web' | 'unknown' }) =>
+    request<{ ok: boolean }>('/api/notifications/push-token', { method: 'POST', body: data }),
+  unregisterPushToken: (token: string) =>
+    request<{ ok: boolean }>('/api/notifications/push-token', { method: 'DELETE', body: { token } }),
+  /** The learner's inbox, newest first. `before` pages back; `since` counts what arrived after it. */
+  inbox: (params: { limit?: number; before?: string; since?: string }) =>
+    request<InboxPage>('/api/notifications', { query: params }),
+  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
 
   // ---- catalog ----
@@ -218,13 +314,41 @@ export const api = {
   settings: () => request<{ settings: ServerSettings }>('/api/settings'),
 
   // ---- checkout ----
+  /** Codes the user can apply right now, for the checkout's "available coupons" list. */
+  availableCoupons: () =>
+    request<{ coupons: AvailableCoupon[] }>('/api/coupons/available').then((r) => r.coupons),
   validateCoupon: (code: string, courseId: string) =>
     request<{ coupon: { code: string; type: string; value: number }; discountInr: number; finalPriceInr: number }>(
       '/api/coupons/validate',
       { method: 'POST', body: { code, courseId } },
     ),
-  createOrder: (input: { courseId: string; couponCode?: string; paymentReference?: string }) =>
-    request<{ order: ServerOrder }>('/api/orders', { method: 'POST', body: input }),
+  /** Prices the course on the server and opens a Razorpay order for the checkout sheet. */
+  createRazorpayOrder: (input: { courseId: string; couponCode?: string }) =>
+    request<{ order: ServerOrder; razorpay: RazorpayOrderConfig }>('/api/payments/razorpay/order', {
+      method: 'POST',
+      body: input,
+    }),
+  /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
+  /** `quality` picks one uploaded version (360/480/720/1080); omitted = best available. */
+  lessonVideoUrl: (courseId: string, lessonId: string, quality?: string) =>
+    request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
+      `/api/courses/${courseId}/lessons/${lessonId}/video`,
+      { query: { quality } },
+    ),
+  /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
+  createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
+    request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {
+      method: 'POST',
+      body: input,
+    }),
+  /** Checks whether the payment link was paid; the server grants the course when it was. */
+  razorpayLinkStatus: (orderId: string) =>
+    request<{ status: 'paid' | 'pending' | 'cancelled' | 'expired'; order: ServerOrder }>(
+      `/api/payments/razorpay/link/${orderId}`,
+    ),
+  /** Confirms a successful checkout with the server, which grants the course. */
+  verifyRazorpayPayment: (input: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    request<{ order: ServerOrder }>('/api/payments/razorpay/verify', { method: 'POST', body: input }),
   myOrders: () => request<{ orders: ServerOrder[] }>('/api/orders/my'),
 
   // ---- learning ----

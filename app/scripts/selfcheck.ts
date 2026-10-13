@@ -33,12 +33,9 @@ if (typeof Bun !== 'undefined') {
 }
 
 import {
-  ageFromDateOfBirth,
-  buildDateOfBirth,
   formatClock,
   formatDuration,
   formatIndianMobile,
-  formatDateOfBirth,
   formatInr,
   maskPhone,
   normalizePhone,
@@ -112,7 +109,7 @@ check('timeOfDayGreeting covers the day', () => {
 
 check('the server catalog maps onto the app types coherently', async () => {
   const { mapCourse } = await import('../src/services/catalogService');
-  const { courseLessonGroups, discountPercent, firstPlayableLesson, nextLesson } = await import('../src/lib/catalog');
+  const { discountPercent, firstPlayableLesson, nextLesson } = await import('../src/lib/catalog');
 
   const fixture = {
     _id: 'aaaaaaaaaaaaaaaaaaaaaaaa',
@@ -134,17 +131,13 @@ check('the server catalog maps onto the app types coherently', async () => {
     outcomes: ['Judge milk quality'],
     equipment: ['Lactometer'],
     audience: 'Dairy owners',
-    sections: [
-      { _id: 's1', title: 'Milk on arrival', summary: 'Reception.', lessons: [
-        { _id: 'l1', title: 'The reception check', description: '', minutes: 14, isPreview: true, recipe: null },
-        { _id: 'l2', title: 'Fat and SNF', description: '', minutes: 16, isPreview: false, recipe: null },
-      ]},
-      { _id: 's2', title: 'Cold chain', summary: 'Chilling.', lessons: [
-        { _id: 'l3', title: 'The chilling curve', description: '', minutes: 18, isPreview: false, recipe: {
-          title: 'Bulk chill batch', servings: 2, prepMinutes: 5, cookMinutes: 0,
-          ingredients: [{ item: 'Milk', quantity: '10 L' }], steps: ['Chill fast.'], tips: ['Watch the curve.'],
-        }},
-      ]},
+    lessons: [
+      { _id: 'l1', title: 'The reception check', description: '', minutes: 14, isPreview: true, recipe: null },
+      { _id: 'l2', title: 'Fat and SNF', description: '', minutes: 16, isPreview: false, recipe: null },
+      { _id: 'l3', title: 'The chilling curve', description: '', minutes: 18, isPreview: false, recipe: {
+        title: 'Bulk chill batch', servings: 2, prepMinutes: 5, cookMinutes: 0,
+        ingredients: [{ item: 'Milk', quantity: '10 L' }], steps: ['Chill fast.'], tips: ['Watch the curve.'],
+      }},
     ],
     lessonCount: 3,
     totalMinutes: 48,
@@ -159,8 +152,7 @@ check('the server catalog maps onto the app types coherently', async () => {
   assert.equal(firstPlayableLesson(course).id, 'l1', 'the preview lesson leads');
   assert.equal(nextLesson(course, 'l1')?.id, 'l2', 'next-lesson navigation works on mapped lessons');
 
-  const groups = courseLessonGroups(course);
-  assert.equal(groups.flatMap((group) => group.lessons).length, course.lessons.length, 'groups cover every lesson');
+  assert.equal(course.lessons.length, 3, 'every lesson comes through as one flat curriculum');
   const ids = course.lessons.map((lesson) => lesson.id);
   assert.equal(new Set(ids).size, ids.length, 'lesson ids stay unique through the mapping');
   assert.ok(course.lessons.every((lesson) => lesson.recipe === undefined || lesson.recipe.steps.length > 0),
@@ -178,7 +170,7 @@ check('search, filters and sorting act on any catalog', async () => {
       level: 'Beginner', language: 'English', priceInr, listPriceInr: null, published: true,
       isPopular: false, isBeginnerPick: false, rating: 4.5, reviewCount: 10,
       outcomes: [], equipment: [], audience: '',
-      sections: [{ _id: 's', title: 'One', summary: '', lessons: [{ _id: `${slug}-l1`, title: 'A lesson', description: '', minutes, isPreview: false, recipe: null }] }],
+      lessons: [{ _id: `${slug}-l1`, title: 'A lesson', description: '', minutes, isPreview: false, recipe: null }],
       lessonCount: 1, totalMinutes: minutes,
       ...extra,
     } as never);
@@ -364,7 +356,7 @@ check('screen scrollers are clipped and headers paint over them', () => {
   );
 
   // The screens that own a scroller put the same overflow on it themselves.
-  for (const screen of ['src/app/auth/signin.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
+  for (const screen of ['src/app/auth/otp.tsx', 'src/app/lesson/[courseId]/[lessonId].tsx']) {
     assert.ok(read(screen).includes('scrollClip'), `${screen} keeps its scroller clipped`);
   }
   assert.ok(
@@ -396,16 +388,12 @@ check('every brand icon is cut from the supplied logo.png', () => {
   const generator = read('scripts/generate-brand-icons.mjs');
   assert.ok(generator.includes("resolve(IMAGE_DIR, 'logo.png')"), 'the generator reads the supplied logo.png');
   for (const output of [
-    'icon.png',
     'favicon.png',
     'splash-icon.png',
-    'brand-logo.png',
     'android-icon-background.png',
     'android-icon-foreground.png',
     'android-icon-monochrome.png',
     'brand-mark.png',
-    'ydu-logo.svg',
-    'ydu-mark.svg',
   ]) {
     assert.ok(generator.includes(`'${output}'`), `the generator writes ${output}`);
   }
@@ -422,9 +410,9 @@ check('every brand icon is cut from the supplied logo.png', () => {
   // home header show the whole lockup; the small spots (the footer, the brand row) use the same
   // artwork with the wordmark cut away, because a 14px "ACADEMY" is not a word, it is a smudge.
   assert.ok(read('src/app/index.tsx').includes('<BrandLockup'), 'the boot screen uses it');
-  assert.ok(read('src/app/auth/signin.tsx').includes('<BrandLockup'), 'so does the sign-in hero');
-  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandLockup'), 'and the home header');
-  assert.ok(read('src/app/(tabs)/home.tsx').includes('<BrandMark size={20} />'), 'the footer uses the mark');
+  assert.ok(!read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen carries no brand placeholder');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'and the home header');
+  assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'the footer uses brand-mark.png');
   assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
   assert.ok(
     !read('src/components/ui.tsx').includes('BrandTile'),
@@ -433,17 +421,13 @@ check('every brand icon is cut from the supplied logo.png', () => {
 
   // The icon set itself: every size the platforms ask for, written by the generator.
   for (const file of [
-    'assets/images/icon.png',
     'assets/images/android-icon-foreground.png',
     'assets/images/android-icon-background.png',
     'assets/images/android-icon-monochrome.png',
     'assets/images/favicon.png',
     'assets/images/splash-icon.png',
     'assets/images/logo.png',
-    'assets/images/brand-logo.png',
     'assets/images/brand-mark.png',
-    'assets/brand/ydu-logo.svg',
-    'assets/brand/ydu-mark.svg',
   ]) {
     assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
   }
@@ -462,10 +446,8 @@ check('every brand icon is cut from the supplied logo.png', () => {
   const centre = at(logo, logo.width >> 1, logo.height >> 1);
 
   for (const [file, size] of [
-    ['assets/images/icon.png', 1024],
     ['assets/images/favicon.png', 196],
     ['assets/images/splash-icon.png', 512],
-    ['assets/images/brand-logo.png', 512],
   ]) {
     const icon = pixels(file);
     assert.equal(icon.width, size, `${file} is ${size}px wide`);
@@ -495,26 +477,6 @@ check('every brand icon is cut from the supplied logo.png', () => {
   assert.equal(at(mark, 0, 0)[3], 0, 'the text-free mark sits on transparent');
   assert.equal(at(mark, mark.width >> 1, mark.height >> 1)[3], 255, 'with the churn opaque at its centre');
 
-  // The brand SVGs are the logo's own pixels in a vector wrapper, not a second drawing: unwrap the
-  // embedded raster and it must carry the same field green and the same centre as logo.png.
-  for (const [file, size] of [
-    ['assets/brand/ydu-logo.svg', 1024],
-    ['assets/brand/ydu-mark.svg', 512],
-  ]) {
-    const svg = read(file);
-    assert.ok(svg.includes(`viewBox="0 0 ${size} ${size}"`), `${file} is a ${size} square`);
-    const match = svg.match(/href="data:image\/png;base64,([^"]+)"/);
-    assert.ok(match, `${file} embeds its pixels rather than redrawing them`);
-    const embedded = decodePng(Buffer.from(match[1], 'base64'));
-    assert.equal(embedded.width, size, `${file} embeds the ${size}px rendition`);
-    if (file.endsWith('ydu-logo.svg')) {
-      assert.ok(close(at(embedded, 0, 0), field, 2), `${file} embeds the logo with its field`);
-      assert.ok(close(at(embedded, size >> 1, size >> 1), centre), `${file} embeds the logo's centre`);
-    } else {
-      assert.equal(at(embedded, 0, 0)[3], 0, `${file} embeds the text-free mark on transparent`);
-      assert.equal(at(embedded, size >> 1, size >> 1)[3], 255, `${file} keeps the churn opaque`);
-    }
-  }
 
 });
 
@@ -582,9 +544,8 @@ check('a bought course can be rated locally and posted to the server', () => {
 });
 
 check('every UI string has a Hindi translation, and no entry is orphaned', async () => {
-  const [helpers, payments, content, i18n, hindi] = await Promise.all([
+  const [helpers, content, i18n, hindi] = await Promise.all([
     import('../src/lib/catalog'),
-    import('../src/services/payments'),
     import('../src/data/content'),
     import('../src/i18n'),
     import('../src/i18n/hi'),
@@ -634,19 +595,11 @@ check('every UI string has a Hindi translation, and no entry is orphaned', async
     ...helpers.sortOptions.map((option) => option.label),
     ...helpers.priceBandOptions.map((option) => option.label),
     ...helpers.durationOptions.map((option) => option.label),
-    ...payments.demoScenarios.flatMap((scenario) => [scenario.label, scenario.help]),
     ...content.purchaseTerms,
     ...content.ratingWords,
     ...content.ratingHighlights,
     // The two theme names and their descriptions, rendered through t() by the picker on Profile.
     ...THEMES.flatMap((theme) => [theme.label, theme.description]),
-    // The one message the demo gateway returns (src/services/payments.ts).
-    'The demo gateway declined this payment. No money moved.',
-    // Date-of-birth problems, which the profile sheet renders through t(error) (src/lib/format.ts).
-    buildDateOfBirth('31', '02', '1996', today).error!,
-    buildDateOfBirth('05', '10', '2030', today).error!,
-    buildDateOfBirth('05', '10', '2020', today).error!,
-    buildDateOfBirth('05', '10', '1890', today).error!,
   ];
   dataKeys.push(...i18n.LANGUAGES.map((language) => language.description));
   for (const key of dataKeys) used.add(key);
@@ -733,7 +686,7 @@ check('green is the default look, the number is read-only, and policy copy is sm
   assert.ok(legal.includes('type.bodyStrong'), 'clause headings are the 15pt step');
   const content = read('src/data/content.ts');
   assert.ok(content.includes('points?: readonly string[]'), 'clauses can carry bullet points');
-  assert.ok(/heading: 'What it does not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
+  assert.ok(/heading: 'What we do not do',\s*\n\s*points:/.test(content), 'and the copy uses them');
 });
 
 check('the offer mark is plain text, and it owns the card corner', () => {
@@ -777,29 +730,11 @@ check('the offer mark is plain text, and it owns the card corner', () => {
   assert.ok(/<OfferMark percent=\{offer\} color=\{colors\.textInverse\} \/>/.test(course), 'the course hero uses it too');
 });
 
-check('profile fields validate email and date of birth', () => {
+check('profile fields validate email', () => {
   assert.equal(validateEmail(''), null);
   assert.equal(validateEmail('deepak@example.com'), null);
   assert.ok(validateEmail('deepak@example'));
   assert.ok(validateEmail('deepak example.com'));
-
-  const today = new Date(2026, 9, 5); // 5 October 2026
-  assert.equal(ageFromDateOfBirth('1996-03-12', today), 30);
-  assert.equal(ageFromDateOfBirth('1996-10-05', today), 30);
-  assert.equal(ageFromDateOfBirth('1996-10-06', today), 29);
-  assert.equal(ageFromDateOfBirth('1996-02-30', today), null);
-  assert.equal(formatDateOfBirth('1996-03-12'), '12 March 1996');
-  assert.equal(formatDateOfBirth(undefined), null);
-
-  assert.deepEqual(buildDateOfBirth('', '', '', today), { ok: false, error: null });
-  assert.equal(buildDateOfBirth('12', '', '1996', today).ok, false);
-  // One-digit month/day is accepted on purpose: "3" means March.
-  assert.deepEqual(buildDateOfBirth('12', '3', '1996', today), { ok: true, date: '1996-03-12' });
-  assert.deepEqual(buildDateOfBirth('12', '03', '1996', today), { ok: true, date: '1996-03-12' });
-  assert.deepEqual(buildDateOfBirth('31', '02', '1996', today), { ok: false, error: 'That date does not exist.' });
-  assert.equal(buildDateOfBirth('05', '10', '2030', today).ok, false);
-  assert.equal(buildDateOfBirth('05', '10', '2020', today).ok, false);
-  assert.equal(buildDateOfBirth('05', '10', '1890', today).ok, false);
 });
 
 void formatIndianMobile;

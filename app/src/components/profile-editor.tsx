@@ -1,10 +1,8 @@
 /**
  * Profile editor.
  *
- * Name, email, date of birth, city and a dairy goal in one sheet — no wizard, no extra screens. Save
- * stays disabled until something changed and every field passes validation. Date of birth is three
- * plain fields on purpose: no picker dependency, and DD / MM / YYYY is how the date is written on
- * paper in India.
+ * Name, email, city and a dairy goal in one sheet — no wizard, no extra screens. Save stays disabled
+ * until something changed and every field passes validation.
  *
  * The mobile number is the one thing on this sheet that is *shown* rather than asked for: it is the
  * identity the session was created with, so it sits at the top as a read-only value with the reason
@@ -19,7 +17,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { Avatar, Button, Chip, FormField } from '@/components/ui';
 import { createStyles, colors, radius, spacing, type } from '@/constants/theme';
-import { buildDateOfBirth, DOB_FORMAT_HINT, formatIndianMobile, normalizePhone, validateEmail } from '@/lib/format';
+import { formatIndianMobile, normalizePhone, validateEmail } from '@/lib/format';
 import type { UserProfile } from '@/types';
 
 export const DAIRY_GOALS = [
@@ -32,27 +30,16 @@ export const DAIRY_GOALS = [
 type Draft = {
   name: string;
   email: string;
-  day: string;
-  month: string;
-  year: string;
   city: string;
   goal: string;
 };
 
-function splitDob(iso: string | undefined): { day: string; month: string; year: string } {
-  if (!iso) return { day: '', month: '', year: '' };
-  const [year, month, day] = iso.split('-');
-  return { day: String(Number(day) || ''), month: String(Number(month) || ''), year: year ?? '' };
-}
-
 function draftFrom(profile: UserProfile): Draft {
-  const dob = splitDob(profile.dateOfBirth);
   return {
     name: profile.name ?? '',
     email: profile.email ?? '',
     city: profile.city ?? '',
     goal: profile.goal ?? '',
-    ...dob,
   };
 }
 
@@ -93,28 +80,23 @@ export function ProfileEditorSheet({
     }
   }, [visible, profile]);
 
-  const dob = useMemo(() => buildDateOfBirth(draft.day, draft.month, draft.year), [draft.day, draft.month, draft.year]);
   const nameError = draft.name.trim().length < 2 ? 'Add the name you want shown in the app.' : null;
   const emailError = validateEmail(draft.email);
-  const dobError = dob.ok ? null : dob.error;
-  const invalid = Boolean(nameError) || Boolean(emailError) || Boolean(dobError);
+  const invalid = Boolean(nameError) || Boolean(emailError);
 
   const original = useMemo(() => draftFrom(profile), [profile]);
   const dirty =
     draft.name.trim() !== original.name.trim() ||
     draft.email.trim() !== original.email.trim() ||
     draft.city.trim() !== original.city.trim() ||
-    draft.goal !== original.goal ||
-    (dob.ok ? dob.date : '') !== (original.year && original.month && original.day
-      ? `${original.year}-${original.month.padStart(2, '0')}-${original.day.padStart(2, '0')}`
-      : '');
+    draft.goal !== original.goal;
 
   return (
     <BottomSheet
       visible={visible}
       onClose={onClose}
       title={t("Edit profile")}
-      subtitle={t("Everything here stays on this device. Nothing is sent to a server in this prototype.")}
+      subtitle={t("Your changes are saved to your account.")}
       scrollable
       footer={
         <Button
@@ -129,7 +111,6 @@ export function ProfileEditorSheet({
               email: draft.email.trim() || undefined,
               city: draft.city.trim() || undefined,
               goal: draft.goal || undefined,
-              dateOfBirth: dob.ok ? dob.date : undefined,
             });
           }}
         />
@@ -198,42 +179,6 @@ export function ProfileEditorSheet({
         error={emailError}
       />
 
-      <View style={styles.fieldWrap}>
-        <Text style={[type.labelStrong, { color: colors.textMuted }]}>{t("Date of birth")}</Text>
-        <View style={styles.dobRow}>
-          <FormField
-            accessibilityLabel={t("Day of birth")}
-            value={draft.day}
-            onChangeText={(day) => setDraft((prev) => ({ ...prev, day }))}
-            placeholder="DD"
-            keyboardType="number-pad"
-            maxLength={2}
-            containerStyle={styles.dobField}
-          />
-          <FormField
-            accessibilityLabel={t("Month of birth")}
-            value={draft.month}
-            onChangeText={(month) => setDraft((prev) => ({ ...prev, month }))}
-            placeholder="MM"
-            keyboardType="number-pad"
-            maxLength={2}
-            containerStyle={styles.dobField}
-          />
-          <FormField
-            accessibilityLabel={t("Year of birth")}
-            value={draft.year}
-            onChangeText={(year) => setDraft((prev) => ({ ...prev, year }))}
-            placeholder="YYYY"
-            keyboardType="number-pad"
-            maxLength={4}
-            containerStyle={styles.dobFieldWide}
-          />
-        </View>
-        <Text style={[type.label, { color: dobError ? colors.error : colors.textSubtle }]}>
-          {dobError ? t(dobError) : DOB_FORMAT_HINT}
-        </Text>
-      </View>
-
       <FormField
         label={t("City")}
         value={draft.city}
@@ -267,9 +212,6 @@ const styles = createStyles(() => StyleSheet.create({
   notice: { paddingTop: spacing.xs },
   photoActions: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   fieldWrap: { gap: spacing.xs, marginTop: spacing.xs },
-  dobRow: { flexDirection: 'row', gap: spacing.sm },
-  dobField: { flex: 1 },
-  dobFieldWide: { flex: 1.4 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   /** Read-only value: a soft block, not a field — nothing about it invites a tap. */
   readOnly: {

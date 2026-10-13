@@ -1,22 +1,23 @@
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { BookOpen, Mail, MessageCircle, RefreshCcw, Share2 } from 'lucide-react-native';
 import { Share, StyleSheet, Text, View } from 'react-native';
 
 import { Accordion, AppBar, Badge, Button, DataList, ListRow, Screen, SectionHeader } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
-import { faqs } from '@/data/content';
+import { useAppContent } from '@/services/app-content';
 import { useT } from '@/i18n';
 
 export default function HelpScreen() {
+  const { faqs } = useAppContent();
   const t = useT();
 
   const router = useRouter();
 
   const shareQuestion = async () => {
-    // No support inbox is configured in this prototype, so nothing is submitted anywhere.
+    // No support inbox is configured in the app yet, so nothing is submitted anywhere.
     await Share.share({
       message:
-        'YDU Academy prototype feedback:\n\n(Describe what happened, which screen, and what you expected.)\n\nThis message is not sent automatically — copy or send it to your team.',
+        'YDU Academy feedback:\n\n(Describe what happened, which screen, and what you expected.)\n\nThis message is not sent automatically — copy or send it to your team.',
     }).catch(() => {});
   };
 
@@ -25,7 +26,7 @@ export default function HelpScreen() {
       <View style={styles.intro}>
         <Text style={[type.subheading, { color: colors.text }]}>{t('How can we help?')}</Text>
         <Text style={[docText, { color: colors.textMuted }]}>
-          {t('Answers to the questions this prototype raises most often.')}
+          {t('Answers to the questions learners ask most often.')}
         </Text>
       </View>
 
@@ -47,14 +48,14 @@ export default function HelpScreen() {
         <DataList>
           <ListRow
             icon={RefreshCcw}
-            label={t("Reset demo data")}
+            label={t("Clear data on this device")}
             subtitle={t("Start the learning flow from a clean slate")}
             onPress={() => router.push('/settings')}
           />
           <ListRow
             icon={BookOpen}
             label={t("Browse the catalog")}
-            subtitle={t("Sample courses across eight subject areas")}
+            subtitle={t("Courses across eight subject areas")}
             onPress={() => router.push('/explore')}
           />
         </DataList>
@@ -71,7 +72,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <Mail size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[docText, styles.supportText, { color: colors.textMuted }]}>
-              {t('This prototype has no support inbox, so there is no contact form that pretends to send a message. Use the share button to pass feedback to your team, along with the screen you were on.')}
+              {t('There is no support inbox in the app yet, so no contact form is offered. Use the share button to send feedback to the academy team, along with what you were doing.')}
             </Text>
           </View>
           <Button label={t("Share feedback")} icon={Share2} variant="secondary" onPress={shareQuestion} />
@@ -84,7 +85,7 @@ export default function HelpScreen() {
           <View style={styles.supportRow}>
             <MessageCircle size={18} color={colors.textMuted} strokeWidth={1.9} />
             <Text style={[docText, styles.supportText, { color: colors.textMuted }]}>
-              {t('Courses, prices and reviews are sample content. Authentication and payments are demo implementations. Anything that is not implemented in the app is said so plainly rather than shown as a working control.')}
+              {t('Courses and prices come from the academy. Payments are processed by Razorpay. Anything that is not available in the app is said so plainly rather than shown as a working control.')}
             </Text>
           </View>
           <Text style={[docText, { color: colors.textSubtle }]}>

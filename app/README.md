@@ -7,7 +7,7 @@ player with a standardised batch sheet beside the video.
 
 > **Server-connected build.** The catalog, accounts, purchases, lesson progress and reviews all
 > live on the YDU Academy server (`../server`). The payment gateway is still a simulation — no money
-> moves — but every paid order is a real record on the server. Lesson videos stay bundled demo media.
+> moves — but every paid order is a real record on the server. Lesson videos come only from the server; the app bundles no demo video.
 > Anything not implemented is said so in the UI rather than shown as a working control.
 
 ## Run it
@@ -42,27 +42,34 @@ npx expo run:android   # or: npx expo run:ios, or: eas build --profile developme
 
 ## Authentication
 
-Sign-in uses **email + password** against the server (`POST /api/auth/signup`, `/api/auth/login`)
-and stores the returned JWT with `expo-secure-store` on native devices (falls back to
-`AsyncStorage` on web). The session drives everything account-bound: enrollments, progress,
+Sign-in uses an **Indian mobile number (+91) and a one-time code**. The app calls
+`POST /api/auth/otp/request` with the number, then `POST /api/auth/otp/verify` with the 6-digit
+code. A number seen for the first time gets a learner account on the spot. The returned JWT is
+stored with `expo-secure-store` on native devices (falls back to `AsyncStorage` on web).
+
+Outside production the server accepts the demo code **`246810`** for any number, and it also
+prints each generated code in the server console. The demo code can never sign in on a
+production server (see `DEMO_OTP` in `server/.env.example`). The session drives everything account-bound: enrollments, progress,
 orders, reviews and the private realtime channel.
 
-## Demo payments
+## Payments (Razorpay)
 
-There is no payment gateway. `src/services/payments.ts` never touches the network, never collects card,
-UPI or bank details, and never claims a real settlement.
+Checkout uses **Razorpay**. The server prices the course (coupons included), creates a Razorpay
+order, and the app opens Razorpay Checkout. The payment is confirmed on the server before the
+course unlocks.
 
-Checkout lets you pick which scenario the demo reproduces:
+- **iOS / Android:** the native `react-native-razorpay` SDK (v3). It opens Razorpay's own sheet, not a
+  WebView. It needs a **development build**, not Expo Go: `npx expo prebuild`, then
+  `npx expo run:android` or `npx expo run:ios`.
+- **Web:** Razorpay's `checkout.js`, which draws the same modal in the page. No WebView.
+- Card, UPI and bank details are entered only in Razorpay's sheet. They never reach the app or the server.
+- The app only holds the public key id (sent by the server with each order). The key secret stays on the server.
 
-| Scenario | Result |
-| --- | --- |
-| Successful payment | Enrols you and unlocks every lesson of the course |
-| Failed payment | Shows the failure + retry state (nothing is charged) |
-| Cancelled by user | Returns to checkout with an explanatory note |
+Outcomes: a successful payment unlocks the course. A failed payment shows the failure with a retry
+button and nothing is charged. A payment the learner closes shows the cancelled note.
 
 Coupons are validated by the server (`POST /api/coupons/validate`); the seeded codes are
-`WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off). A successful demo payment
-creates a real order and enrollment on the server.
+`WELCOME10` (10% off), `DAIRY200` (₹200 off) and `FESTIVE25` (25% off).
 
 ## Analytics and recommendations
 
@@ -86,7 +93,8 @@ src/
   app/                     Expo Router routes (file = screen)
     index.tsx              entry gate: onboarding → sign-in → app
     onboarding.tsx         three-slide introduction
-    auth/signin.tsx        email + password sign-in / sign-up against the server
+    auth/phone.tsx         +91 mobile number entry (Get OTP)
+    auth/otp.tsx           six-digit code entry, verify, resend
     auth/interests.tsx     optional preference chips
     (tabs)/                Home · Explore · My learning · Profile
     course/[id].tsx        course details (trailer, outcomes, curriculum, reviews, sticky CTA)
@@ -112,27 +120,21 @@ State is one React context with `AsyncStorage` persistence — no state library 
 
 ## Assets and placeholders
 
-Photography in `assets/images` was **AI-generated for this prototype** in a clean editorial dairy
-style: eight course covers (`course-milk-foundations`, `course-paneer-craft`, `course-curd-ferments`,
-`course-ghee-butter`, `course-frozen-desserts`, `course-artisan-cheese`, `course-dairy-farming`,
-`course-dairy-business`) and two onboarding frames (`onboarding-fresh-milk`, `onboarding-testing`).
-Photography is used for illustration only; every course corresponds to fictional sample content.
+Only artwork the app actually shows is bundled: the brand files, the onboarding frames
+(`onboarding-ydu-poster`, `onboarding-fresh-milk`, `onboarding-testing`, AI-generated for this prototype)
+and the placeholder panel. Course covers come from the server. Unused stills and demo videos were removed.
 
-Any photograph that has not been generated yet falls back to `placeholder-panel-4x3.jpg` — a designed
-brand panel (ivory ground, the dairy mark in ink, brand-yellow arc), not a grey box, so nothing ever
-renders as a broken image. Replace any cover with real photography using the same file name; no code
+A course without a cover (or whose cover fails to load) shows `brand-mark.png` centred on the ivory
+brand ground, so nothing ever renders as a broken image. Replace any cover with real photography using the same file name; no code
 changes are needed.
 
 Derived media is reproducible and documented in scripts:
 
 ```bash
-bash scripts/generate-media.sh        # demo lesson clips (ffmpeg) + placeholder panels
 bash scripts/generate-brand-assets.sh # app icon, splash, favicon, Android adaptive layers
 ```
 
-`assets/videos/demo-clip-*.mp4` are short, silent demo clips (a slow push-in over a still) used as
-placeholder lesson and trailer footage until real course video exists. They are real, playable files —
-no invented streaming URLs are used anywhere.
+Lessons without an uploaded video show no player; the app never plays stand-in footage.
 
 The brand mark is a **milk can with a play triangle on its face and a drop beneath it**, drawn as
 vector geometry in `src/components/marks.tsx` (a 48-unit box: lid plate and neck, tapered shoulder,
@@ -166,7 +168,7 @@ The UI follows the project's design rules document and is generated from one tok
   a learner who stops to read the frame is never left with a blank one.
 - **The transport row says what it can honestly do.** Speed is a real rate change, sound is a real
   `player.muted` toggle, and quality names the rendition actually on screen — from the video tracks the
-  platform reports, or from the bundled clips' known 960x540 when it reports none. Opening it lists every
+  platform reports, or shows "Auto" when it reports none. Opening it lists every
   rendition with its resolution, bitrate and which one is in use, and says plainly that the demo lessons
   ship a single 540p file each: no invented 480p/720p/1080p menu that changes nothing. (The bundled demo
   clips are video-only, so the sound toggle has no audio to reveal until a lesson with a track plays.)
@@ -256,14 +258,11 @@ The UI follows the project's design rules document and is generated from one tok
   controls (reset demo data, log out) and nothing else: the Account block, the Payments block with the
   payment-security row and the Policies block are gone, because the account details live on Profile and
   every policy has one home there. No screen lost a destination — each row moved, it was not deleted.
-- **A course can be built from sections, from standalone lessons, or both.** `Lesson.sectionId` is now
-  `Id | null`, the seed accepts `directLessons`, and `courseLessonGroups(course)` turns a course into
-  the blocks the screens render — the authored sections in order, then one *unnumbered* group for
-  lessons created without a section. Selling Your Dairy exercises both: its three sections plus two
-  standalone lessons (`Choosing what not to sell`, `A one-page price list for your counter`) and a
-  curriculum header that reads `3 sections · 2 standalone · 10 lessons`. The course page, the lesson
-  player's “All lessons in this course” sheet and `scripts/selfcheck.ts` (which now asserts the mixed
-  case exists and that the groups cover every lesson exactly once) all read the same helper.
+- **A course is a flat list of lessons.** Sections were removed: `Course.lessons[]` is the whole curriculum,
+  with no `sectionId`. `catalogService.mapCourse` maps it straight to `Course.lessons`, the course page
+  and the player's “All lessons in this course” sheet render one numbered list, and the header reads
+  `N lessons · total time`. Courses saved with the old section shape are flattened on server boot
+  (`flattenLegacySections` in `server/src/models/Course.js`). `scripts/selfcheck.ts` covers the flat mapping.
 - **Two themes, switchable from Profile.** `src/constants/theme.ts` holds two palettes — white + yellow
   (the default, and the original look, unchanged) and white + deep green — and `THEMES` is the picker's
   list. Both are white-surface: only the accent, the tinted block and the text tones differ, so layout,
@@ -338,7 +337,7 @@ onboarding completion and app preferences are kept.
 - `bun scripts/selfcheck.ts` (`npm run check`) — 19 checks: phone normalisation/validation/masking,
   quantity scaling, INR/clock/duration formatting, the greeting helper, the server→app catalog
   mapping (ids, offer math, curriculum grouping), the search/filter/sort helpers that act on any
-  catalog, the profile field validators (email, date of birth), and a source scan that fails the
+  catalog, the profile field validators (email), and a source scan that fails the
   build if any Reanimated animation callback or animated-style body touches React state (see "Native
   worklet safety"). All pass.
 - Metro bundled the app for **iOS, Android and web** with no resolution errors, and every route
@@ -362,10 +361,8 @@ onboarding completion and app preferences are kept.
   unlocked on this device · 1 transaction · Milk Foundations · Sample account · Included`, and with a
   seeded demo purchase reads `₹2,699 paid · 2 courses unlocked · ₹1,300 saved against list prices` and a
   row carrying `14 Feb 2026 · YDU10 applied`, `Demo purchase`, `Saved ₹1,300`, `₹2,699` and the struck
-  `₹3,999`. The mixed curriculum shows as `3 sections · 2 standalone · 10 lessons` on
-  Selling Your Dairy with an unnumbered `Standalone lessons` block (`2 lessons · 26m`), while a
-  section-only course still reads `1. Milk on arrival / 2. Cold chain / 3. Testing and hygiene` in the
-  player's lesson sheet. This is a DOM check, not a visual one.
+  `₹3,999`. The curriculum is a single flat list of lessons (sections were removed). This is a DOM
+  check, not a visual one.
 - The home carousel and the save burst were read back from the exported web bundle in JSDOM
   (`/tmp/domtest/mote-probe.mjs`, `snap-check.mjs`, `saves-probe.mjs` at 390x844): the banner reports
   *Featured courses, 3 banners*, three 390px slides with the milk-foundations, paneer-craft and

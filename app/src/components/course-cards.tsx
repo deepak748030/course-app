@@ -8,10 +8,11 @@
  * - Prices, ratings and counters use tabular figures so columns never wobble.
  * - Every visible metric has a reason to be on the card; nothing is decorative.
  */
+import { CourseImage } from '@/components/course-image';
 import { useT } from '@/i18n';
 
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import {
   ChartNoAxesColumnIncreasing,
   CircleCheck,
@@ -28,8 +29,8 @@ import { OfferBadge } from '@/components/offer-tag';
 import { SaveButton } from '@/components/save-button';
 import { Badge, MetaItem, ProgressBar, usePressScale } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
-import { discountPercent } from '@/lib/catalog';
-import { formatDuration, formatInr } from '@/lib/format';
+import { discountPercent, freePreviewSec } from '@/lib/catalog';
+import { formatClock, formatDuration, formatInr, lessonLength } from '@/lib/format';
 import { useStore } from '@/store';
 import type { Course, Lesson, Review } from '@/types';
 
@@ -63,7 +64,7 @@ export function CourseCard({ course, style }: { course: Course; style?: StylePro
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}>
         <View style={styles.cardImageWrap}>
-          <Image source={course.cover} style={styles.cardImage} contentFit="cover" transition={160} />
+          <CourseImage source={course.cover} style={styles.cardImage} transition={160} />
           {/* The offer mark owns the top-left corner of the artwork; the level is in the body, once. */}
           {offer ? <OfferBadge percent={offer} size="md" style={styles.cardOffer} /> : null}
         </View>
@@ -127,7 +128,7 @@ export function CourseRow({ course }: { course: Course }) {
       )}.`}
       onPress={() => openCourse(router, course.id)}
       style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
-      <Image source={course.cover} style={styles.rowImage} contentFit="cover" transition={140} />
+      <CourseImage source={course.cover} style={styles.rowImage} transition={140} />
 
       <View style={styles.flex}>
         <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
@@ -196,7 +197,7 @@ export function ContinueCard({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={({ pressed }) => [styles.continueRow, boxed && styles.continueRowBoxed, pressed && { opacity: 0.75 }]}>
-        <Image source={course.cover} style={styles.continueImage} contentFit="cover" transition={140} />
+        <CourseImage source={course.cover} style={styles.continueImage} transition={140} />
         <View style={styles.continueCopy}>
           <Text style={[type.label, { color: colors.textMuted }]} numberOfLines={1}>
             {course.title}
@@ -234,46 +235,69 @@ export function LessonRow({
   state,
   index,
   onPress,
+  tone,
 }: {
   lesson: Lesson;
   state: LessonRowState;
   index?: number;
   onPress: () => void;
+  /** 'dark' for the player's black sheet: light ink instead of the page colours. */
+  tone?: 'dark';
 }) {
   const t = useT();
 
+  const dark = tone === 'dark';
   const locked = state === 'locked';
   const Icon = locked ? Lock : state === 'completed' ? CircleCheck : Play;
-  const iconColor = locked
-    ? colors.textSubtle
-    : state === 'completed'
-      ? colors.success
-      : state === 'current'
-        ? colors.accentText
-        : colors.textMuted;
+  const iconColor = dark
+    ? locked
+      ? 'rgba(255,255,255,0.4)'
+      : state === 'completed'
+        ? colors.success
+        : state === 'current'
+          ? colors.gold
+          : 'rgba(255,255,255,0.7)'
+    : locked
+      ? colors.textSubtle
+      : state === 'completed'
+        ? colors.success
+        : state === 'current'
+          ? colors.accentText
+          : colors.textMuted;
+  const titleColor = dark ? (locked ? 'rgba(255,255,255,0.5)' : colors.onPlayer) : locked ? colors.textMuted : colors.text;
+  const metaColor = dark ? 'rgba(255,255,255,0.6)' : colors.textSubtle;
 
   return (
     <Pressable
       accessible
       accessibilityRole="button"
-      accessibilityLabel={`Lesson ${index !== undefined ? `${index}. ` : ''}${lesson.title}, ${lesson.minutes} minutes${
+      accessibilityLabel={`Lesson ${index !== undefined ? `${index}. ` : ''}${lesson.title}, ${lessonLength(lesson)}${
         lesson.isPreview ? ', free preview' : locked ? ', locked until purchase' : ''
       }`}
       accessibilityState={{ selected: state === 'current' }}
       onPress={onPress}
       style={({ pressed }) => [styles.lessonRow, pressed && { opacity: 0.7 }]}>
       {index !== undefined ? (
-        <Text style={[type.label, tabularNums, styles.lessonIndex, { color: colors.textSubtle }]}>
+        <Text style={[type.label, tabularNums, styles.lessonIndex, { color: metaColor }]}>
           {String(index).padStart(2, '0')}
         </Text>
       ) : null}
       <View style={styles.flex}>
-        <Text style={[type.body, locked ? { color: colors.textMuted } : { color: colors.text }]} numberOfLines={2}>
+        <Text style={[type.body, { color: titleColor }]} numberOfLines={2}>
           {lesson.title}
         </Text>
         <View style={styles.lessonMeta}>
-          <Text style={[type.label, tabularNums, { color: colors.textSubtle }]}>{lesson.minutes} min</Text>
-          {lesson.isPreview ? <Badge label={t("Free preview")} tone="sage" /> : null}
+          <Text style={[type.label, tabularNums, { color: metaColor }]}>{lessonLength(lesson)}</Text>
+          {lesson.isPreview ? (
+            <Badge
+              label={
+                Number.isFinite(freePreviewSec(lesson))
+                  ? `${t("Free preview")} · ${formatClock(freePreviewSec(lesson))}`
+                  : t("Free preview")
+              }
+              tone="sage"
+            />
+          ) : null}
           {state === 'completed' ? <Badge label={t("Completed")} tone="success" /> : null}
           {state === 'current' ? <Badge label={t("Next up")} tone="primary" /> : null}
         </View>
@@ -348,7 +372,7 @@ export function PriceSummary({
       ) : null}
       <View style={styles.summaryDivider} />
       <SummaryRow label={t("Total payable")} value={formatInr(total)} strong accent />
-      <Text style={[type.label, { color: colors.textMuted }]}>{t("Inclusive of taxes. Demo checkout \u2014 no payment is processed.")}</Text>
+      <Text style={[type.label, { color: colors.textMuted }]}>{t("Inclusive of taxes. Secure checkout by Razorpay.")}</Text>
     </View>
   );
 }

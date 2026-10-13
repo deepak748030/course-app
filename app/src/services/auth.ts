@@ -1,26 +1,32 @@
 /**
- * Authentication service — talks to the YDU Academy server (email + password).
+ * Authentication service — phone number + one-time code against the YDU Academy server.
  *
- * The session token is stored in expo-secure-store (AsyncStorage on web, which has no
- * secure store — noted in the README as a limitation). The same token is injected into
- * the API client and the realtime socket, so one sign-in covers REST and socket.io.
+ * The learner types a +91 mobile number, the server sends a six-digit code (see
+ * server/src/services/sms.js for the SMS hook), and the code signs them in. The session
+ * token is stored in expo-secure-store (AsyncStorage on web, which has no secure store —
+ * noted in the README as a limitation). The same token is injected into the API client and
+ * the realtime socket, so one sign-in covers REST and socket.io.
  */
 
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { storage } from '@/lib/storage';
-import { api, setApiToken, type ServerUser } from '@/services/api';
+import { ApiError, api, setApiToken, type ServerUser } from '@/services/api';
 
-import type { Session, UserProfile } from '@/types';
+import type { Session } from '@/types';
 
 const SESSION_KEY = 'ydu.session';
 
-export type AuthFailure = { message: string; offline?: boolean };
+/** Why a code could not be checked. The OTP screen words each one differently. */
+export type OtpFailure = 'incorrect' | 'expired' | 'blocked' | 'network';
 
 export interface AuthService {
-  signIn(email: string, password: string): Promise<Session>;
-  signUp(name: string, email: string, password: string): Promise<Session>;
+  requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
+  verifyOtp(
+    phone: string,
+    code: string,
+  ): Promise<{ ok: true; session: Session; interests: string[] } | { ok: false; error: OtpFailure }>;
   getSession(): Promise<Session | null>;
   /** Persists profile edits made in the app. Same storage as the session token. */
   saveSession(session: Session): Promise<void>;
@@ -57,8 +63,7 @@ export function sessionFromUser(token: string, user: ServerUser): Session {
       name: user.name,
       phone: user.phone ?? '',
       joinedAt: user.createdAt,
-      email: user.email,
-      dateOfBirth: user.dateOfBirth || undefined,
+      email: user.email || undefined,
       city: user.city || undefined,
       goal: user.goal || undefined,
       avatarUrl: user.avatarUrl || undefined,
@@ -71,19 +76,35 @@ function persistAndApply(session: Session): Session {
   return session;
 }
 
+/** Server status → what the OTP screen shows. Anything unexpected reads as "could not reach the server". */
+function otpFailureFrom(err: unknown): OtpFailure {
+  if (err instanceof ApiError) {
+    if (err.status === 401) return 'incorrect';
+    if (err.status === 410) return 'expired';
+    if (err.status === 403) return 'blocked';
+  }
+  return 'network';
+}
+
 export const authService: AuthService = {
-  async signIn(email, password) {
-    const { token, user } = await api.login(email, password);
-    const session = persistAndApply(sessionFromUser(token, user));
-    await writeStored(SESSION_KEY, JSON.stringify(session));
-    return session;
+  async requestOtp(phone) {
+    try {
+      await api.requestOtp(phone);
+      return { ok: true };
+    } catch (err) {
+      return { ok: false, error: otpFailureFrom(err) };
+    }
   },
 
-  async signUp(name, email, password) {
-    const { token, user } = await api.register(name, email, password);
-    const session = persistAndApply(sessionFromUser(token, user));
-    await writeStored(SESSION_KEY, JSON.stringify(session));
-    return session;
+  async verifyOtp(phone, code) {
+    try {
+      const { token, user } = await api.verifyOtp(phone, code);
+      const session = persistAndApply(sessionFromUser(token, user));
+      await writeStored(SESSION_KEY, JSON.stringify(session));
+      return { ok: true, session, interests: user.interests ?? [] };
+    } catch (err) {
+      return { ok: false, error: otpFailureFrom(err) };
+    }
   },
 
   async getSession() {

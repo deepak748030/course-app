@@ -12,8 +12,10 @@
  *   - once saved, the page shows what was saved and offers to edit it, rather than pretending the
  *     rating reached a catalogue.
  */
+import { CourseImage } from '@/components/course-image';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { CircleCheck, Star } from 'lucide-react-native';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
@@ -65,7 +67,7 @@ export default function RateCourseScreen() {
       <Screen header={<AppBar title={t('Rate this course')} />} contentStyle={styles.stateContent}>
         <ErrorState
           title={t('Course not found')}
-          body={t('This course is no longer in the sample catalog, so there is nothing to rate.')}
+          body={t('This course is no longer available, so there is nothing to rate.')}
         />
         <Button label={t('Back to My learning')} variant="secondary" onPress={() => router.replace('/learning')} />
       </Screen>
@@ -134,7 +136,7 @@ export default function RateCourseScreen() {
       {/* The course, so the learner knows which one they are rating. */}
       <View style={styles.pad}>
         <View style={styles.courseCard}>
-          <Image source={course.cover} style={styles.cover} contentFit="cover" transition={200} />
+          <CourseImage source={course.cover} style={styles.cover} transition={200} />
           <View style={styles.flex}>
             <Text style={[type.bodyStrong, { color: colors.text }]} numberOfLines={2}>
               {course.title}
@@ -245,7 +247,7 @@ export default function RateCourseScreen() {
           </View>
 
           <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>
-            {t('This prototype keeps your rating on this device. Nothing is sent anywhere.')}
+            {t('Your rating is saved to your account.')}
           </Text>
         </>
       )}

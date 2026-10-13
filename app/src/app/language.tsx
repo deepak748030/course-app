@@ -76,7 +76,7 @@ export default function LanguageScreen() {
 
       <View style={styles.pad}>
         <Text style={[type.label, { color: colors.textSubtle }]}>
-          {t('Course titles, lesson copy and the policy documents are sample content and stay in English.')}
+          {t('Course titles and lesson copy stay in English.')}
         </Text>
       </View>
 

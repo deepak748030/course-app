@@ -13,12 +13,15 @@ import type {
   AnalyticsOverview,
   AppSettings,
   Category,
+  ContentDefaults,
   Coupon,
   Course,
   Overview,
   Review,
   UserDetail,
   Order,
+  AdminNotification,
+  NotificationKind,
 } from './types';
 
 const TOKEN_KEY = 'ydu.admin.token';
@@ -128,6 +131,88 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return res.json() as Promise<T>;
 }
 
+/** Video storage status: whether Backblaze B2 is set up on the server, and the upload limits. */
+export const videoStorageStatus = () =>
+  request<{ configured: boolean; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
+
+/**
+ * Uploads one lesson video to the server, which streams it into the private Backblaze B2 bucket.
+ * Resolves with the object key, which the lesson stores (the app gets a signed playback link).
+ * `onProgress` reports the browser → server upload; the server's own B2 step follows it.
+ */
+/**
+ * Two real stages, each with its own exact percentage:
+ *  - 'sending': the file's bytes leaving this browser for the server (XHR upload progress).
+ *  - 'storing': the server copying the file to Backblaze B2, read back from its progress endpoint.
+ */
+export type VideoUploadProgress = { stage: 'sending' | 'storing'; percent: number };
+
+export async function uploadCourseVideo(
+  file: File,
+  courseId: string | undefined,
+  quality: string,
+  onProgress: (progress: VideoUploadProgress) => void
+): Promise<string> {
+  if (demoMode) throw new ApiError(503, 'Video uploads need the real server — demo mode cannot store files.');
+  const body = new FormData();
+  body.append('file', file);
+  if (courseId) body.append('courseId', courseId);
+  body.append('quality', quality);
+
+  const uploadId = crypto.randomUUID();
+  const token = getToken();
+
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    let poll: ReturnType<typeof setInterval> | null = null;
+    const stopPolling = () => {
+      if (poll) clearInterval(poll);
+      poll = null;
+    };
+
+    xhr.open('POST', '/api/admin/uploads/video');
+    xhr.setRequestHeader('X-Upload-Id', uploadId);
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress({ stage: 'sending', percent: Math.round((event.loaded / event.total) * 100) });
+    };
+    // The whole file is in the server's hands now; the B2 copy is the slow part, so ask for its progress.
+    xhr.upload.onload = () => {
+      onProgress({ stage: 'storing', percent: 0 });
+      poll = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/admin/uploads/video/progress/${uploadId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          if (!res.ok) return;
+          const entry = (await res.json()) as { stage: string; sent?: number; total?: number };
+          if (entry.stage === 'storing' && entry.total) {
+            onProgress({ stage: 'storing', percent: Math.min(100, Math.round(((entry.sent ?? 0) / entry.total) * 100)) });
+          }
+        } catch {
+          /* a missed poll is retried on the next tick */
+        }
+      }, 400);
+    };
+    xhr.onload = () => {
+      stopPolling();
+      let data: { key?: string; error?: string } = {};
+      try {
+        data = JSON.parse(xhr.responseText || '{}');
+      } catch {
+        /* not json */
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && data.key) resolve(data.key);
+      else reject(new ApiError(xhr.status, data.error || `Video upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => {
+      stopPolling();
+      reject(new ApiError(0, 'Could not reach the server for the video upload.'));
+    };
+    xhr.send(body);
+  });
+}
+
 /**
  * Multipart image upload (cover art, anything the dashboard needs hosted).
  * Goes straight to the server's /api/uploads; returns the stored URL.
@@ -189,6 +274,16 @@ export const api = {
     request<{ category: Category }>(`/admin/categories/${id}`, { method: 'PUT', body: data }).then((r) => r.category),
   deleteCategory: (id: string) => request<{ ok: boolean }>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
+  /** History of messages the academy sent, plus how many devices can receive a push. */
+  listNotifications: () => {
+    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
+    return request<{ notifications: AdminNotification[]; devices: number; learnersWithDevices: number }>('/admin/notifications');
+  },
+  /** Saves a message to the learner inbox(es) and pushes it to their devices. */
+  sendNotification: (data: { audience: 'all' | 'user'; userId?: string; title: string; body: string; kind: NotificationKind; courseId?: string }) => {
+    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
+    return request<{ notification: AdminNotification }>('/admin/notifications', { method: 'POST', body: data }).then((r) => r.notification);
+  },
   listUsers: (params: { search?: string; role?: string; blocked?: string }) =>
     request<{ users: AdminUser[] }>('/admin/users', { query: params }).then((r) => r.users),
   getUser: (id: string) => request<UserDetail>(`/admin/users/${id}`),
@@ -217,6 +312,16 @@ export const api = {
   deleteCoupon: (id: string) => request<{ ok: boolean }>(`/admin/coupons/${id}`, { method: 'DELETE' }),
 
   getSettings: () => request<{ settings: AppSettings }>('/admin/settings').then((r) => r.settings),
+  /** Settings plus the built-in content defaults, for the Content page. */
+  getSettingsWithDefaults: () =>
+    request<{ settings: AppSettings; contentDefaults?: ContentDefaults }>('/admin/settings'),
   updateSettings: (data: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/admin/settings', { method: 'PUT', body: data }).then((r) => r.settings),
+  /** Changes the admin's login (username = email) and/or password. The current password is always required. */
+  updateAccount: (data: { email?: string; currentPassword: string; newPassword?: string }) => {
+    if (demoMode) {
+      return Promise.reject(new ApiError(503, 'Login changes need the real server — demo mode cannot change them.'));
+    }
+    return request<{ user: { email: string } }>('/admin/account', { method: 'PATCH', body: data });
+  },
 };

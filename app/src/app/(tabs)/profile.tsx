@@ -1,10 +1,9 @@
 import Constants from 'expo-constants';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import {
   Bell,
   Bookmark,
   BookOpen,
-  CalendarDays,
   CircleCheck,
   Clock,
   LogOut,
@@ -43,7 +42,7 @@ import {
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useCatalog } from '@/services/catalog-context';
 import { LANGUAGES, useT } from '@/i18n';
-import { ageFromDateOfBirth, formatDateOfBirth, formatDuration } from '@/lib/format';
+import { formatDuration } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
 import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
@@ -88,10 +87,8 @@ export default function ProfileScreen() {
   const joined = profile?.joinedAt
     ? new Date(profile.joinedAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })
     : null;
-  const birthDate = formatDateOfBirth(profile?.dateOfBirth);
-  const age = ageFromDateOfBirth(profile?.dateOfBirth);
   /** True once at least one field filled in from the Edit sheet exists — otherwise the card invites it. */
-  const hasDetails = Boolean(profile?.email || profile?.city || profile?.goal || birthDate);
+  const hasDetails = Boolean(profile?.email || profile?.city || profile?.goal);
 
   async function changePhoto() {
     if (photoBusy) return;
@@ -158,14 +155,6 @@ export default function ProfileScreen() {
                 rather than an empty one; the pencil in the header is the way in. */}
             <DataList dividerInset={layout.screen + 32 + spacing.md}>
               {profile.email ? <ListRow icon={Mail} label={t("Email")} subtitle={profile.email} chevron={false} /> : null}
-              {birthDate ? (
-                <ListRow
-                  icon={CalendarDays}
-                  label={t("Date of birth")}
-                  subtitle={`${birthDate}${age !== null ? ` · ${age} years` : ''}`}
-                  chevron={false}
-                />
-              ) : null}
               {profile.city ? <ListRow icon={MapPin} label={t("City")} subtitle={profile.city} chevron={false} /> : null}
               {profile.goal ? <ListRow icon={Target} label={t("Dairy goal")} subtitle={profile.goal} chevron={false} /> : null}
             </DataList>
@@ -176,7 +165,7 @@ export default function ProfileScreen() {
           <View style={styles.signInCard}>
             <Text style={[type.bodyStrong, { color: colors.text }]}>{t("You are not signed in")}</Text>
             <Text style={[type.label, { color: colors.textMuted }]}>{t("Sign in to keep your courses, notes and progress on this device.")}</Text>
-            <Button label={t("Sign in")} onPress={() => router.push('/auth/signin')} />
+            <Button label={t("Sign in")} onPress={() => router.push('/auth/phone')} />
           </View>
         </View>
       )}
@@ -265,7 +254,7 @@ export default function ProfileScreen() {
             <ListRow
               icon={Receipt}
               label={t("Transactions")}
-              subtitle={t("Demo purchases made on this device")}
+              subtitle={t("Your course purchases and payments")}
               onPress={() => router.push('/transactions')}
             />
             <ListRow
@@ -283,7 +272,7 @@ export default function ProfileScreen() {
             <ListRow
               icon={FileText}
               label={t("Terms and conditions")}
-              subtitle={t("The terms this prototype runs on")}
+              subtitle={t("Terms, refunds and privacy")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
             />
             <ListRow
@@ -301,11 +290,10 @@ export default function ProfileScreen() {
         <View style={styles.about}>
           <View style={styles.aboutRow}>
             <AppText variant="label" color={colors.textSubtle}>
-              YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · prototype build
+              YDU Academy {Constants.expoConfig?.version ?? '1.0.0'}
             </AppText>
-            <Badge label={t("Demo")} tone="gold" />
           </View>
-          <AppText variant="label" color={colors.textSubtle}>{t("Sample catalog, demo authentication and demo payments. No real transactions.")}</AppText>
+          <AppText variant="label" color={colors.textSubtle}>{t("Payments are processed by Razorpay.")}</AppText>
         </View>
       </View>
 
@@ -337,7 +325,7 @@ export default function ProfileScreen() {
           setLogoutOpen(false);
           setProfileAvatar(null);
           await signOut();
-          router.replace('/auth/signin');
+          router.replace('/auth/phone');
         }}
         onCancel={() => setLogoutOpen(false)}
       />

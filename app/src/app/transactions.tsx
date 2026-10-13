@@ -1,20 +1,23 @@
 /**
  * Transactions: every purchase on this account, newest first — straight from the server.
  *
- * The demo payment gateway still simulates the charge itself, but each order is a real
+ * Each order is a real
  * record on the learner's account: amount paid, coupon used, date and status.
  */
 
+import { CourseImage } from '@/components/course-image';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import { Receipt, WifiOff } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ListSkeleton } from '@/components/skeletons';
 import { AppBar, Badge, DataList, EmptyState, Screen } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { useT } from '@/i18n';
 import { formatInr } from '@/lib/format';
+import { useInfiniteList } from '@/lib/infinite';
 import { api, type ServerOrder } from '@/services/api';
 import { useCatalog } from '@/services/catalog-context';
 import type { Course } from '@/types';
@@ -49,6 +52,7 @@ export default function TransactionsScreen() {
   }, [load]);
 
   const paid = orders.filter((order) => order.status === 'paid');
+  const orderPages = useInfiniteList(orders);
   const paidTotal = paid.reduce((sum, order) => sum + order.amountInr, 0);
   const savedTotal = paid.reduce((sum, order) => sum + (order.discountInr || 0), 0);
 
@@ -58,10 +62,11 @@ export default function TransactionsScreen() {
 
   return (
     <Screen
+      onEndReached={orderPages.loadMore}
       header={<AppBar title={t("Transactions")} />}
       contentStyle={{ paddingBottom: spacing.xxl, gap: layout.sectionGap }}>
       {state === 'loading' ? (
-        <EmptyState icon={Receipt} title={t("Loading your purchases…")} body={t("Fetching your orders from the academy.")} />
+        <ListSkeleton rows={4} />
       ) : state === 'error' ? (
         <EmptyState
           icon={WifiOff}
@@ -90,7 +95,7 @@ export default function TransactionsScreen() {
               {savedTotal > 0 ? ` · ${formatInr(savedTotal)} saved with coupons` : ''}
             </Text>
             <Text style={[type.label, { color: colors.textSubtle }]}>
-              {t("Payments are simulated by the demo gateway; the orders themselves are real records on the academy server.")}
+              {t("Payments are processed by Razorpay. Each order is kept on your academy account.")}
             </Text>
           </View>
 
@@ -98,8 +103,10 @@ export default function TransactionsScreen() {
             <Text style={[type.labelStrong, styles.heading, { color: colors.textMuted }]}>
               {orders.length === 1 ? t('1 transaction') : t('All {n} transactions', { n: orders.length })}
             </Text>
+            {/* No gap between rows: the list is framed by a hairline at the top and bottom, with one between rows. */}
+            <View style={styles.listFrame}>
             <DataList dividerInset={layout.screen + 64 + spacing.md}>
-              {orders.map((order) => {
+              {orderPages.visible.map((order) => {
                 const course = order.course ? byId(order.course.slug) : undefined;
                 const refunded = order.status === 'refunded';
                 const pending = order.status === 'pending';
@@ -112,7 +119,7 @@ export default function TransactionsScreen() {
                     onPress={() => openCourse(order, course)}
                     style={({ pressed }) => [styles.row, pressed && { opacity: 0.72 }]}>
                     {course ? (
-                      <Image source={course.cover} style={styles.thumb} contentFit="cover" transition={140} />
+                      <CourseImage source={course.cover} style={styles.thumb} transition={140} />
                     ) : (
                       <View style={styles.thumb} />
                     )}
@@ -150,6 +157,7 @@ export default function TransactionsScreen() {
                 );
               })}
             </DataList>
+            </View>
           </View>
         </>
       )}
@@ -166,8 +174,13 @@ const styles = createStyles(() =>
       paddingVertical: spacing.sm,
     },
     summaryRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-    section: { gap: layout.gap },
+    section: { gap: spacing.sm },
     heading: { paddingHorizontal: layout.section },
+    listFrame: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

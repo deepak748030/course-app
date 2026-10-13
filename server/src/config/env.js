@@ -8,6 +8,13 @@ export const env = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
   corsOrigin: process.env.CORS_ORIGIN || '*',
   nodeEnv: process.env.NODE_ENV || 'development',
+  /** Fixed demo code accepted on every phone outside production (see README → Phone sign-in). */
+  demoOtp: process.env.DEMO_OTP || '246810',
+  /** Razorpay keys from the Razorpay dashboard (test keys start with rzp_test_). */
+  razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
+  razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',
+  /** Secret set on the Razorpay dashboard webhook; signs every webhook body. */
+  razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '',
 };
 
 export const isProd = env.nodeEnv === 'production';

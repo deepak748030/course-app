@@ -10,7 +10,7 @@
  * - `refresh()` is exposed for pull-style retries from error states.
  */
 
-import { WifiOff, CloudDownload } from 'lucide-react-native';
+import { WifiOff } from 'lucide-react-native';
 import {
   createContext,
   useCallback,
@@ -23,6 +23,7 @@ import {
 } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { CatalogSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui';
 import { createStyles, colors, spacing, type } from '@/constants/theme';
 import {
@@ -143,22 +144,22 @@ export function CatalogGate({ children }: { children: ReactNode }) {
 
   if (status === 'ready') return <>{children}</>;
 
+  if (status === 'loading') {
+    return (
+      <View style={styles.wrap}>
+        <CatalogSkeleton />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.wrap}>
-      {status === 'loading' ? (
-        <View style={styles.center}>
-          <CloudDownload size={30} color={colors.accentText} />
-          <Text style={[type.subheading, styles.title]}>Loading the catalog…</Text>
-          <Text style={[type.body, styles.body]}>Fetching the latest courses from the academy.</Text>
-        </View>
-      ) : (
-        <View style={styles.center}>
-          <WifiOff size={30} color={colors.accentText} />
-          <Text style={[type.subheading, styles.title]}>Can’t reach the academy</Text>
-          <Text style={[type.body, styles.body]}>{error ?? 'The course server is not responding.'}</Text>
-          <Button label="Try again" onPress={() => void refresh()} fullWidth={false} />
-        </View>
-      )}
+      <View style={styles.center}>
+        <WifiOff size={30} color={colors.accentText} />
+        <Text style={[type.subheading, styles.title]}>Can’t reach the academy</Text>
+        <Text style={[type.body, styles.body]}>{error ?? 'The course server is not responding.'}</Text>
+        <Button label="Try again" onPress={() => void refresh()} fullWidth={false} />
+      </View>
     </View>
   );
 }

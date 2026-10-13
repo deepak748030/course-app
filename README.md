@@ -30,7 +30,7 @@ app/ ──────────────► server/ ◄──────
   guarded by JWT + `role: admin`. It also runs a socket.io realtime layer: catalog and
   settings changes broadcast to everyone, and activity (orders, signups, reviews) is
   pushed live to connected admins.
-- The **app** is fully server-driven: the catalog, accounts (email + password), purchases,
+- The **app** is fully server-driven: the catalog, accounts (+91 mobile number + OTP), purchases,
   lesson progress and reviews all live on the server — there is no bundled catalog. Set
   `EXPO_PUBLIC_API_URL` in `app/.env` to point at the server (Android emulators can use
   `http://localhost:5000`). Lesson videos stay bundled as demo media.

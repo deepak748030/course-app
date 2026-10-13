@@ -32,14 +32,23 @@ export interface Lesson {
   description: string;
   minutes: number;
   isPreview: boolean;
+  /** Seconds anyone may watch without buying; 0 = locked. */
+  previewSec?: number;
+  /** Object key of the uploaded course video in the private B2 bucket. Empty = no video yet. */
+  videoKey?: string;
+  /** Encoded versions of the lesson video, one per quality. */
+  videos?: LessonVideo[];
+  /** Exact length of the video in seconds, read when it was uploaded. */
+  durationSec?: number;
 }
 
-export interface Section {
-  _id?: string;
-  title: string;
-  summary: string;
-  lessons: Lesson[];
+export type VideoQuality = '360' | '480' | '720' | '1080';
+
+export interface LessonVideo {
+  quality: VideoQuality;
+  videoKey: string;
 }
+
 
 export interface Course {
   _id: string;
@@ -61,7 +70,7 @@ export interface Course {
   outcomes: string[];
   equipment: string[];
   audience: string;
-  sections: Section[];
+  lessons: Lesson[];
   createdAt?: string;
   enrollmentCount?: number;
   lessonCount?: number;
@@ -90,6 +99,29 @@ export interface Order {
   discountInr: number;
   status: OrderStatus;
   paymentMethod: string;
+  /** Razorpay payment id (pay_…), set once the payment is confirmed. */
+  paymentReference?: string;
+  /** Razorpay order id (order_…). */
+  razorpayOrderId?: string;
+  /** Razorpay Payment Link id (plink_…), for purchases made on the hosted page. */
+  paymentLinkId?: string;
+  createdAt: string;
+}
+
+export type NotificationKind = 'announcement' | 'course-update' | 'learning-reminder' | 'product';
+
+/** A message the academy sent: the inbox entry plus how the push went. */
+export interface AdminNotification {
+  _id: string;
+  title: string;
+  body: string;
+  kind: NotificationKind;
+  audience: 'all' | 'user';
+  user: { _id: string; name: string; email: string } | null;
+  course: { _id: string; title: string; slug: string } | null;
+  pushStatus: 'queued' | 'sending' | 'sent' | 'failed' | 'no-devices';
+  pushDevices: number;
+  pushFailed: number;
   createdAt: string;
 }
 
@@ -114,6 +146,51 @@ export interface AppSettings {
   currency: string;
   maintenanceMode: boolean;
   minAppVersion: string;
+  /** Server URL the app uses. Empty = the URL the app was built with. */
+  apiBaseUrl: string;
+  homeBanners: HomeBanner[];
+  /** 'web' = Razorpay hosted page in the phone browser (works in Expo Go); 'sdk' = native SDK (dev build). */
+  checkoutMode: 'web' | 'sdk';
+  /** Help questions in the app, in order. Empty = the app's built-in FAQ. */
+  faqs?: FaqEntry[];
+  /** Policies in the app. A null/missing document shows the app's built-in text. */
+  legalDocs?: { terms?: LegalDocEntry | null; refund?: LegalDocEntry | null; privacy?: LegalDocEntry | null };
+  /** Checkout lines in the app. Empty = the built-in list. */
+  purchaseTerms?: string[];
+}
+
+/** The built-in text the app shows until the admin writes their own. */
+export interface ContentDefaults {
+  faqs: FaqEntry[];
+  legalDocs: { terms: LegalDocEntry; refund: LegalDocEntry; privacy: LegalDocEntry };
+  purchaseTerms: string[];
+}
+
+export interface FaqEntry {
+  question: string;
+  answer: string;
+}
+
+export interface LegalSectionEntry {
+  heading: string;
+  body: string[];
+  points: string[];
+}
+
+export interface LegalDocEntry {
+  title: string;
+  heading: string;
+  summary: string;
+  sections: LegalSectionEntry[];
+}
+
+/** A poster on the app's home screen. Empty imageUrl = the linked course's cover. */
+export interface HomeBanner {
+  imageUrl: string;
+  title: string;
+  subtitle: string;
+  courseSlug: string;
+  active: boolean;
 }
 
 export interface Overview {

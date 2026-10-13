@@ -1,9 +1,16 @@
 import {
+  Bell,
   BookOpen,
   ChartColumn,
   LayoutDashboard,
   LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   RefreshCw,
+  ScrollText,
+  Images,
+  X,
   Settings,
   Shapes,
   ShoppingBag,
@@ -15,9 +22,9 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { isDemoMode, onDemoModeChange } from '../api/client';
-import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus } from '../api/realtime';
+import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus, usePresence } from '../api/realtime';
 import { resetDemoDb } from '../api/demo';
 import { useAuth } from '../auth/AuthContext';
 import { initials } from './ui';
@@ -31,8 +38,13 @@ const NAV = [
   { to: '/orders', label: 'Orders', icon: ShoppingBag },
   { to: '/reviews', label: 'Reviews', icon: Star },
   { to: '/coupons', label: 'Coupons', icon: TicketPercent },
+  { to: '/banners', label: 'Banners', icon: Images },
+  { to: '/content', label: 'Content', icon: ScrollText },
+  { to: '/notifications', label: 'Notifications', icon: Bell },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
+
+const SIDEBAR_KEY = 'ydu.admin.sidebarCollapsed';
 
 const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/': { title: 'Dashboard', subtitle: 'How the academy is doing, at a glance' },
@@ -43,6 +55,9 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/orders': { title: 'Orders', subtitle: 'Every purchase, payment and refund' },
   '/reviews': { title: 'Reviews', subtitle: 'What learners say about each course' },
   '/coupons': { title: 'Coupons', subtitle: 'Discount codes for checkout' },
+  '/banners': { title: 'Banners', subtitle: 'The posters at the top of the app’s home screen' },
+  '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy the app shows' },
+  '/notifications': { title: 'Notifications', subtitle: 'Message all learners or one learner, in the app and as a push' },
   '/settings': { title: 'Settings', subtitle: 'App-wide controls the whole platform follows' },
 };
 
@@ -50,7 +65,7 @@ function BrandMark() {
   return (
     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#17150F" />
+        <path d="M8 4h8l-1.4 3.2h-1.7V20h-1.8V7.2H9.4L8 4z" fill="#FFFFFF" />
       </svg>
     </div>
   );
@@ -114,18 +129,55 @@ export default function Layout() {
     };
   }, []);
 
-  const current = TITLES[window.location.pathname] || TITLES['/'];
+  const location = useLocation();
+  const current = TITLES[location.pathname] || TITLES['/'];
+  const presence = usePresence();
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Desktop only: collapsed shows icons alone. The choice is remembered on this computer.
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === '1');
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_KEY, collapsed ? '1' : '0');
+  }, [collapsed]);
+
+  // Close the mobile drawer whenever the route changes.
+  useEffect(() => setMenuOpen(false), [location.pathname]);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* ---------- sidebar ---------- */}
-      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-surface">
-        <div className="flex items-center gap-2.5 px-5 pb-5 pt-6">
+      {/* Mobile drawer backdrop */}
+      {menuOpen && (
+        <button
+          aria-label="Close menu"
+          onClick={() => setMenuOpen(false)}
+          className="fixed inset-0 z-30 bg-ink/30 md:hidden"
+        />
+      )}
+
+      {/* ---------- sidebar (drawer on mobile, column on md+) ---------- */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-line bg-surface transition-[transform,width] duration-200 md:static md:z-auto md:translate-x-0 ${
+          collapsed ? 'md:w-[76px]' : 'md:w-60'
+        } ${menuOpen ? 'translate-x-0' : '-translate-x-full'}`}
+      >
+        <div
+          className={`flex items-center gap-2.5 px-5 pb-5 pt-6 ${
+            collapsed ? 'md:flex-col md:gap-4 md:px-0' : ''
+          }`}
+        >
           <BrandMark />
-          <div>
+          <div className={`min-w-0 flex-1 ${collapsed ? 'md:hidden' : ''}`}>
             <p className="text-[15px] font-bold leading-tight">YDU Academy</p>
             <p className="text-[11px] font-semibold uppercase tracking-wider text-brand-ink">Admin</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-ink/5 hover:text-ink md:flex"
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
 
         <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
@@ -134,8 +186,12 @@ export default function Layout() {
               key={to}
               to={to}
               end={end}
+              title={collapsed ? label : undefined}
+              aria-label={label}
               className={({ isActive }) =>
-                `group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                `group flex min-h-11 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors md:min-h-0 ${
+                  collapsed ? 'md:justify-center md:px-0' : ''
+                } ${
                   isActive
                     ? 'bg-brand-soft font-semibold text-brand-ink'
                     : 'text-muted hover:bg-ink/4 hover:text-ink'
@@ -143,27 +199,35 @@ export default function Layout() {
               }
             >
               <Icon size={17} className="shrink-0" />
-              {label}
+              <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
             </NavLink>
           ))}
         </nav>
 
         <div className="border-t border-line-soft p-3">
-          <div className="flex items-center gap-2.5 rounded-lg px-2 py-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-ink">
+          <div
+            className={`flex items-center gap-2.5 rounded-lg px-2 py-2 ${
+              collapsed ? 'md:flex-col md:gap-2 md:px-0' : ''
+            }`}
+          >
+            <div
+              title={user?.name || 'Admin'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand text-[13px] font-bold text-on-brand"
+            >
               {initials(user?.name || 'Admin')}
             </div>
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 flex-1 ${collapsed ? 'md:hidden' : ''}`}>
               <p className="truncate text-[13px] font-semibold">{user?.name}</p>
               <p className="truncate text-xs text-subtle">{user?.email}</p>
             </div>
             <button
+              aria-label="Sign out"
               title="Sign out"
               onClick={() => {
                 logout();
                 navigate('/login');
               }}
-              className="rounded-md p-1.5 text-subtle transition-colors hover:bg-error-soft hover:text-error"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-subtle transition-colors hover:bg-error-soft hover:text-error md:h-9 md:w-9"
             >
               <LogOut size={16} />
             </button>
@@ -173,12 +237,30 @@ export default function Layout() {
 
       {/* ---------- main ---------- */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-surface px-6">
-          <div>
-            <h1 className="text-lg font-bold leading-tight">{current.title}</h1>
-            <p className="text-[13px] text-muted">{current.subtitle}</p>
+        <header className="flex min-h-16 shrink-0 items-center justify-between gap-3 border-b border-line bg-surface px-4 py-3 md:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              aria-label="Open menu"
+              onClick={() => setMenuOpen(true)}
+              className="-ml-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink md:hidden"
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight">{current.title}</h1>
+              <p className="hidden truncate text-[13px] text-muted sm:block">{current.subtitle}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {presence && !demo && (
+              <span
+                className="hidden items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-semibold text-brand-ink sm:inline-flex"
+                title="Signed-in accounts online right now"
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                {presence.signedIn} online
+              </span>
+            )}
             {!demo && (
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
@@ -189,20 +271,20 @@ export default function Layout() {
                 <span
                   className={`h-1.5 w-1.5 rounded-full ${live ? 'animate-pulse bg-success' : 'bg-subtle'}`}
                 />
-                {live ? 'Live' : 'Connecting…'}
+                <span className="hidden sm:inline">{live ? 'Live' : 'Connecting…'}</span>
               </span>
             )}
             {demo && (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-3 py-1 text-xs font-semibold text-brand-ink">
-                <Wrench size={12} /> Demo data
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-gold-soft px-2.5 py-1 text-xs font-semibold text-brand-ink sm:px-3">
+                <Wrench size={12} /> <span className="hidden sm:inline">Demo data</span>
               </span>
             )}
           </div>
         </header>
 
         {demo && (
-          <div className="flex items-center justify-between gap-3 border-b border-line bg-brand-soft px-6 py-2">
-            <p className="text-[13px] font-medium text-brand-ink">
+          <div className="flex flex-col gap-2 border-b border-line bg-brand-soft px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-6">
+            <p className="text-[13px] leading-snug font-medium text-brand-ink">
               The server or its database is unreachable — showing the built-in demo dataset. Start the API with
               MongoDB to control live data. Changes here persist in this browser only.
             </p>
@@ -211,20 +293,20 @@ export default function Layout() {
                 resetDemoDb();
                 window.location.reload();
               }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold text-brand-ink hover:bg-brand/30"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 self-start rounded-md px-3 text-xs font-semibold text-brand-ink transition-colors hover:bg-brand/20 sm:h-9 sm:self-auto"
             >
               <RefreshCw size={12} /> Reset demo data
             </button>
           </div>
         )}
 
-        <main className="min-h-0 flex-1 overflow-y-auto p-6">
+        <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <Outlet />
         </main>
       </div>
 
       {/* Live activity toasts */}
-      <div className="pointer-events-none fixed bottom-5 right-5 z-50 flex w-80 flex-col gap-2">
+      <div className="pointer-events-none fixed inset-x-4 bottom-4 z-50 flex flex-col gap-2 sm:left-auto sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-80">
         {toasts.map((toast) => (
           <div
             key={toast.id}

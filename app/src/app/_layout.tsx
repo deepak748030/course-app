@@ -1,6 +1,8 @@
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { DMSans_400Regular, DMSans_600SemiBold } from '@expo-google-fonts/dm-sans';
 import { useFonts } from 'expo-font';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { useRouter } from '@/lib/router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as SystemUI from 'expo-system-ui';
 import { Fragment, useEffect, useMemo, type ReactNode } from 'react';
@@ -10,8 +12,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AppStatusBar, applyAndroidStatusBar, StatusBarBackdrop, StatusBarToneProvider } from '@/components/app-status-bar';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { ServiceGate } from '@/components/service-gate';
 import { createStyles, colors, font, setActiveTheme } from '@/constants/theme';
 import { startAnalytics, track } from '@/services/analytics';
+import { useNotificationTaps } from '@/services/push';
 import { CatalogProvider } from '@/services/catalog-context';
 import { StoreProvider, useStore } from '@/store';
 
@@ -108,7 +112,14 @@ function useThemedWindow() {
 
 function SplashGate({ children }: { children: ReactNode }) {
   const { ready } = useStore();
+  const router = useRouter();
   useThemedWindow();
+
+  // Tapping a push opens the course it is about, or the inbox.
+  useNotificationTaps(({ courseId }) => {
+    if (courseId) router.push({ pathname: '/course/[id]', params: { id: courseId } });
+    else router.push('/notifications');
+  });
 
   useEffect(() => {
     if (ready) hideSplash();
@@ -122,7 +133,16 @@ function SplashGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** The app stays portrait; only the lesson player's fullscreen may rotate the screen. */
+function usePortraitLock() {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    void ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+  }, []);
+}
+
 export default function RootLayout() {
+  usePortraitLock();
   // Bundled locally, two weights only. Not awaited: failing to load them degrades the
   // typeface, it never blocks the app.
   useFonts({
@@ -140,15 +160,18 @@ export default function RootLayout() {
               <SplashGate>
                 <View style={styles.flex}>
                   <StatusBarToneProvider>
-                    <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: colors.background },
-                    }}>
-                    <Stack.Screen name="index" options={{ animation: 'fade' }} />
-                    <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
-                    <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-                    </Stack>
+                    {/* Maintenance and update-required replace the whole app; see service-gate.tsx. */}
+                    <ServiceGate>
+                      <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: colors.background },
+                      }}>
+                      <Stack.Screen name="index" options={{ animation: 'fade' }} />
+                      <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
+                      <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+                      </Stack>
+                    </ServiceGate>
                     {/* Dark icons on the white window; the strip behind the bar is painted in-app. */}
                     <AppStatusBar />
                     <StatusBarBackdrop />

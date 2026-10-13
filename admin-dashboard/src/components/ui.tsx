@@ -1,9 +1,10 @@
 /**
  * Small UI kit for the admin dashboard — flat white surfaces, hairline borders and the
- * yellow accent, mirroring the mobile app's design rules (no shadows, 8px rhythm).
+ * green accent, mirroring the mobile app's design rules (no shadows, 8px rhythm).
  */
-import { AlertTriangle, CheckCircle2, Info, Loader2, Search, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight, Eye, EyeOff, Info, Loader2, Search, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { HoldToConfirm } from './HoldToConfirm';
 import type { LucideIcon } from 'lucide-react';
 
 // ---------- formatting helpers -------------------------------------------------------
@@ -44,10 +45,11 @@ export function Button({
   loading?: boolean;
 }) {
   const base =
-    'inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold transition-colors select-none disabled:opacity-45 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink';
-  const sizes = { sm: 'h-8 px-3 text-[13px]', md: 'h-10 px-4 text-sm' };
+    'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg font-semibold transition-colors select-none disabled:opacity-45 disabled:pointer-events-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-ink';
+  // Small buttons keep a 40px touch target on phones and tighten up from md (32px) on desktop.
+  const sizes = { sm: 'h-10 px-3 text-[13px] md:h-8', md: 'h-10 px-4 text-sm' };
   const variants: Record<ButtonVariant, string> = {
-    primary: 'bg-brand text-ink hover:bg-brand-pressed',
+    primary: 'bg-brand text-on-brand hover:bg-brand-pressed',
     dark: 'bg-ink text-white hover:bg-ink/85',
     outline: 'border border-line bg-surface text-ink hover:bg-surface-alt',
     ghost: 'text-muted hover:bg-ink/5 hover:text-ink',
@@ -138,6 +140,36 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={`${inputClass} ${props.className || ''}`} />;
 }
 
+/** Password field with a show/hide eye. The eye is a real 36px target and says whether the password is visible. */
+export function PasswordInput({ className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative">
+      <input {...props} type={visible ? 'text' : 'password'} className={`${inputClass} pr-11 ${className}`} />
+      <button
+        type="button"
+        onClick={() => setVisible((value) => !value)}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        title={visible ? 'Hide password' : 'Show password'}
+        className="absolute right-1 top-1/2 flex h-8 w-9 -translate-y-1/2 items-center justify-center rounded-md text-subtle transition-colors hover:bg-ink/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
+    </div>
+  );
+}
+
+/** Input with a fixed prefix inside the field, e.g. the ₹ sign on money fields. */
+export function PrefixInput({ prefix, className = '', ...props }: React.InputHTMLAttributes<HTMLInputElement> & { prefix: string }) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-subtle">{prefix}</span>
+      <input {...props} className={`${inputClass} pl-8 ${className}`} />
+    </div>
+  );
+}
+
 export function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea {...props} className={`${inputClass} h-auto min-h-20 py-2.5 ${props.className || ''}`} />;
 }
@@ -189,7 +221,7 @@ export function Toggle({
       aria-label={label}
       disabled={disabled}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-40 ${
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40 ${
         checked ? 'bg-brand' : 'bg-ink/15'
       }`}
     >
@@ -231,7 +263,11 @@ export function Modal({
       <div className={`relative w-full ${width} max-h-[88vh] overflow-auto rounded-xl border border-line bg-surface`}>
         <div className="sticky top-0 flex items-center justify-between border-b border-line-soft bg-surface px-5 py-4">
           <h3 className="text-[15px] font-semibold">{title}</h3>
-          <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-ink/5 hover:text-ink">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink"
+          >
             <X size={17} />
           </button>
         </div>
@@ -273,12 +309,16 @@ export function Drawer({
             <h3 className="text-base font-semibold">{title}</h3>
             {subtitle && <p className="mt-0.5 text-[13px] text-muted">{subtitle}</p>}
           </div>
-          <button onClick={onClose} className="rounded-md p-1 text-muted hover:bg-ink/5 hover:text-ink">
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex h-9 w-9 items-center justify-center rounded-md text-muted hover:bg-ink/5 hover:text-ink"
+          >
             <X size={18} />
           </button>
         </div>
         <div className="flex-1 overflow-auto px-6 py-5">{children}</div>
-        {footer && <div className="flex justify-end gap-2 border-t border-line-soft px-6 py-4">{footer}</div>}
+        {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line-soft px-6 py-4">{footer}</div>}
       </div>
     </div>
   );
@@ -290,6 +330,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel = 'Delete',
+  holdToConfirm = true,
   onCancel,
   onConfirm,
 }: {
@@ -297,6 +338,8 @@ export function ConfirmDialog({
   title: string;
   message: string;
   confirmLabel?: string;
+  /** Destructive confirms are press-and-hold so a stray tap cannot delete. Pass false for harmless confirms. */
+  holdToConfirm?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -307,9 +350,13 @@ export function ConfirmDialog({
         <Button variant="outline" onClick={onCancel}>
           Cancel
         </Button>
-        <Button variant="danger" onClick={onConfirm}>
-          {confirmLabel}
-        </Button>
+        {holdToConfirm ? (
+          <HoldToConfirm label={`Hold to ${confirmLabel.toLowerCase()}`} onConfirm={onConfirm} />
+        ) : (
+          <Button variant="primary" onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+        )}
       </div>
     </Modal>
   );
@@ -320,7 +367,7 @@ export function Stars({ rating, size = 14 }: { rating: number; size?: number }) 
   return (
     <span className="inline-flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= Math.round(rating) ? '#D9A400' : '#E9E4D6'}>
+        <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i <= Math.round(rating) ? '#2F6B47' : '#DCE7DF'}>
           <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6L12 2z" />
         </svg>
       ))}
@@ -347,6 +394,66 @@ export function Th({ children, className = '' }: { children?: React.ReactNode; c
 
 export function Td({ children, className = '' }: { children?: React.ReactNode; className?: string }) {
   return <td className={`border-b border-line-soft px-4 py-3 align-middle ${className}`}>{children}</td>;
+}
+
+// ---------- Pagination ------------------------------------------------------------------------------
+/**
+ * Client-side paging for a list that is already loaded. Returns the current page's rows.
+ * `resetKey` (e.g. the search + filter values) jumps back to page 1 whenever it changes.
+ */
+export function usePagination<T>(items: T[] | null, pageSize = 10, resetKey = '') {
+  const [page, setPage] = useState(1);
+  useEffect(() => setPage(1), [resetKey]);
+  const list = items ?? [];
+  const pageCount = Math.max(1, Math.ceil(list.length / pageSize));
+  const current = Math.min(page, pageCount);
+  return {
+    page: current,
+    setPage,
+    pageCount,
+    pageSize,
+    total: list.length,
+    rows: list.slice((current - 1) * pageSize, current * pageSize),
+  };
+}
+
+export function Pagination({
+  page,
+  pageCount,
+  pageSize,
+  total,
+  onPage,
+}: {
+  page: number;
+  pageCount: number;
+  pageSize: number;
+  total: number;
+  onPage: (page: number) => void;
+}) {
+  if (total === 0) return null;
+  const start = (page - 1) * pageSize + 1;
+  const end = Math.min(total, page * pageSize);
+  const navButton =
+    'inline-flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-ink/5 hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent';
+  return (
+    <div className="flex flex-col items-center justify-between gap-3 border-t border-line-soft px-4 py-3 text-[13px] text-muted sm:flex-row">
+      <p>
+        Showing <span className="font-semibold text-ink">{start}–{end}</span> of{' '}
+        <span className="font-semibold text-ink">{total}</span>
+      </p>
+      <div className="flex items-center gap-1">
+        <button aria-label="Previous page" className={navButton} disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <ChevronLeft size={16} />
+        </button>
+        <span className="min-w-16 px-2 text-center font-semibold tabular-nums text-ink">
+          {page} / {pageCount}
+        </span>
+        <button aria-label="Next page" className={navButton} disabled={page >= pageCount} onClick={() => onPage(page + 1)}>
+          <ChevronRight size={16} />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ---------- Empty & loading states ----------------------------------------------------------------
@@ -432,13 +539,6 @@ export function useToast() {
 }
 
 // ---------- course cover placeholder --------------------------------------------------------------
-const coverGradients = [
-  'linear-gradient(135deg, #FFF4CC 0%, #FFC629 100%)',
-  'linear-gradient(135deg, #FBEEC4 0%, #F0B100 100%)',
-  'linear-gradient(135deg, #F5F1DC 0%, #D9A400 100%)',
-  'linear-gradient(135deg, #FFF9E6 0%, #FFD968 100%)',
-];
-
 export function CourseCover({
   title,
   coverUrl,
@@ -451,15 +551,13 @@ export function CourseCover({
   if (coverUrl) {
     return <img src={coverUrl} alt="" className={`${className} shrink-0 rounded-md border border-line-soft object-cover`} />;
   }
-  let hash = 0;
-  for (const ch of title) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-  const bg = coverGradients[Math.abs(hash) % coverGradients.length];
+  // Same brand-mark.png the learner app shows when a course has no image.
   return (
-    <div
-      className={`${className} flex shrink-0 items-center justify-center rounded-md border border-line-soft text-[11px] font-bold text-brand-ink`}
-      style={{ background: bg }}
-    >
-      {initials(title)}
-    </div>
+    <img
+      src="/brand-mark.png"
+      alt={title}
+      className={`${className} shrink-0 rounded-md border border-line-soft object-contain`}
+      style={{ background: '#FBF6E3' }}
+    />
   );
 }

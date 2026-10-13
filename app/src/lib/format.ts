@@ -8,6 +8,13 @@ export function formatInr(amount: number): string {
   return `₹${new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(amount)}`;
 }
 
+/** A lesson's length as shown in lists: under a minute in seconds ("20 sec"), otherwise minutes ("12 min"). */
+export function lessonLength(lesson: { minutes: number; seconds?: number }): string {
+  const seconds = lesson.seconds ?? lesson.minutes * 60;
+  if (seconds < 60) return `${Math.max(1, Math.round(seconds))} sec`;
+  return `${Math.round(seconds / 60)} min`;
+}
+
 /** 95 -> "1h 35m", 42 -> "42m" */
 export function formatDuration(minutes: number): string {
   const total = Math.round(minutes);
@@ -83,48 +90,8 @@ export function minutesAgoLabel(minutes: number): string {
 }
 
 /* ------------------------------------------------------------------ *
- * Profile fields (email, date of birth)
+ * Profile fields (email)
  * ------------------------------------------------------------------ */
-
-const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
-
-function yearsBetween(from: Date, to: Date): number {
-  let years = to.getFullYear() - from.getFullYear();
-  const monthDelta = to.getMonth() - from.getMonth();
-  if (monthDelta < 0 || (monthDelta === 0 && to.getDate() < from.getDate())) years -= 1;
-  return years;
-}
-
-/** Whole years since a `YYYY-MM-DD` date. Null when the date is missing or impossible. */
-export function ageFromDateOfBirth(iso: string | undefined | null, today = new Date()): number | null {
-  if (!iso) return null;
-  const [year, month, day] = iso.split('-').map(Number);
-  if (!year || !month || !day) return null;
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return yearsBetween(date, today);
-}
-
-/** "1996-03-12" -> "12 March 1996". Null when there is no usable date. */
-export function formatDateOfBirth(iso: string | undefined | null): string | null {
-  const age = ageFromDateOfBirth(iso);
-  if (age === null) return null;
-  const [year, month, day] = iso!.split('-').map(Number);
-  return `${day} ${MONTHS[month - 1]} ${year}`;
-}
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
 
@@ -134,32 +101,4 @@ export function validateEmail(value: string): string | null {
   if (trimmed.length === 0) return null;
   if (!EMAIL.test(trimmed)) return 'Enter an email like name@example.com.';
   return null;
-}
-
-export const DOB_FORMAT_HINT = 'Use DD / MM / YYYY, for example 12 / 03 / 1996.';
-
-/**
- * Three text inputs -> the ISO date to store, or the reason they cannot be used yet.
- * `error: null` means "nothing typed yet", which is not a failure: the field is optional.
- */
-export function buildDateOfBirth(
-  dayText: string,
-  monthText: string,
-  yearText: string,
-  today = new Date(),
-): { ok: true; date: string } | { ok: false; error: string | null } {
-  const day = dayText.trim();
-  const month = monthText.trim();
-  const year = yearText.trim();
-  if (!day && !month && !year) return { ok: false, error: null };
-  if (!/^\d{1,2}$/.test(day) || !/^\d{1,2}$/.test(month) || !/^\d{4}$/.test(year)) {
-    return { ok: false, error: DOB_FORMAT_HINT };
-  }
-  const iso = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-  const age = ageFromDateOfBirth(iso, today);
-  if (age === null) return { ok: false, error: 'That date does not exist.' };
-  if (age < 0) return { ok: false, error: 'Date of birth cannot be in the future.' };
-  if (age < 13) return { ok: false, error: 'You need to be at least 13 years old.' };
-  if (age > 110) return { ok: false, error: 'Please check the year.' };
-  return { ok: true, date: iso };
 }

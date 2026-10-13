@@ -7,6 +7,7 @@ import { useT } from '@/i18n';
 
 import { X } from 'lucide-react-native';
 import { useEffect, useState, type ReactNode } from 'react';
+import { BlurView } from 'expo-blur';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -22,6 +23,7 @@ export function BottomSheet({
   children,
   scrollable = false,
   footer,
+  dark = false,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -30,6 +32,8 @@ export function BottomSheet({
   children: ReactNode;
   scrollable?: boolean;
   footer?: ReactNode;
+  /** Black, frosted-glass sheet for the video player. Text on it must be the light ink the caller picks. */
+  dark?: boolean;
 }) {
   const t = useT();
 
@@ -69,17 +73,26 @@ export function BottomSheet({
       <View style={styles.root} accessibilityViewIsModal accessibilityLabel={title}>
         <Animated.View style={[styles.backdrop, backdropStyle]} />
         <Pressable accessibilityRole="button" accessibilityLabel={t("Close")} style={StyleSheet.absoluteFill} onPress={onClose} />
-        <Animated.View style={[styles.sheet, { paddingBottom: insets.bottom + spacing.md }, sheetStyle]}>
-          <View style={styles.grabber} />
+        <Animated.View
+          style={[styles.sheet, dark && styles.sheetDark, { paddingBottom: insets.bottom + spacing.md }, sheetStyle]}>
+          {dark ? <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} /> : null}
+          <View style={[styles.grabber, dark && styles.grabberDark]} />
           {title ? (
             <View style={styles.header}>
               <View style={styles.headerText}>
-                <AppText variant="subheading">{title}</AppText>
+                <AppText variant="subheading" color={dark ? colors.onPlayer : undefined}>{title}</AppText>
                 {subtitle ? (
-                  <Text style={[type.label, { color: colors.textMuted }]}>{subtitle}</Text>
+                  <Text style={[type.label, { color: dark ? 'rgba(255,255,255,0.7)' : colors.textMuted }]}>{subtitle}</Text>
                 ) : null}
               </View>
-              <IconButton icon={X} onPress={onClose} accessibilityLabel={t("Close")} variant="soft" size={36} iconSize={18} />
+              <IconButton
+                icon={X}
+                onPress={onClose}
+                accessibilityLabel={t("Close")}
+                variant={dark ? 'onImage' : 'soft'}
+                size={36}
+                iconSize={18}
+              />
             </View>
           ) : null}
 
@@ -142,6 +155,8 @@ const styles = createStyles(() => StyleSheet.create({
     paddingTop: spacing.sm,
     maxHeight: '88%',
   },
+  sheetDark: { backgroundColor: 'rgba(0,0,0,0.62)', overflow: 'hidden' },
+  grabberDark: { backgroundColor: 'rgba(255,255,255,0.35)' },
   grabber: {
     alignSelf: 'center',
     width: 36,

@@ -30,6 +30,9 @@ export const createOrUpdateReview = asyncHandler(async (req, res) => {
 /** GET /api/courses/:courseId/reviews — visible reviews for the course page. */
 export const listCourseReviews = asyncHandler(async (req, res) => {
   const { courseId } = req.params;
-  const reviews = await Review.find({ course: courseId, visible: true }).sort({ createdAt: -1 }).limit(50);
+  const reviews = await Review.find({ course: courseId, visible: true })
+    .select('author rating body createdAt')
+    .sort({ createdAt: -1 })
+    .limit(50);
   res.json({ reviews });
 });
