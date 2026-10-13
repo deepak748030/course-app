@@ -13,7 +13,7 @@ import { storage } from '@/lib/storage';
 
 const STORAGE_KEY = 'ydu.serverUrl';
 
-export const BUILT_IN_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000').replace(/\/+$/, '');
+export const BUILT_IN_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://course-app-na94.onrender.com').replace(/\/+$/, '');
 
 let active = BUILT_IN_API_URL;
 let loaded = false;
@@ -42,7 +42,7 @@ export const serverUrlReady: Promise<void> = storage
     const url = normalizeServerUrl(saved);
     if (url) active = url;
   })
-  .catch(() => {})
+  .catch(() => { })
   .then(() => {
     loaded = true;
   });

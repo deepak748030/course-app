@@ -14,7 +14,11 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
+      "package": "com.deeepak748930.coursesapp"
     },
     "web": {
       "output": "static",
@@ -71,6 +75,12 @@
           "phonepe",
           "paytmmp"
         ]
+      }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "840c4925-4be4-42df-b4dc-bb185d2e9dba"
       }
     }
   }
