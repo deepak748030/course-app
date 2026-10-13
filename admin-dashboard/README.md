@@ -49,3 +49,22 @@ Seeded admin login: `admin@yduacademy.com / Admin@123`.
 npm run build      # outputs dist/ — host it on any static host; VITE_API_URL is
                    # baked in at build time, so set it in .env before building
 ```
+
+## Deploy on Vercel
+
+The repo already carries [`vercel.json`](vercel.json) in this folder — do not
+delete it. It contains the SPA rewrite (`/(.*)` → `/index.html`) that a
+react-router app needs: without it, refreshing or directly opening any
+non-root page (`/courses`, `/orders`, …) returns Vercel's `404: NOT_FOUND`,
+because those paths are client-side routes, not files in `dist/`.
+
+In the Vercel project:
+
+- **Root Directory:** `admin-dashboard` (so a repo-root import builds this app,
+  not the repo root, which has no `package.json`).
+- **Framework Preset:** Vite — build `npm run build`, output `dist`
+  (already pinned in `vercel.json`, so it works even on defaults).
+- **Environment variable:** `VITE_API_URL` = the deployed backend's base URL
+  (e.g. `https://api.example.com`, no trailing `/api`). It's baked in at build
+  time, so set/change it → trigger a fresh deploy. Also allow this dashboard's
+  origin in the server's `CORS_ORIGIN`.
