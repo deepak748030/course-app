@@ -418,6 +418,7 @@ function buildDb(): DemoDb {
       currency: 'INR',
       maintenanceMode: false,
       minAppVersion: '',
+      apiBaseUrl: '',
       checkoutMode: 'web',
     },
   };

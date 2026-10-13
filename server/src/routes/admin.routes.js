@@ -299,6 +299,13 @@ const settingsSchema = z.object({
   currency: z.string().trim().length(3).optional(),
   maintenanceMode: z.boolean().optional(),
   minAppVersion: z.string().trim().max(20).optional(),
+  apiBaseUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => value === '' || /^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(value), 'Enter a full URL starting with http:// or https://, or leave it empty.')
+    .transform((value) => value.replace(/\/+$/, ''))
+    .optional(),
   checkoutMode: z.enum(['web', 'sdk']).optional(),
   homeBanners: z
     .array(

@@ -13,7 +13,7 @@
 
 import { io, type Socket } from 'socket.io-client';
 
-import { SOCKET_URL } from '@/services/api';
+import { apiUrl, isServerUrlLoaded, onServerUrlChange, serverUrlReady } from '@/lib/serverUrl';
 
 type CatalogChangedHandler = (payload: { reason?: string; courseId?: string }) => void;
 type SettingsHandler = (payload: { settings?: unknown }) => void;
@@ -25,8 +25,24 @@ const catalogHandlers = new Set<CatalogChangedHandler>();
 const settingsHandlers = new Set<SettingsHandler>();
 const enrollmentHandlers = new Set<EnrollmentHandler>();
 
+let lastToken: string | null = null;
+
+// The admin moved the app to another server: reconnect the open socket there, with the same identity.
+onServerUrlChange(() => {
+  if (!socket) return;
+  socket.disconnect();
+  socket = null;
+  connectRealtime(lastToken);
+});
+
 /** Connects (once) with the learner's token when signed in; anonymous otherwise. */
 export function connectRealtime(token?: string | null) {
+  lastToken = token ?? null;
+  // The saved server URL is still loading on a cold start: connect as soon as it is known.
+  if (!isServerUrlLoaded()) {
+    void serverUrlReady.then(() => connectRealtime(token));
+    return socket;
+  }
   if (socket) {
     // A sign-in/sign-out changes who we are — reconnect with the new identity.
     if ((socket.auth as { token?: string })?.token !== (token ?? undefined)) {
@@ -37,7 +53,7 @@ export function connectRealtime(token?: string | null) {
     }
   }
 
-  socket = io(SOCKET_URL, {
+  socket = io(apiUrl(), {
     transports: ['websocket'],
     auth: token ? { token } : undefined,
     reconnection: true,

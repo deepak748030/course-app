@@ -5,7 +5,8 @@
  */
 
 import { COVER_PLACEHOLDER } from '@/constants/covers';
-import { API_URL, api, type ServerCourse } from '@/services/api';
+import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
+import { api, type ServerCourse } from '@/services/api';
 
 import type { Category, Course, Lesson, Recipe } from '@/types';
 
@@ -13,7 +14,7 @@ import type { Category, Course, Lesson, Recipe } from '@/types';
 export function coverSource(coverUrl: string) {
   if (!coverUrl) return COVER_PLACEHOLDER;
   // The local upload provider (no Cloudinary configured) answers /uploads/... paths.
-  const url = coverUrl.startsWith('/') ? `${API_URL}${coverUrl}` : coverUrl;
+  const url = coverUrl.startsWith('/') ? `${apiUrl()}${coverUrl}` : coverUrl;
   return { uri: url };
 }
 
@@ -137,7 +138,8 @@ export type CatalogRefreshResult =
   | { notModified: false; data: CatalogData; etag: string };
 
 async function fetchWithEtag(path: string, etag: string | null): Promise<{ status: number; body?: unknown; etag: string | null }> {
-  const response = await fetch(`${API_URL}${path}`, {
+  await serverUrlReady;
+  const response = await fetch(`${apiUrl()}${path}`, {
     headers: etag ? { 'If-None-Match': etag } : {},
   });
   if (response.status === 304) return { status: 304, etag };

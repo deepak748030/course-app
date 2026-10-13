@@ -284,6 +284,26 @@ export default function Settings() {
             </div>
             <Input value={form.minAppVersion} onChange={(e) => set('minAppVersion', e.target.value)} placeholder="1.0.0" className="w-32" />
           </div>
+          <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft">
+                <Smartphone size={16} className="text-brand-ink" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Server URL for the app</p>
+                <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+                  The address the app sends its requests to. Leave empty to use the URL the app was built with (EXPO_PUBLIC_API_URL). Save it once and the app switches on its next refresh.
+                </p>
+              </div>
+            </div>
+            <Input
+              value={form.apiBaseUrl ?? ''}
+              onChange={(e) => set('apiBaseUrl', e.target.value)}
+              placeholder="https://api.example.com"
+              aria-label="Server URL for the app"
+              className="sm:w-72"
+            />
+          </div>
         </div>
       </Card>
 

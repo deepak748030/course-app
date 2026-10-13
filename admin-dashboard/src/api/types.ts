@@ -146,6 +146,8 @@ export interface AppSettings {
   currency: string;
   maintenanceMode: boolean;
   minAppVersion: string;
+  /** Server URL the app uses. Empty = the URL the app was built with. */
+  apiBaseUrl: string;
   homeBanners: HomeBanner[];
   /** 'web' = Razorpay hosted page in the phone browser (works in Expo Go); 'sdk' = native SDK (dev build). */
   checkoutMode: 'web' | 'sdk';

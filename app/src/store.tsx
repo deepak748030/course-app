@@ -15,6 +15,7 @@ import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/consta
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
 import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
+import { applyServerUrl } from '@/lib/serverUrl';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import { forgetPushToken, syncPushToken, watchPushTokenChanges } from '@/services/push';
@@ -266,10 +267,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     api
       .settings()
-      .then(({ settings: next }) => setSettings(next))
+      .then(({ settings: next }) => {
+        setSettings(next);
+        applyServerUrl(next.apiBaseUrl);
+      })
       .catch(() => {});
     return onSettingsUpdated((payload) => {
-      if (payload.settings) setSettings(payload.settings as ServerSettings);
+      if (!payload.settings) return;
+      const next = payload.settings as ServerSettings;
+      setSettings(next);
+      applyServerUrl(next.apiBaseUrl);
     });
   }, []);
 
@@ -413,6 +420,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const { settings: next } = await api.settings();
       setSettings(next);
+      applyServerUrl(next.apiBaseUrl);
       return next;
     } catch {
       // Offline or the server is down: keep the last known settings.

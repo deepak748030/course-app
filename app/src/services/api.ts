@@ -1,15 +1,13 @@
 /**
  * HTTP client for the YDU Academy server (see /server in the repo).
  *
- * One base URL — set EXPO_PUBLIC_API_URL to point elsewhere (device builds need the LAN
- * IP of the machine running the server; emulators can use http://localhost:5000).
- * Every endpoint the app uses lives in the `api` object at the bottom so screens never
- * build URLs themselves.
+ * The base URL comes from lib/serverUrl: the built-in EXPO_PUBLIC_API_URL, or the server URL the
+ * admin set in Settings. Device builds need the LAN IP of the machine running the server; emulators
+ * can use http://localhost:5000. Every endpoint the app uses lives in the `api` object at the bottom,
+ * so screens never build URLs themselves.
  */
 
-export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000').replace(/\/$/, '');
-/** Same origin serves the socket.io realtime endpoint. */
-export const SOCKET_URL = API_URL;
+import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
 
 export class ApiError extends Error {
   constructor(
@@ -75,9 +73,10 @@ function queryString(query?: Options['query']) {
 async function request<T>(path: string, options: Options = {}): Promise<T> {
   const { method = 'GET', body, query, formData } = options;
 
+  await serverUrlReady;
   let response: Response;
   try {
-    response = await fetch(`${API_URL}${path}${queryString(query)}`, {
+    response = await fetch(`${apiUrl()}${path}${queryString(query)}`, {
       method,
       headers: {
         ...(formData ? {} : { 'Content-Type': 'application/json' }),
@@ -242,6 +241,8 @@ export interface AvailableCoupon {
 
 export type ServerSettings = {
   appName: string;
+  /** Server URL the admin set for the app. Empty = the built-in URL. */
+  apiBaseUrl?: string;
   tagline: string;
   supportEmail: string;
   supportPhone: string;

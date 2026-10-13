@@ -61,6 +61,8 @@ const settingsSchema = new Schema(
     maintenanceMode: { type: Boolean, default: false },
     /** Minimum app build allowed to talk to this server, e.g. "1.2.0". Empty = no gate. */
     minAppVersion: { type: String, default: '' },
+    /** Server URL the app talks to, e.g. "https://api.example.com". Empty = the URL the app was built with (EXPO_PUBLIC_API_URL). */
+    apiBaseUrl: { type: String, default: '', trim: true },
     /** Poster banners at the top of the app's home screen (max 5). Empty = featured courses. */
     homeBanners: { type: [homeBannerSchema], default: [] },
     /** How the app takes payment: 'web' = Razorpay hosted page in the browser, 'sdk' = native SDK (dev build). */
