@@ -132,7 +132,8 @@ export default function CourseDetailsScreen() {
 
   const enrolled = isEnrolled(course.id);
   const saved = isCourseSaved(course.id);
-  const previewLesson = course.lessons.find((lesson) => lesson.isPreview) ?? course.lessons[0];
+  // Only a lesson the admin opened as a free preview counts. A course without one shows no preview.
+  const previewLesson = course.lessons.find((lesson) => lesson.isPreview);
   const done = completedCount(course);
   const ratio = courseProgressRatio(course);
   const resumeLesson = course.lessons.find((lesson) => !lessonProgress(course.id, lesson.id).completed) ?? course.lessons[0];
@@ -175,18 +176,20 @@ export default function CourseDetailsScreen() {
                 onToggle={() => toggleSavedCourse(course.id)}
               />
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewClock(previewLesson)}`}
-              onPress={() => openLesson(previewLesson)}
-              style={styles.heroPlay}>
-              <View style={styles.playCircle}>
-                <Play size={20} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
-              </View>
-              <Text style={[type.labelStrong, { color: colors.textInverse }]}>
-                Watch free preview · {previewClock(previewLesson)}
-              </Text>
-            </Pressable>
+            {previewLesson ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Play free preview: ${previewLesson.title}, ${previewClock(previewLesson)}`}
+                onPress={() => openLesson(previewLesson)}
+                style={styles.heroPlay}>
+                <View style={styles.playCircle}>
+                  <Play size={20} color={colors.textInverse} strokeWidth={2} fill={colors.textInverse} />
+                </View>
+                <Text style={[type.labelStrong, { color: colors.textInverse }]}>
+                  Watch free preview · {previewClock(previewLesson)}
+                </Text>
+              </Pressable>
+            ) : null}
             {/* The discount sits where the player puts its own secondary controls: bottom right,
                 the animated tag and the label straight on the scrim — not a badge pasted into the
                 text. The tag is the same composition the badges play, tinted for artwork. */}
@@ -420,15 +423,16 @@ export default function CourseDetailsScreen() {
               router.push({ pathname: '/checkout/[id]', params: { id: course.id } });
             }}
           />
-          <Button
-            label={t("Watch a free preview instead")}
-            variant="ghost"
-            onPress={() => {
-              const lesson = previewLesson;
-              setPaywallLesson(null);
-              openLesson(lesson);
-            }}
-          />
+          {previewLesson ? (
+            <Button
+              label={t("Watch a free preview instead")}
+              variant="ghost"
+              onPress={() => {
+                setPaywallLesson(null);
+                openLesson(previewLesson);
+              }}
+            />
+          ) : null}
         </View>
       </BottomSheet>
     </View>
