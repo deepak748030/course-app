@@ -36,8 +36,7 @@ app/ ──────────────► server/ ◄──────
   `http://localhost:5000`). Lesson videos stay bundled as demo media.
 - The **admin dashboard** signs in with an admin account (`admin@yduacademy.com /
   Admin@123` after seeding) and controls everything the app shows, with a live activity
-  feed. When the server or its database is unreachable, the dashboard switches to a
-  clearly-labelled built-in demo dataset so it stays usable.
+  feed.
 - Images (course covers in the dashboard, learner avatars in the app) upload through
   `POST /api/uploads`: Cloudinary when `CLOUDINARY_URL` is configured, with a local
   disk fallback served from `/uploads`.
