@@ -9,13 +9,6 @@ course-app/
 └── admin-dashboard/   # Admin console — React + Vite + Tailwind (white + yellow theme)
 ```
 
-> **Video platform:** lesson videos play from our own Backblaze B2 storage through a custom
-> player — never from YouTube, so no YouTube branding can appear in the app. Why this was
-> chosen over Invidious / Piped / the YouTube API is checked option-by-option in
-> [`docs/video-platform-decision.md`](docs/video-platform-decision.md); a YouTube-only
-> deep-dive (live-tested instances, APIs, GitHub health) is in
-> [`docs/youtube-only-research.md`](docs/youtube-only-research.md).
-
 | Workspace | What it is | Run it |
 | --- | --- | --- |
 | [`app/`](app/) | The learner-facing mobile app (catalog, checkout, lessons, reviews). | `cd app && bun install && bun run start` |

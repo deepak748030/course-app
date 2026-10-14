@@ -157,10 +157,6 @@ export type ServerLesson = {
   /** Public https URL of the lesson video on Backblaze B2; empty = bundled demo clip. */
   /** Object key of the course video in private storage; the app gets a signed link from the server. */
   videoKey?: string;
-  /** Where the video plays from: 'cloud' = private storage, 'youtube' = unlisted YouTube via Piped. */
-  videoSource?: 'cloud' | 'youtube';
-  /** Server-computed: the lesson carries a playable video (the YouTube ID itself stays server-side). */
-  hasVideo?: boolean;
   minutes: number;
   durationSec?: number;
   isPreview: boolean;
@@ -335,16 +331,10 @@ export const api = {
   /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
   /** `quality` picks one uploaded version (360/480/720/1080); omitted = best available. */
   lessonVideoUrl: (courseId: string, lessonId: string, quality?: string) =>
-    request<{
-      url: string;
-      expiresIn: number;
-      quality: string;
-      qualities: string[];
-      /** 'cloud' = signed private-storage link; 'youtube' = Piped stream for an unlisted video. */
-      source?: 'cloud' | 'youtube';
-      provider?: string;
-      format?: string;
-    }>(`/api/courses/${courseId}/lessons/${lessonId}/video`, { query: { quality } }),
+    request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
+      `/api/courses/${courseId}/lessons/${lessonId}/video`,
+      { query: { quality } },
+    ),
   /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
   createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
     request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {

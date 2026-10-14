@@ -1,8 +1,8 @@
-import { BookOpen, Cloud, Eye, EyeOff, ExternalLink, ImagePlus, Link2, Loader2, Pencil, Play, Plus, Trash2, Video, X, Youtube } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, checkYouTubeVideo, uploadCourseVideo, uploadImage, uploadYouTubeVideo, youtubeUploadJobStatus, youtubeUploadStatus } from '../api/client';
+import { BookOpen, Eye, EyeOff, ImagePlus, Loader2, Pencil, Plus, Trash2, Video, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { api, uploadCourseVideo, uploadImage } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
-import type { Category, Course, Lesson, LessonVideo, VideoQuality, VideoSource } from '../api/types';
+import type { Category, Course, Lesson, LessonVideo, VideoQuality } from '../api/types';
 import {
   Badge,
   Button,
@@ -277,303 +277,6 @@ function LessonVideos({
   );
 }
 
-/** Video ID from a pasted YouTube link (watch / youtu.be / shorts / live / embed) or a raw ID. */
-function extractYouTubeVideoId(value: string): string {
-  const input = value.trim();
-  if (/^[A-Za-z0-9_-]{11}$/.test(input)) return input;
-  try {
-    const url = new URL(input.includes('://') ? input : `https://${input}`);
-    const host = url.hostname.replace(/^(www\.|m\.)/, '');
-    if (host === 'youtu.be') {
-      const id = url.pathname.split('/').filter(Boolean)[0] ?? '';
-      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : '';
-    }
-    if (host === 'youtube.com' || host === 'music.youtube.com' || host === 'youtube-nocookie.com') {
-      const fromQuery = url.searchParams.get('v') ?? '';
-      if (/^[A-Za-z0-9_-]{11}$/.test(fromQuery)) return fromQuery;
-      const parts = url.pathname.split('/').filter(Boolean);
-      const marker = parts.findIndex((p) => ['shorts', 'live', 'embed', 'v'].includes(p));
-      const id = marker >= 0 ? parts[marker + 1] ?? '' : '';
-      return /^[A-Za-z0-9_-]{11}$/.test(id) ? id : '';
-    }
-  } catch {
-    /* not a URL */
-  }
-  return '';
-}
-
-type LessonPatch = (patch: Partial<Lesson>, durationSec?: number) => void;
-
-/**
- * YouTube side of one lesson: paste an existing unlisted link, or upload the file
- * straight to the channel (unlisted) through the server. The app plays it via Piped.
- */
-function LessonYouTube({ lesson, onChange }: { lesson: Lesson; onChange: LessonPatch }) {
-  const toast = useToast();
-  const [link, setLink] = useState('');
-  const [busy, setBusy] = useState<{ stage: 'sending' | 'processing'; percent: number } | null>(null);
-  const [checking, setChecking] = useState(false);
-  const [checkResult, setCheckResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const [configured, setConfigured] = useState<boolean | null>(null);
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
-  const videoId = lesson.youtubeVideoId ?? '';
-  const requestId = lesson.youtubeUploadRequestId ?? '';
-
-  useEffect(() => {
-    let cancelled = false;
-    youtubeUploadStatus()
-      .then((r) => {
-        if (!cancelled) setConfigured(r.configured);
-      })
-      .catch(() => {
-        if (!cancelled) setConfigured(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    setLink(videoId ? `https://youtu.be/${videoId}` : '');
-  }, [videoId]);
-
-  // A background upload keeps being polled until YouTube hands back the video ID.
-  useEffect(() => {
-    if (!requestId || videoId) return;
-    let cancelled = false;
-    const timer = setInterval(async () => {
-      try {
-        const status = await youtubeUploadJobStatus(requestId);
-        if (cancelled) return;
-        if (status.status === 'completed' && status.videoId) {
-          onChangeRef.current({ youtubeVideoId: status.videoId, youtubeUploadRequestId: '' });
-          toast('success', 'YouTube upload complete. Click Save changes to publish it to the app.');
-        }
-      } catch (e) {
-        if (cancelled) return;
-        // A dropped connection just misses this poll; a real failure ends the job.
-        if ((e as { status?: number })?.status === 0) return;
-        clearInterval(timer);
-        onChangeRef.current({ youtubeUploadRequestId: '' });
-        toast('error', e instanceof Error ? e.message : 'YouTube upload failed');
-      }
-    }, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(timer);
-    };
-  }, [requestId, videoId, toast]);
-
-  function attach() {
-    const id = extractYouTubeVideoId(link);
-    if (!id) {
-      toast('error', 'Paste a valid YouTube link or video ID.');
-      return;
-    }
-    onChange({ videoSource: 'youtube', youtubeVideoId: id, youtubeUploadRequestId: '' });
-    toast('success', 'YouTube video linked. Click Save changes to publish it to the app.');
-  }
-
-  async function pick(file: File) {
-    if (!VIDEO_TYPES.includes(file.type)) {
-      toast('error', 'Use an MP4, WebM or MOV video.');
-      return;
-    }
-    if (!lesson.title.trim()) {
-      toast('error', 'Write the lesson title first — YouTube needs it for the upload.');
-      return;
-    }
-    setBusy({ stage: 'sending', percent: 0 });
-    try {
-      const durationSec = await readVideoDuration(file);
-      const result = await uploadYouTubeVideo(file, lesson.title.trim(), lesson.description || '', (progress) =>
-        setBusy(progress)
-      );
-      if (result.status === 'completed') {
-        onChange(
-          { videoSource: 'youtube', youtubeVideoId: result.videoId, youtubeUploadRequestId: '' },
-          durationSec || undefined
-        );
-        toast('success', 'Uploaded to YouTube (unlisted). Click Save changes to publish it to the app.');
-      } else {
-        onChange({ videoSource: 'youtube', youtubeUploadRequestId: result.requestId }, durationSec || undefined);
-        toast('success', 'Video sent. YouTube is still processing it — the link will attach here automatically.');
-      }
-    } catch (e) {
-      toast('error', e instanceof Error ? e.message : 'YouTube upload failed');
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function testPlayback() {
-    if (!videoId || checking) return;
-    setChecking(true);
-    setCheckResult(null);
-    try {
-      const result = await checkYouTubeVideo(videoId);
-      if (result.ok) {
-        const quality = result.quality === 'auto' ? 'adaptive (HLS)' : `${result.quality}p`;
-        setCheckResult({
-          ok: true,
-          text: `Playable now via ${result.provider === 'invidious' ? 'Invidious' : 'Piped'} · ${quality}${result.title ? ` · “${result.title}”` : ''}`,
-        });
-      } else {
-        setCheckResult({ ok: false, text: result.error || 'Not playable right now' });
-      }
-    } catch (e) {
-      setCheckResult({ ok: false, text: e instanceof Error ? e.message : 'Playback test failed' });
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  if (videoId) {
-    return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        <div className="inline-flex h-9 items-center gap-1 rounded-md border border-success bg-success-soft px-2 text-xs font-semibold text-success">
-          <Youtube size={14} />
-          <span>YouTube · {videoId}</span>
-          <a
-            href={`https://www.youtube.com/watch?v=${videoId}`}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded p-1 hover:bg-ink/5"
-            title="Open on YouTube"
-          >
-            <ExternalLink size={12} />
-          </a>
-          <button
-            type="button"
-            onClick={() => onChange({ youtubeVideoId: '', youtubeUploadRequestId: '' })}
-            className="rounded p-1 hover:bg-error-soft hover:text-error"
-            title="Remove the YouTube video"
-          >
-            <X size={12} />
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => void testPlayback()}
-          disabled={checking}
-          className="inline-flex h-9 items-center gap-1 rounded-md border border-line px-2.5 text-xs font-semibold hover:bg-brand-soft hover:text-brand-ink disabled:opacity-50"
-          title="Check that the app can play this video right now (Piped/Invidious)"
-        >
-          {checking ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
-          {checking ? 'Testing…' : 'Test playback'}
-        </button>
-        {checkResult ? (
-          <span className={`basis-full text-[11px] font-medium ${checkResult.ok ? 'text-success' : 'text-error'}`}>
-            {checkResult.ok ? '✓ ' : '✗ '}
-            {checkResult.text}
-          </span>
-        ) : null}
-      </div>
-    );
-  }
-
-  const processing = busy?.stage === 'processing' || Boolean(requestId);
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      <Input
-        value={link}
-        onChange={(e) => setLink(e.target.value)}
-        placeholder="Paste unlisted YouTube link or video ID"
-        className="h-9 w-72"
-      />
-      <button
-        type="button"
-        onClick={attach}
-        disabled={!link.trim() || busy !== null}
-        className="inline-flex h-9 items-center gap-1 rounded-md border border-line px-2.5 text-xs font-semibold hover:bg-brand-soft hover:text-brand-ink disabled:opacity-50"
-        title="Link this YouTube video to the lesson"
-      >
-        <Link2 size={13} /> Link
-      </button>
-      <label
-        className={`inline-flex h-9 cursor-pointer items-center gap-1 rounded-md border border-line px-2.5 text-xs font-semibold ${
-          busy || processing ? 'pointer-events-none opacity-60' : 'hover:bg-brand-soft hover:text-brand-ink'
-        }`}
-        title={
-          configured === false
-            ? 'YouTube upload is not set up on the server yet (UPLOAD_POST_* in server/.env). Pasting a link still works.'
-            : 'Upload this file to the YouTube channel as unlisted'
-        }
-      >
-        <input
-          type="file"
-          accept="video/mp4,video/webm,video/quicktime"
-          className="hidden"
-          disabled={busy !== null || processing}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            e.target.value = '';
-            if (file) void pick(file);
-          }}
-        />
-        {busy || processing ? <Loader2 size={13} className="animate-spin" /> : <Youtube size={13} />}
-        {busy
-          ? busy.stage === 'sending'
-            ? `Sending ${busy.percent}%`
-            : 'YouTube processing…'
-          : processing
-            ? 'YouTube processing…'
-            : 'Upload to YouTube'}
-      </label>
-      {configured === false ? (
-        <span className="text-[11px] font-medium text-error">Upload not set up on server — link paste works</span>
-      ) : null}
-      <span className="basis-full text-[11px] text-subtle">
-        Keep the video <b>Unlisted</b> with embedding ON in YouTube Studio. The upload button always uploads as unlisted;
-        the app plays it through Piped with the YDU player (no YouTube logo).
-      </span>
-    </div>
-  );
-}
-
-/** Per-lesson video source: the existing private cloud (B2), or YouTube. Playback follows the choice. */
-function LessonVideoControl({
-  courseId,
-  lesson,
-  onChange,
-}: {
-  courseId?: string;
-  lesson: Lesson;
-  onChange: LessonPatch;
-}) {
-  const source: VideoSource = lesson.videoSource ?? (lesson.youtubeVideoId ? 'youtube' : 'cloud');
-  const tab = (value: VideoSource, label: string, Icon: typeof Cloud) => (
-    <button
-      type="button"
-      onClick={() => onChange({ videoSource: value })}
-      className={`inline-flex h-8 items-center gap-1 rounded px-2.5 text-xs font-semibold ${
-        source === value ? 'bg-brand text-on-brand' : 'text-muted hover:bg-brand-soft hover:text-brand-ink'
-      }`}
-      title={value === 'cloud' ? 'Private cloud storage (Backblaze B2)' : 'YouTube channel (unlisted), played via Piped'}
-    >
-      <Icon size={13} /> {label}
-    </button>
-  );
-  return (
-    <div className="flex basis-full flex-wrap items-center gap-2">
-      <div className="inline-flex items-center gap-0.5 rounded-md border border-line p-0.5">
-        {tab('cloud', 'Cloud', Cloud)}
-        {tab('youtube', 'YouTube', Youtube)}
-      </div>
-      {source === 'cloud' ? (
-        <LessonVideos
-          courseId={courseId}
-          value={lesson.videos ?? []}
-          onChange={(videos, durationSec) => onChange({ videoSource: 'cloud', videos, videoKey: '' }, durationSec)}
-        />
-      ) : (
-        <LessonYouTube lesson={lesson} onChange={onChange} />
-      )}
-    </div>
-  );
-}
-
 export default function Courses() {
   const toast = useToast();
   const [courses, setCourses] = useState<Course[] | null>(null);
@@ -673,11 +376,7 @@ export default function Courses() {
 
   const lessonOps = useMemo(
     () => ({
-      add: () =>
-        set('lessons', [
-          ...form.lessons,
-          { title: '', description: '', minutes: 10, isPreview: false, previewSec: 0, videoSource: 'cloud' as const },
-        ]),
+      add: () => set('lessons', [...form.lessons, { title: '', description: '', minutes: 10, isPreview: false, previewSec: 0 }]),
       remove: (j: number) => set('lessons', form.lessons.filter((_, l) => l !== j)),
       patch: (j: number, patch: Partial<Lesson>) =>
         set('lessons', form.lessons.map((lesson, l) => (l === j ? { ...lesson, ...patch } : lesson))),
@@ -952,20 +651,17 @@ export default function Courses() {
                           className="flex h-9 w-24 shrink-0 items-center justify-center rounded-md border border-line bg-muted/40 px-2 text-xs font-semibold tabular-nums text-muted">
                           {lesson.durationSec
                             ? formatLength(lesson.durationSec)
-                            : lesson.videoSource === 'youtube'
-                              ? lesson.youtubeVideoId
-                                ? 'YouTube'
-                                : 'Add YouTube'
-                              : (lesson.videos?.length ?? 0) > 0
-                                ? 'Re-upload'
-                                : 'Upload video'}
+                            : (lesson.videos?.length ?? 0) > 0
+                              ? 'Re-upload'
+                              : 'Upload video'}
                         </span>
-                        <LessonVideoControl
+                        <LessonVideos
                           courseId={editing?._id}
-                          lesson={lesson}
-                          onChange={(patch, durationSec) =>
+                          value={lesson.videos ?? []}
+                          onChange={(videos, durationSec) =>
                             lessonOps.patch(j, {
-                              ...patch,
+                              videos,
+                              videoKey: '',
                               // The real length replaces the typed minutes, so course totals match the video.
                               ...(durationSec ? { durationSec, minutes: Math.max(1, Math.ceil(durationSec / 60)) } : {}),
                             })

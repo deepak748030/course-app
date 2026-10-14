@@ -47,8 +47,7 @@ export function mapCourse(server: ServerCourse): Course {
     seconds: lesson.durationSec || undefined,
     isPreview: lesson.isPreview,
     previewSec: lesson.previewSec || undefined,
-    hasCourseVideo: Boolean(lesson.hasVideo ?? lesson.videoKey),
-    videoSource: lesson.videoSource ?? 'cloud',
+    hasCourseVideo: Boolean(lesson.videoKey),
     recipe: mapRecipe(lesson.recipe),
   }));
 

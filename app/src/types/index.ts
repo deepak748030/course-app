@@ -35,8 +35,6 @@ export interface Lesson {
   previewSec?: number;
   /** The lesson has its own video in private storage (fetched as a signed link). Without one, nothing plays. */
   hasCourseVideo?: boolean;
-  /** Where the lesson video plays from: private cloud storage, or unlisted YouTube via Piped. */
-  videoSource?: 'cloud' | 'youtube';
   recipe?: Recipe;
 }
 
