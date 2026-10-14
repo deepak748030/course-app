@@ -3,6 +3,7 @@ import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
 import { PLAYBACK_TTL_SECONDS, createVideoPlaybackUrl, lessonVideos, pickLessonVideo } from '../services/videoStorage.js';
+import { PIPED_PLAYBACK_TTL_SECONDS, getPipedPlayback } from '../services/youtube.js';
 
 /** GET /api/categories */
 export const listCategories = asyncHandler(async (_req, res) => {
@@ -21,6 +22,26 @@ function withDerived(course) {
   const lessonCount = course.lessons.length;
   const totalMinutes = course.lessons.reduce((sum, l) => sum + l.minutes, 0);
   return { ...course, lessonCount, totalMinutes, hours: Math.round((totalMinutes / 60) * 10) / 10 };
+}
+
+/**
+ * Public shape of one course. The YouTube video ID is the unlisted link secret, so it
+ * (and any pending upload job id) never leaves the server: the app only learns that a
+ * video exists and where it plays from. The playback endpoint resolves the real stream.
+ */
+function publicCourse(course) {
+  const derived = withDerived(course);
+  return {
+    ...derived,
+    lessons: derived.lessons.map((lesson) => {
+      const { youtubeVideoId, youtubeUploadRequestId, ...rest } = lesson;
+      return {
+        ...rest,
+        videoSource: lesson.videoSource === 'youtube' ? 'youtube' : 'cloud',
+        hasVideo: Boolean(lesson.videoKey || youtubeVideoId),
+      };
+    }),
+  };
 }
 
 /**
@@ -45,7 +66,7 @@ export const listCourses = asyncHandler(async (req, res) => {
     .limit(limit)
     .lean();
 
-  res.json({ courses: courses.map(withDerived) });
+  res.json({ courses: courses.map(publicCourse) });
 });
 
 /** GET /api/courses/:idOrSlug — accepts either the Mongo id or the slug. */
@@ -64,7 +85,7 @@ export const getCourse = asyncHandler(async (req, res) => {
   ]);
 
   res.json({
-    course: { ...withDerived(course), enrollmentCount: enrollments?.count || 0 },
+    course: { ...publicCourse(course), enrollmentCount: enrollments?.count || 0 },
   });
 });
 
@@ -83,21 +104,45 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
   const lesson = course.lessons.find((l) => String(l._id) === lessonId);
   if (!lesson) throw new HttpError(404, 'Lesson not found');
   const videos = lessonVideos(lesson);
-  if (!videos.length) throw new HttpError(404, 'This lesson has no course video');
+  const isYouTube = lesson.videoSource === 'youtube' && Boolean(lesson.youtubeVideoId);
+  if (!videos.length && !isYouTube) throw new HttpError(404, 'This lesson has no course video');
 
   if (!lesson.isPreview) {
     const owned = await Enrollment.exists({ user: req.user._id, course: course._id });
     if (!owned) throw new HttpError(403, 'Buy this course to watch this lesson');
   }
 
+  const requestedQuality = typeof req.query.quality === 'string' ? req.query.quality : '';
+
+  // YouTube lessons stream through Piped: fresh stream URL per play, YDU's own player, no branding.
+  if (isYouTube) {
+    let playback;
+    try {
+      playback = await getPipedPlayback(lesson.youtubeVideoId, requestedQuality);
+    } catch (err) {
+      throw new HttpError(err.status || 502, err.message || 'This lesson video could not be played right now');
+    }
+    return res.json({
+      url: playback.url,
+      expiresIn: PIPED_PLAYBACK_TTL_SECONDS,
+      quality: playback.quality,
+      qualities: playback.qualities,
+      source: 'youtube',
+      provider: 'piped',
+      format: playback.format,
+    });
+  }
+
   // ?quality=720 picks that version (or the closest lower one); without it the best available plays.
-  const chosen = pickLessonVideo(lesson, typeof req.query.quality === 'string' ? req.query.quality : '');
+  const chosen = pickLessonVideo(lesson, requestedQuality);
   const url = await createVideoPlaybackUrl(chosen.key);
   res.json({
     url,
     expiresIn: PLAYBACK_TTL_SECONDS,
     quality: chosen.quality,
     qualities: videos.map((v) => v.quality),
+    source: 'cloud',
+    provider: 'b2',
   });
 });
 
@@ -164,5 +209,5 @@ export const relatedCourses = asyncHandler(async (req, res) => {
     related = [...related, ...fill];
   }
 
-  res.json({ courses: related.map(withDerived) });
+  res.json({ courses: related.map(publicCourse) });
 });

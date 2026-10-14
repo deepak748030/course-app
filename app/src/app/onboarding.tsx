@@ -37,7 +37,6 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppStatusBar } from '@/components/app-status-bar';
-import { BrandMark } from '@/components/marks';
 import { Button } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
@@ -163,7 +162,8 @@ export default function OnboardingScreen() {
 
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.brand}>
-          <BrandMark size={26} />
+          {/* The same brand-mark artwork the Home header carries, at the same size. */}
+          <Image source={images.brandMark} style={{ width: 40, height: 40 }} contentFit="contain" />
           <Text style={[type.bodyStrong, { color: colors.text }]}>YDU Academy</Text>
         </View>
       </View>
@@ -187,8 +187,10 @@ export default function OnboardingScreen() {
             accessibilityLabel={t('Skip introduction')}
             hitSlop={12}
             onPress={finish}
-            style={({ pressed }) => [pressed && { opacity: 0.6 }]}>
-            <Text style={[type.label, { color: colors.onPlayer }]}>{t('Skip')}</Text>
+            style={({ pressed }) => [styles.skipButton, pressed && { opacity: 0.6 }]}>
+            <Text numberOfLines={1} style={[type.label, styles.skipLabel, { color: colors.onPlayer }]}>
+              {t('Skip')}
+            </Text>
           </Pressable>
         </View>
         <Button
@@ -320,7 +322,17 @@ const styles = createStyles(() => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
+    width: '100%',
   },
+  /* Skip sits on its own scrim pill and can never shrink, so the whole word always shows. */
+  skipButton: {
+    flexShrink: 0,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    backgroundColor: colors.scrim,
+  },
+  skipLabel: { flexShrink: 0 },
   dots: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   dot: { height: 6, borderRadius: radius.pill },
   /* On the scrim: the brand gold marks the step, white at 62% marks the others — both palettes read. */

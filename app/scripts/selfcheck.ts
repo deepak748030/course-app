@@ -413,7 +413,10 @@ check('every brand icon is cut from the supplied logo.png', () => {
   assert.ok(!read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen carries no brand placeholder');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'and the home header');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'the footer uses brand-mark.png');
-  assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
+  assert.ok(
+    read('src/app/onboarding.tsx').includes('source={images.brandMark}'),
+    'the onboarding brand row shows the same brand-mark.png artwork as the home header',
+  );
   assert.ok(
     !read('src/components/ui.tsx').includes('BrandTile'),
     'nothing tints the mark into a coloured tile any more — the logo brings its own colours',

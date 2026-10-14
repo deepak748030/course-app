@@ -48,6 +48,18 @@ const lessonSchema = new Schema(
     videoKey: { type: String, default: '', trim: true, maxlength: 300 },
     /** Qualities (360/480/720/1080). `videoKey` mirrors the best one, for older app builds. */
     videos: { type: [lessonVideoSchema], default: [] },
+    /**
+     * Where this lesson's video lives: 'cloud' = private B2 bucket (videoKey/videos),
+     * 'youtube' = the academy channel (unlisted). Chosen per lesson in the admin dashboard.
+     */
+    videoSource: { type: String, enum: ['cloud', 'youtube'], default: 'cloud' },
+    /**
+     * YouTube video ID when videoSource is 'youtube'. This ID is the unlisted link secret,
+     * so it is server-only: the public catalog strips it (catalog.controller.js).
+     */
+    youtubeVideoId: { type: String, default: '', trim: true, maxlength: 11 },
+    /** Upload-Post background job id while a YouTube upload is still finishing (admin polls it). */
+    youtubeUploadRequestId: { type: String, default: '', trim: true, maxlength: 120 },
     recipe: { type: recipeSchema },
   },
   { _id: true, timestamps: false }

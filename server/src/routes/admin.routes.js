@@ -17,6 +17,13 @@ import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, getUploadProgress, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
+import {
+  extractYouTubeVideoId,
+  getYouTubeUploadStatus,
+  uploadYouTubeVideo,
+  youtubeUploadConfigured,
+  youtubeUploadProblem,
+} from '../services/youtube.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -113,6 +120,75 @@ router.post(
   })
 );
 
+// ---------- lesson videos on YouTube (upload via Upload-Post, unlisted) --------
+
+router.get('/uploads/youtube/status', (_req, res) => {
+  res.json({
+    configured: youtubeUploadConfigured,
+    privacy: 'unlisted',
+    maxBytes: MAX_VIDEO_BYTES,
+    types: Object.keys(VIDEO_TYPES),
+  });
+});
+
+/** Polls one background Upload-Post job until YouTube hands back the video ID. */
+router.get(
+  '/uploads/youtube/status/:requestId',
+  asyncHandler(async (req, res) => {
+    if (!/^[\w-]{8,128}$/.test(req.params.requestId)) throw new HttpError(404, 'Upload not found');
+    if (!youtubeUploadConfigured) {
+      throw new HttpError(503, `YouTube upload is not set up: ${youtubeUploadProblem()}.`);
+    }
+    const status = await getYouTubeUploadStatus(req.params.requestId);
+    if (status.status === 'failed') throw new HttpError(502, status.error || 'YouTube upload failed');
+    res.json(status);
+  })
+);
+
+/**
+ * POST /api/admin/uploads/youtube — multipart field `file` (+ `title`, optional `description`).
+ * Uploads to the connected YouTube channel as UNLISTED via Upload-Post and returns the
+ * video ID the lesson stores. Long uploads finish in the background: the answer is then
+ * { status: 'processing', requestId } and the dashboard polls the status route above.
+ */
+router.post(
+  '/uploads/youtube',
+  (req, _res, next) => {
+    req.setTimeout(0);
+    next();
+  },
+  handleVideoUpload,
+  asyncHandler(async (req, res) => {
+    const file = req.file;
+    const cleanup = () => file && fs.promises.rm(file.path, { force: true }).catch(() => {});
+    try {
+      if (!file) throw new HttpError(400, 'Send a video in the "file" field');
+      if (!youtubeUploadConfigured) {
+        throw new HttpError(503, `YouTube upload is not set up: ${youtubeUploadProblem()}.`);
+      }
+      const title = typeof req.body.title === 'string' && req.body.title.trim() ? req.body.title.trim().slice(0, 100) : '';
+      if (!title) throw new HttpError(400, 'Give the lesson a title first — YouTube needs one for the upload');
+      const description = typeof req.body.description === 'string' ? req.body.description.slice(0, 5000) : '';
+      let result;
+      try {
+        result = await uploadYouTubeVideo({
+          filePath: file.path,
+          fileName: file.originalname,
+          contentType: file.mimetype,
+          title,
+          description,
+        });
+      } catch (err) {
+        console.error('[uploads] YouTube upload failed:', err?.message || err);
+        throw new HttpError(503, err?.message || 'YouTube upload failed. Check the Upload-Post setup in server/.env.');
+      }
+      res.status(result.status === 'completed' ? 201 : 202).json({ ...result, size: file.size, contentType: file.mimetype });
+    } finally {
+      await cleanup();
+    }
+  })
+);
+
 // ---------- courses ------------------------------------------------------------
 const ingredientSchema = z.object({
   item: z.string().trim().min(1).max(140),
@@ -144,15 +220,35 @@ const lessonSchema = z
       .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
       .default(''),
     videos: z.array(lessonVideoSchema).max(4).default([]),
+    /** 'cloud' = Backblaze B2 (above), 'youtube' = unlisted video on the academy channel. */
+    videoSource: z.enum(['cloud', 'youtube']).default('cloud'),
+    /** A pasted YouTube link or raw video ID; normalised to the ID in the transform below. */
+    youtubeVideoId: z.string().trim().max(500).default(''),
+    youtubeUploadRequestId: z.string().trim().max(120).default(''),
     durationSec: z.number().int().min(0).max(86400).default(0),
     recipe: recipeSchema.optional().nullable(),
+  })
+  .superRefine((lesson, ctx) => {
+    if (lesson.videoSource === 'youtube' && lesson.youtubeVideoId && !extractYouTubeVideoId(lesson.youtubeVideoId)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['youtubeVideoId'],
+        message: 'Paste a valid YouTube link or video ID',
+      });
+    }
   })
   .transform((lesson) => {
     // Best available quality also goes in `videoKey` so older app builds keep playing.
     const best = [...lesson.videos].sort((a, b) => Number(b.quality) - Number(a.quality))[0];
     // A preview cannot run past the end of the lesson; unmeasured lessons keep the value as typed.
     const previewSec = lesson.durationSec > 0 ? Math.min(lesson.previewSec, lesson.durationSec) : lesson.previewSec;
-    return { ...lesson, previewSec, isPreview: previewSec > 0, videoKey: best ? best.videoKey : lesson.videoKey };
+    return {
+      ...lesson,
+      previewSec,
+      isPreview: previewSec > 0,
+      videoKey: best ? best.videoKey : lesson.videoKey,
+      youtubeVideoId: extractYouTubeVideoId(lesson.youtubeVideoId),
+    };
   });
 const courseSchema = z.object({
   title: z.string().trim().min(2).max(140),

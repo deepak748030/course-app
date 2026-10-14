@@ -14,7 +14,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CourseImage } from '@/components/course-image';
 import { AppText, Badge, Button, DataList, Screen } from '@/components/ui';
@@ -49,7 +49,6 @@ export default function PurchaseSuccessScreen() {
 
   const { courseId, orderId } = useLocalSearchParams<{ courseId: string; orderId?: string }>();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
   const { isEnrolled, state } = useStore();
 
   const course = useMemo(() => byId(courseId), [byId, courseId]);
@@ -80,17 +79,19 @@ export default function PurchaseSuccessScreen() {
 
   if (!course) {
     return (
-      <Screen contentStyle={{ paddingBottom: insets.bottom + spacing.xl, paddingTop: spacing.xxl, gap: layout.gap }}>
-        <View style={styles.hero}>
-          <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>{t("Course not found")}</Text>
-          <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
-            {t("This confirmation link is out of date, so the purchase cannot be shown.")}
-          </Text>
-        </View>
-        <View style={styles.pad}>
-          <Button label={t("Back to My learning")} onPress={() => router.replace('/learning')} />
-        </View>
-      </Screen>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <Screen contentStyle={{ paddingBottom: spacing.xl, paddingTop: spacing.xxl, gap: layout.gap }}>
+          <View style={styles.hero}>
+            <Text style={[type.title, { color: colors.text, textAlign: 'center' }]}>{t("Course not found")}</Text>
+            <Text style={[type.body, { color: colors.textMuted, textAlign: 'center' }]}>
+              {t("This confirmation link is out of date, so the purchase cannot be shown.")}
+            </Text>
+          </View>
+          <View style={styles.pad}>
+            <Button label={t("Back to My learning")} onPress={() => router.replace('/learning')} />
+          </View>
+        </Screen>
+      </SafeAreaView>
     );
   }
 
@@ -99,13 +100,14 @@ export default function PurchaseSuccessScreen() {
   const lessonMinutes = course.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
 
   return (
-    <Screen
-      contentStyle={{
-        paddingTop: spacing.xl,
-        paddingBottom: insets.bottom + spacing.lg,
-        flexGrow: 1,
-        gap: layout.sectionGap,
-      }}>
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      <Screen
+        contentStyle={{
+          paddingTop: spacing.xl,
+          paddingBottom: spacing.lg,
+          flexGrow: 1,
+          gap: layout.sectionGap,
+        }}>
       {/* Hero: the mark, a ring that pulses out of it and a short burst of particles. */}
       <View style={styles.hero}>
         <View style={styles.markWrap}>
@@ -228,7 +230,8 @@ export default function PurchaseSuccessScreen() {
           </View>
         </View>
       </View>
-    </Screen>
+      </Screen>
+    </SafeAreaView>
   );
 }
 
@@ -256,6 +259,7 @@ function Step({ n, text }: { n: number; text: string }) {
 }
 
 const styles = createStyles(() => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   pad: { paddingHorizontal: layout.screen },
   hero: { alignItems: 'center', gap: spacing.md, paddingHorizontal: layout.section },

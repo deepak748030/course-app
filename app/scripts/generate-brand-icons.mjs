@@ -9,15 +9,19 @@
  * cut every one of them out of the one file. So this script reads logo.png's pixels and writes:
  *
  *   assets/images/favicon.png                  196, the logo as-is (web tab icon)
- *   assets/images/splash-icon.png              512, the logo as-is (splash screen; app.json paints white behind it)
+ *   assets/images/splash-icon.png              512, the disc on white, padded (no green field)
  *   assets/images/android-icon-background.png  432, flat field in the logo's own corner green
- *   assets/images/android-icon-foreground.png  432, the logo with its corner field made transparent
+ *   assets/images/android-icon-foreground.png  432, the logo scaled into the adaptive-icon safe zone
  *   assets/images/android-icon-monochrome.png  432, white silhouette of the logo's artwork, for themed icons
  *   assets/images/brand-mark.png               256, the churn and leaves alone (no wordmark), transparent
  *
  * The Android pair composes back to the logo exactly: the background layer is the logo's corner green
- * and the foreground is everything inside the disc, at the logo's own proportions, so a square, a
- * circle or a squircle mask all show the same artwork the app shows everywhere else. The foreground
+ * and the foreground is the whole disc — churn, leaves and the full YDU ACADEMY wordmark. Only its
+ * scale changes: an adaptive-icon layer is 108dp of which launchers only guarantee the centred
+ * 66dp safe-zone circle, masking the rest away in whatever shape the phone uses. The supplied disc
+ * is full-bleed, so at full size a circle mask cut ACADEMY off entirely and halved YDU. Scaled to
+ * 64% and centred, every stroke of the artwork sits inside the safe zone and no mask shape can
+ * reach it; the green field shows around the disc as a deliberate border instead. The foreground
  * keeps a soft alpha edge where the disc meets the field, so no mask shape leaves a jaggy rim.
  *
  * Pixel work, in short:
@@ -274,6 +278,68 @@ function flat(size, [r, g, b]) {
   return { width: size, height: size, data };
 }
 
+/**
+ * Centres a square layer on a transparent canvas of `size`, scaled to `fraction` of it.
+ *
+ * Android adaptive icons: the layer is 108dp, the launcher's mask viewport is the centred 72dp,
+ * and only the centred 66dp circle (the safe zone) is guaranteed to survive every mask shape.
+ * The farthest ink from the logo's centre — the corners of ACADEMY — sits at ≈48% of its width,
+ * so at 64% (≈69dp, ink within ≈31dp of centre) the whole artwork clears the safe zone with
+ * margin, while the white disc still reads as a bold badge on the green field.
+ */
+const ADAPTIVE_CONTENT_FRACTION = 0.64;
+
+/**
+ * Splash: the disc alone on white — the logo's dark-green square field is left off entirely,
+ * so the corners around the circle are white like the splash field itself and the green lives
+ * only in the artwork (the churn, the leaves, the name). It is also padded: Android 12+ shows
+ * the splash image through a circular mask, and at 68% the farthest ink sits at 0.384 of the
+ * canvas from the centre, inside even the tightest inscribed circle (0.5), so the mask can
+ * only ever eat white margin and the artwork is never clipped.
+ */
+const SPLASH_CONTENT_FRACTION = 0.68;
+
+/** Centres a square layer on a canvas of `size` filled with `fill`, scaled to `fraction` of it. */
+function placeOnBackground(source, size, fraction, fill) {
+  const scaledSize = Math.round(size * fraction);
+  const scaled = downscale(source, scaledSize);
+  const data = new Uint8Array(size * size * 4);
+  for (let i = 0; i < size * size; i += 1) {
+    const o = i * 4;
+    data[o] = fill[0];
+    data[o + 1] = fill[1];
+    data[o + 2] = fill[2];
+    data[o + 3] = fill[3];
+  }
+  const offset = Math.round((size - scaledSize) / 2);
+  for (let y = 0; y < scaledSize; y += 1) {
+    for (let x = 0; x < scaledSize; x += 1) {
+      const si = (y * scaledSize + x) * 4;
+      const di = ((y + offset) * size + (x + offset)) * 4;
+      const a = scaled.data[si + 3] / 255;
+      // Alpha-composite over the fill, so transparent source pixels end up the fill colour
+      // itself (opaque), never see-through and never black.
+      data[di] = Math.round(scaled.data[si] * a + fill[0] * (1 - a));
+      data[di + 1] = Math.round(scaled.data[si + 1] * a + fill[1] * (1 - a));
+      data[di + 2] = Math.round(scaled.data[si + 2] * a + fill[2] * (1 - a));
+      data[di + 3] = 255;
+    }
+  }
+  return { width: size, height: size, data };
+}
+
+function placeCentered(source, size, fraction) {
+  const scaledSize = Math.round(size * fraction);
+  const scaled = downscale(source, scaledSize);
+  const data = new Uint8Array(size * size * 4);
+  const offset = Math.round((size - scaledSize) / 2);
+  for (let y = 0; y < scaledSize; y += 1) {
+    const src = scaled.data.subarray(y * scaledSize * 4, (y + 1) * scaledSize * 4);
+    data.set(src, ((y + offset) * size + offset) * 4);
+  }
+  return { width: size, height: size, data };
+}
+
 /* ------------------------------------------------------------------ *
  * Write the set
  * ------------------------------------------------------------------ */
@@ -285,12 +351,12 @@ const mark512 = downscale(layers.mark, 512);
 
 const targets = [
   ['favicon.png', downscale(opaque, 196)],
-  ['splash-icon.png', downscale(opaque, 512)],
+  ['splash-icon.png', placeOnBackground(layers.field, 512, SPLASH_CONTENT_FRACTION, [255, 255, 255, 255])],
   ['android-icon-background.png', flat(432, FIELD)],
-  // The foreground is the disc at the logo's own proportions: the field behind it is the background
-  // layer, so every mask shape — circle, squircle, rounded square — composes back to the logo.
-  ['android-icon-foreground.png', downscale(layers.field, 432)],
-  ['android-icon-monochrome.png', downscale(layers.mono, 432)],
+  // Scaled into the safe zone (see placeCentered): full-size, the disc's own rim survived but
+  // ACADEMY and half of YDU fell outside every launcher mask.
+  ['android-icon-foreground.png', placeCentered(layers.field, 432, ADAPTIVE_CONTENT_FRACTION)],
+  ['android-icon-monochrome.png', placeCentered(layers.mono, 432, ADAPTIVE_CONTENT_FRACTION)],
   ['brand-mark.png', downscale(layers.mark, 256)],
 ];
 

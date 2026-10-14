@@ -38,11 +38,19 @@ export interface Lesson {
   videoKey?: string;
   /** Encoded versions of the lesson video, one per quality. */
   videos?: LessonVideo[];
+  /** Where the lesson video lives: 'cloud' = B2 bucket, 'youtube' = academy channel (unlisted). */
+  videoSource?: VideoSource;
+  /** YouTube video ID when videoSource is 'youtube' (from an API upload or a pasted link). */
+  youtubeVideoId?: string;
+  /** Upload-Post job id while a YouTube upload finishes in the background. */
+  youtubeUploadRequestId?: string;
   /** Exact length of the video in seconds, read when it was uploaded. */
   durationSec?: number;
 }
 
 export type VideoQuality = '360' | '480' | '720' | '1080';
+
+export type VideoSource = 'cloud' | 'youtube';
 
 export interface LessonVideo {
   quality: VideoQuality;

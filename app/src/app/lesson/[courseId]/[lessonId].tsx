@@ -76,8 +76,9 @@ import { feedback } from '@/lib/util';
 
 const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 
-/** `720` → `720p`; a legacy single file has no size, so it is `Original`. */
-const qualityLabel = (quality: string) => (quality === 'original' ? 'Original' : `${quality}p`);
+/** `720` → `720p`; a legacy single file has no size, so it is `Original`; Piped's adaptive stream is `Auto`. */
+const qualityLabel = (quality: string) =>
+  quality === 'original' ? 'Original' : quality === 'auto' ? 'Auto' : /^\d+$/.test(quality) ? `${quality}p` : quality;
 const SAVE_INTERVAL_SEC = 10;
 /** How long the player controls stay on screen after they are called up. */
 const CONTROLS_HIDE_MS = 3000;
@@ -157,6 +158,8 @@ export default function LessonPlayerScreen() {
   const [quality, setQuality] = useState<string | null>(null);
   /** Versions the server carries for this lesson, and the one actually streaming. */
   const [qualities, setQualities] = useState<string[]>([]);
+  /** Where the current stream comes from ('cloud' storage or YouTube via Piped); same player either way. */
+  const [playbackSource, setPlaybackSource] = useState<'cloud' | 'youtube' | null>(null);
   const [playingQuality, setPlayingQuality] = useState<string | null>(null);
   /** Playhead to restore once a different quality has loaded. */
   const resumeAtRef = useRef<number | null>(null);
@@ -182,6 +185,7 @@ export default function LessonPlayerScreen() {
         setPlaybackUrl(res.url);
         setPlayingQuality(res.quality);
         setQualities(res.qualities);
+        setPlaybackSource(res.source ?? 'cloud');
       })
       .catch((err: unknown) => {
         if (!cancelled) {
@@ -793,7 +797,9 @@ export default function LessonPlayerScreen() {
         title={t("Video quality")}
         subtitle={
           qualities.length > 0
-            ? `${qualities.length} versions uploaded for this lesson`
+            ? playbackSource === 'youtube'
+              ? `${qualities.length} qualities available for this lesson`
+              : `${qualities.length} versions uploaded for this lesson`
             : tracks.length > 1
             ? `${tracks.length} renditions in this lesson`
             : tracks.length === 1 ? 'This lesson has one quality' : 'Quality is chosen by the player'
