@@ -271,6 +271,20 @@ export const youtubeUploadJobStatus = (requestId: string) =>
     `/admin/uploads/youtube/status/${encodeURIComponent(requestId)}`
   );
 
+/** Can the app actually play this YouTube video right now (Piped/Invidious chain)? */
+export const checkYouTubeVideo = (videoId: string) =>
+  request<{
+    ok: boolean;
+    videoId: string;
+    provider?: string;
+    format?: string;
+    quality?: string;
+    qualities?: string[];
+    title?: string;
+    visibility?: string;
+    error?: string;
+  }>('/admin/uploads/youtube/check', { method: 'POST', body: { videoId } });
+
 /**
  * Multipart image upload (cover art, anything the dashboard needs hosted).
  * Goes straight to the server's /api/uploads (on SERVER_URL); returns the stored URL.

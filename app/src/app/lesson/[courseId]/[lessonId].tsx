@@ -527,6 +527,13 @@ export default function LessonPlayerScreen() {
             <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
               {playbackReason ?? t("This lesson video could not be played.")}
             </Text>
+            {/* The player's own reason (bad stream, unsupported format…) — small, but it is the
+                difference between guessing and knowing when a lesson will not play. */}
+            {(statusEvent?.error as { message?: string } | undefined)?.message ? (
+              <Text style={[type.label, { color: colors.onPlayerMuted, textAlign: 'center', paddingHorizontal: layout.screen }]}>
+                {(statusEvent?.error as { message?: string }).message}
+              </Text>
+            ) : null}
             <Button
               label={t("Try again")}
               variant="secondary"

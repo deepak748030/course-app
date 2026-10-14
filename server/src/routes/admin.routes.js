@@ -18,6 +18,7 @@ import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
 import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, getUploadProgress, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
 import {
+  checkYouTubeVideo,
   extractYouTubeVideoId,
   getYouTubeUploadStatus,
   uploadYouTubeVideo,
@@ -142,6 +143,23 @@ router.get(
     const status = await getYouTubeUploadStatus(req.params.requestId);
     if (status.status === 'failed') throw new HttpError(502, status.error || 'YouTube upload failed');
     res.json(status);
+  })
+);
+
+/**
+ * POST /api/admin/uploads/youtube/check — { videoId } (a raw ID or any YouTube link).
+ * Answers whether the playback chain (Piped, then Invidious) can stream this video
+ * right now, and if not, what the instances actually said. Always 200 on a well-formed
+ * request: a failed check is an answer, not a server error.
+ */
+router.post(
+  '/uploads/youtube/check',
+  asyncHandler(async (req, res) => {
+    const raw = typeof req.body?.videoId === 'string' ? req.body.videoId : typeof req.body?.url === 'string' ? req.body.url : '';
+    const videoId = extractYouTubeVideoId(raw);
+    if (!videoId) throw new HttpError(400, 'Send a valid YouTube video ID or link');
+    const result = await checkYouTubeVideo(videoId);
+    res.json({ videoId, ...result });
   })
 );
 

@@ -128,7 +128,7 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
       quality: playback.quality,
       qualities: playback.qualities,
       source: 'youtube',
-      provider: 'piped',
+      provider: playback.provider || 'piped',
       format: playback.format,
     });
   }

@@ -1,6 +1,6 @@
-import { BookOpen, Cloud, Eye, EyeOff, ExternalLink, ImagePlus, Link2, Loader2, Pencil, Plus, Trash2, Video, X, Youtube } from 'lucide-react';
+import { BookOpen, Cloud, Eye, EyeOff, ExternalLink, ImagePlus, Link2, Loader2, Pencil, Play, Plus, Trash2, Video, X, Youtube } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { api, uploadCourseVideo, uploadImage, uploadYouTubeVideo, youtubeUploadJobStatus, youtubeUploadStatus } from '../api/client';
+import { api, checkYouTubeVideo, uploadCourseVideo, uploadImage, uploadYouTubeVideo, youtubeUploadJobStatus, youtubeUploadStatus } from '../api/client';
 import { useRealtimeRefresh } from '../api/realtime';
 import type { Category, Course, Lesson, LessonVideo, VideoQuality, VideoSource } from '../api/types';
 import {
@@ -312,6 +312,8 @@ function LessonYouTube({ lesson, onChange }: { lesson: Lesson; onChange: LessonP
   const toast = useToast();
   const [link, setLink] = useState('');
   const [busy, setBusy] = useState<{ stage: 'sending' | 'processing'; percent: number } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
@@ -405,28 +407,68 @@ function LessonYouTube({ lesson, onChange }: { lesson: Lesson; onChange: LessonP
     }
   }
 
+  async function testPlayback() {
+    if (!videoId || checking) return;
+    setChecking(true);
+    setCheckResult(null);
+    try {
+      const result = await checkYouTubeVideo(videoId);
+      if (result.ok) {
+        const quality = result.quality === 'auto' ? 'adaptive (HLS)' : `${result.quality}p`;
+        setCheckResult({
+          ok: true,
+          text: `Playable now via ${result.provider === 'invidious' ? 'Invidious' : 'Piped'} · ${quality}${result.title ? ` · “${result.title}”` : ''}`,
+        });
+      } else {
+        setCheckResult({ ok: false, text: result.error || 'Not playable right now' });
+      }
+    } catch (e) {
+      setCheckResult({ ok: false, text: e instanceof Error ? e.message : 'Playback test failed' });
+    } finally {
+      setChecking(false);
+    }
+  }
+
   if (videoId) {
     return (
-      <div className="inline-flex h-9 items-center gap-1 rounded-md border border-success bg-success-soft px-2 text-xs font-semibold text-success">
-        <Youtube size={14} />
-        <span>YouTube · {videoId}</span>
-        <a
-          href={`https://www.youtube.com/watch?v=${videoId}`}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded p-1 hover:bg-ink/5"
-          title="Open on YouTube"
-        >
-          <ExternalLink size={12} />
-        </a>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="inline-flex h-9 items-center gap-1 rounded-md border border-success bg-success-soft px-2 text-xs font-semibold text-success">
+          <Youtube size={14} />
+          <span>YouTube · {videoId}</span>
+          <a
+            href={`https://www.youtube.com/watch?v=${videoId}`}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded p-1 hover:bg-ink/5"
+            title="Open on YouTube"
+          >
+            <ExternalLink size={12} />
+          </a>
+          <button
+            type="button"
+            onClick={() => onChange({ youtubeVideoId: '', youtubeUploadRequestId: '' })}
+            className="rounded p-1 hover:bg-error-soft hover:text-error"
+            title="Remove the YouTube video"
+          >
+            <X size={12} />
+          </button>
+        </div>
         <button
           type="button"
-          onClick={() => onChange({ youtubeVideoId: '', youtubeUploadRequestId: '' })}
-          className="rounded p-1 hover:bg-error-soft hover:text-error"
-          title="Remove the YouTube video"
+          onClick={() => void testPlayback()}
+          disabled={checking}
+          className="inline-flex h-9 items-center gap-1 rounded-md border border-line px-2.5 text-xs font-semibold hover:bg-brand-soft hover:text-brand-ink disabled:opacity-50"
+          title="Check that the app can play this video right now (Piped/Invidious)"
         >
-          <X size={12} />
+          {checking ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
+          {checking ? 'Testing…' : 'Test playback'}
         </button>
+        {checkResult ? (
+          <span className={`basis-full text-[11px] font-medium ${checkResult.ok ? 'text-success' : 'text-error'}`}>
+            {checkResult.ok ? '✓ ' : '✗ '}
+            {checkResult.text}
+          </span>
+        ) : null}
       </div>
     );
   }

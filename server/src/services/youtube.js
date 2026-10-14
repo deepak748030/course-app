@@ -194,26 +194,32 @@ export const pipedInstances = (process.env.PIPED_API_BASE_URLS || '')
   .concat(DEFAULT_PIPED_INSTANCES)
   .filter((value, index, list) => list.indexOf(value) === index);
 
-const PIPED_TIMEOUT_MS = 9000;
-/** Piped stream links are signed for a few hours; report one hour so the app re-asks in good time. */
+const FETCH_TIMEOUT_MS = 9000;
+/** Stream links are signed for a few hours; report one hour so the app re-asks in good time. */
 export const PIPED_PLAYBACK_TTL_SECONDS = 60 * 60;
 
-async function fetchPipedStreams(base, videoId) {
+async function fetchJson(url) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), PIPED_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(`${base}/streams/${encodeURIComponent(videoId)}`, {
+    const res = await fetch(url, {
       signal: controller.signal,
-      headers: { Accept: 'application/json' },
+      headers: {
+        Accept: 'application/json',
+        // Some public instances refuse obvious script clients; a plain browser UA is honoured.
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126 Safari/537.36',
+      },
     });
-    if (!res.ok) throw new Error(`Piped instance answered ${res.status}`);
+    if (!res.ok) throw new Error(`answered ${res.status}`);
     const data = await res.json();
-    if (data?.error) throw new Error(String(data.error));
+    if (data?.error) throw new Error(typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
     return data;
   } finally {
     clearTimeout(timer);
   }
 }
+
+const fetchPipedStreams = (base, videoId) => fetchJson(`${base}/streams/${encodeURIComponent(videoId)}`);
 
 /**
  * Picks what the app's player should stream from one Piped /streams payload.
@@ -255,23 +261,113 @@ export function pickPipedStream(data, quality = '') {
 }
 
 /**
- * Resolves a playable stream for one YouTube video ID, trying each configured
- * Piped instance in order. Throws an Error with a learner-readable message.
+ * Fallback chain for one video: every Piped instance first, then every Invidious
+ * instance (same job, different project — one being down must not stop a lesson).
+ * The two lists are independent on purpose: these are third-party servers.
  */
-export async function getPipedPlayback(videoId, quality = '') {
-  let lastError = null;
+const DEFAULT_INVIDIOUS_INSTANCES = [
+  'https://invidious.f5.si',
+  'https://inv.nadeko.net',
+  'https://invidious.privacyredirect.com',
+];
+
+export const invidiousInstances = (process.env.INVIDIOUS_API_BASE_URLS || '')
+  .split(',')
+  .map((value) => value.trim().replace(/\/+$/, ''))
+  .filter(Boolean)
+  .concat(DEFAULT_INVIDIOUS_INSTANCES)
+  .filter((value, index, list) => list.indexOf(value) === index);
+
+/** Picks a playable stream from one Invidious /api/v1/videos payload (combined files first, then HLS). */
+export function pickInvidiousStream(data, base, quality = '') {
+  const formats = (Array.isArray(data?.formatStreams) ? data.formatStreams : [])
+    .filter((s) => s?.url && /video\/mp4/i.test(s.type || ''))
+    .map((s) => ({ url: s.url, height: Number(String(s.qualityLabel || '').replace(/\D/g, '')) || 0 }))
+    .filter((s) => s.height > 0)
+    .sort((a, b) => b.height - a.height);
+  const qualities = [...new Set(formats.map((s) => String(s.height)))];
+  const want = /^\d+$/.test(String(quality)) ? Number(quality) : null;
+  if (formats.length) {
+    const chosen = want ? formats.find((s) => s.height <= want) || formats[formats.length - 1] : formats[0];
+    return { url: chosen.url, quality: String(chosen.height), qualities, format: 'mp4' };
+  }
+  if (typeof data?.hlsUrl === 'string' && data.hlsUrl) {
+    const url = data.hlsUrl.startsWith('http') ? data.hlsUrl : `${base}${data.hlsUrl}`;
+    return { url, quality: 'auto', qualities: qualities.length ? qualities : ['auto'], format: 'hls' };
+  }
+  return null;
+}
+
+/**
+ * Resolves a playable stream for one YouTube video ID.
+ * Throws an Error whose `upstream` carries what the instances actually said,
+ * so the admin test endpoint (and server logs) can name the real problem.
+ */
+export async function resolveYouTubePlayback(videoId, quality = '') {
+  const failures = [];
   for (const base of pipedInstances) {
     try {
       const data = await fetchPipedStreams(base, videoId);
       const picked = pickPipedStream(data, quality);
-      if (!picked) throw new Error('No playable stream in the Piped response');
-      return { ...picked, instance: base, durationSec: Number(data.duration) || 0 };
+      if (!picked) throw new Error('no playable stream in the response');
+      return {
+        ...picked,
+        provider: 'piped',
+        instance: base,
+        title: typeof data.title === 'string' ? data.title : '',
+        visibility: typeof data.visibility === 'string' ? data.visibility : '',
+        durationSec: Number(data.duration) || 0,
+      };
     } catch (err) {
-      lastError = err;
+      failures.push(`piped ${base}: ${err?.message || err}`);
     }
   }
-  console.error(`[piped] could not resolve ${videoId} on any instance:`, lastError?.message || lastError);
+  for (const base of invidiousInstances) {
+    try {
+      const data = await fetchJson(`${base}/api/v1/videos/${encodeURIComponent(videoId)}`);
+      const picked = pickInvidiousStream(data, base, quality);
+      if (!picked) throw new Error('no playable stream in the response');
+      return {
+        ...picked,
+        provider: 'invidious',
+        instance: base,
+        title: typeof data.title === 'string' ? data.title : '',
+        visibility: '',
+        durationSec: Number(data.lengthSeconds) || 0,
+      };
+    } catch (err) {
+      failures.push(`invidious ${base}: ${err?.message || err}`);
+    }
+  }
+  console.error(`[youtube-playback] could not resolve ${videoId}:`, failures.join(' | '));
   const err = new Error('This lesson video could not be played right now. Check your connection and try again.');
   err.status = 502;
+  err.upstream = failures.join(' | ');
   throw err;
+}
+
+/** Backwards-compatible name: the provider in the result says which chain answered. */
+export const getPipedPlayback = resolveYouTubePlayback;
+
+/**
+ * Admin-side health check for one linked video: can the playback chain actually
+ * stream it right now? Returns the real upstream reason when it cannot (private
+ * video, bot check, instance down…), which is what the dashboard shows.
+ */
+export async function checkYouTubeVideo(videoId) {
+  try {
+    const playback = await resolveYouTubePlayback(videoId);
+    return {
+      ok: true,
+      provider: playback.provider,
+      instance: playback.instance,
+      format: playback.format,
+      quality: playback.quality,
+      qualities: playback.qualities,
+      title: playback.title,
+      visibility: playback.visibility,
+    };
+  } catch (err) {
+    return { ok: false, error: err.upstream || err.message || 'Playback check failed' };
+  }
 }
