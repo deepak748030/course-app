@@ -413,7 +413,10 @@ check('every brand icon is cut from the supplied logo.png', () => {
   assert.ok(!read('src/app/auth/phone.tsx').includes('<BrandMark'), 'the phone sign-in screen carries no brand placeholder');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'and the home header');
   assert.ok(read('src/app/(tabs)/home.tsx').includes('images.brandMark'), 'the footer uses brand-mark.png');
-  assert.ok(read('src/app/onboarding.tsx').includes('<BrandMark size={26} />'), 'so does the brand row');
+  assert.ok(
+    read('src/app/onboarding.tsx').includes('source={images.brandMark}'),
+    'the onboarding brand row shows the same brand-mark.png artwork as the home header',
+  );
   assert.ok(
     !read('src/components/ui.tsx').includes('BrandTile'),
     'nothing tints the mark into a coloured tile any more — the logo brings its own colours',
@@ -432,8 +435,9 @@ check('every brand icon is cut from the supplied logo.png', () => {
     assert.ok(existsSync(fileURLToPath(new URL(`../${file}`, import.meta.url))), `${file} exists`);
   }
 
-  // Pixel proof that the icons are the logo and not a lookalike: the opaque ones carry the logo's own
-  // corner field and the logo's own centre, at every size the platforms ask for.
+  // Pixel proof that the icons are the logo and not a lookalike: every opaque one carries the logo's
+  // own centre, and each keeps the background its role demands (badge green for the favicon, plain
+  // white for the splash), at every size the platforms ask for.
   type Pixels = { width: number; height: number; data: Uint8Array };
   const at = (image: Pixels, x: number, y: number) => {
     const o = (y * image.width + x) * 4;
@@ -452,9 +456,18 @@ check('every brand icon is cut from the supplied logo.png', () => {
     const icon = pixels(file);
     assert.equal(icon.width, size, `${file} is ${size}px wide`);
     assert.equal(icon.height, size, `${file} is ${size}px tall`);
-    assert.ok(close(at(icon, 0, 0), field, 2), `${file} keeps the logo's field green in its corner`);
     assert.ok(close(at(icon, size >> 1, size >> 1), centre), `${file} keeps the logo's centre`);
   }
+  // The favicon is the badge, so the logo's green field fills its corners. The splash is the lockup
+  // on the plain white splash background: its corners are that white, and the green lives only in
+  // the artwork — never in the field around it.
+  const faviconPixels = pixels('assets/images/favicon.png');
+  assert.ok(close(at(faviconPixels, 0, 0), field, 2), 'the favicon keeps the logo field green in its corner');
+  const splashPixels = pixels('assets/images/splash-icon.png');
+  assert.ok(
+    close(at(splashPixels, 0, 0), [255, 255, 255, 255], 2),
+    'the splash corners are the white splash background, not a green field'
+  );
 
   // The Android pair composes back to the logo: the flat field behind the disc with its field keyed
   // out, plus a white silhouette of the artwork for themed icons.

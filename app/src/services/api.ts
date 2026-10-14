@@ -282,7 +282,7 @@ export const api = {
     }),
   /** Checks the code; a number seen for the first time gets a learner account. */
   verifyOtp: (phone: string, code: string) =>
-    request<{ token: string; user: ServerUser }>('/api/auth/otp/verify', {
+    request<{ token: string; user: ServerUser; isNewUser?: boolean }>('/api/auth/otp/verify', {
       method: 'POST',
       body: { phone, code },
     }),

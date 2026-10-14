@@ -35,7 +35,7 @@ export default function OtpScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { phone } = useLocalSearchParams<{ phone: string }>();
-  const { signIn, restoreInterests, state } = useStore();
+  const { signIn, restoreInterests } = useStore();
 
   const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -67,10 +67,10 @@ export default function OtpScreen() {
         signIn(result.session);
         feedback.success();
         restoreInterests(result.interests);
-        // The "what do you work with" step is asked once: after a choice (here or on another device) it never returns.
-        // "Maybe later" saves nothing, so it is asked again on the next sign-in.
-        const hasChoice = result.interests.length > 0 || state.interests.length > 0;
-        router.replace(hasChoice ? '/home' : '/auth/interests');
+        // The "what do you work with" step is part of registering: it is shown only when this
+        // verify created the account (a brand-new number). Returning numbers — whether they
+        // picked tracks before or tapped "Maybe later" — go straight home and never see it again.
+        router.replace(result.isNewUser ? '/auth/interests' : '/home');
         return;
       }
 
@@ -85,7 +85,7 @@ export default function OtpScreen() {
       announce(messages[result.error]);
       if (result.error !== 'network' && result.error !== 'blocked') setCode('');
     },
-    [announce, phone, restoreInterests, router, signIn, state.interests, verifying],
+    [announce, phone, restoreInterests, router, signIn, verifying],
   );
 
   // Auto-verify once a complete code is entered — expected on OTP screens, still reversible.
