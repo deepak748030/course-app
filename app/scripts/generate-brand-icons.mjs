@@ -9,7 +9,7 @@
  * cut every one of them out of the one file. So this script reads logo.png's pixels and writes:
  *
  *   assets/images/favicon.png                  196, the logo as-is (web tab icon)
- *   assets/images/splash-icon.png              512, the disc on white, padded (no green field)
+ *   assets/images/splash-icon.png              512, the lockup on white, padded (no green field)
  *   assets/images/android-icon-background.png  432, flat field in the logo's own corner green
  *   assets/images/android-icon-foreground.png  432, the logo scaled into the adaptive-icon safe zone
  *   assets/images/android-icon-monochrome.png  432, white silhouette of the logo's artwork, for themed icons
@@ -290,14 +290,14 @@ function flat(size, [r, g, b]) {
 const ADAPTIVE_CONTENT_FRACTION = 0.64;
 
 /**
- * Splash: the disc alone on white — the logo's dark-green square field is left off entirely,
- * so the corners around the circle are white like the splash field itself and the green lives
- * only in the artwork (the churn, the leaves, the name). It is also padded: Android 12+ shows
- * the splash image through a circular mask, and at 68% the farthest ink sits at 0.384 of the
- * canvas from the centre, inside even the tightest inscribed circle (0.5), so the mask can
- * only ever eat white margin and the artwork is never clipped.
+ * Splash: the full lockup (churn, leaves, name) on white — the logo's dark-green square field
+ * is left off entirely, so the corners are white like the splash field itself and the green
+ * lives only in the artwork. It is also padded: the lockup is ~0.8 as wide as it is tall, so at
+ * 78% its farthest corner sits 0.78 x sqrt(0.4^2 + 0.5^2) = 0.50 of the canvas from the centre —
+ * inside even a circular mask (0.5), which can then only ever eat white margin. Big enough to
+ * read as a splash logo, safe under every mask.
  */
-const SPLASH_CONTENT_FRACTION = 0.68;
+const SPLASH_CONTENT_FRACTION = 0.78;
 
 /** Centres a square layer on a canvas of `size` filled with `fill`, scaled to `fraction` of it. */
 function placeOnBackground(source, size, fraction, fill) {
