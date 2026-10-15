@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { useRouter } from '@/lib/router';
-import { LogOut, RefreshCcw } from 'lucide-react-native';
+import { LogOut, RefreshCcw, Trash } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -8,6 +8,7 @@ import { ConfirmSheet } from '@/components/bottom-sheet';
 import { AppBar, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
+import { api } from '@/services/api';
 import { useStore } from '@/store';
 
 export default function SettingsScreen() {
@@ -17,6 +18,8 @@ export default function SettingsScreen() {
   const { state, setPreference, resetDeviceData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState(false);
 
   return (
     <View style={styles.root}>
@@ -65,6 +68,27 @@ export default function SettingsScreen() {
           </DataList>
         </View>
 
+        <View style={styles.section}>
+          <SectionHeader title={t("Account")} subtitle={t("Signed in with your mobile number")} />
+          <DataList>
+            <ListRow
+              icon={Trash}
+              label={t("Delete account")}
+              tone="danger"
+              subtitle={t("Deletes your profile, purchases, progress and reviews for good")}
+              onPress={() => {
+                setDeleteError(false);
+                setDeleteOpen(true);
+              }}
+            />
+          </DataList>
+          {deleteError ? (
+            <Text style={[type.label, styles.note, { color: colors.error }]}>
+              {t("Could not delete the account. Check your connection and try again.")}
+            </Text>
+          ) : null}
+        </View>
+
         <View style={styles.about}>
           <Text style={[type.label, { color: colors.textSubtle }]}>
             YDU Academy {Constants.expoConfig?.version ?? '1.0.0'} · Expo SDK {Constants.expoConfig?.sdkVersion ?? '57'}
@@ -97,6 +121,28 @@ export default function SettingsScreen() {
           router.replace('/auth/phone');
         }}
         onCancel={() => setLogoutOpen(false)}
+      />
+
+      {/* Account deletion: server first (the account and its data go), then the local session. */}
+      <ConfirmSheet
+        visible={deleteOpen}
+        title={t("Delete your account?")}
+        body={t("Your profile, purchases, lesson progress and reviews are permanently deleted from the academy. Signing in with the same number afterwards starts a new account.")}
+        confirmLabel={t("Delete account")}
+        destructive
+        onConfirm={async () => {
+          setDeleteOpen(false);
+          try {
+            await api.deleteMe();
+          } catch {
+            // Only a failed server delete is worth reporting — after this point the account is gone.
+            setDeleteError(true);
+            return;
+          }
+          await signOut().catch(() => {});
+          router.replace('/auth/phone');
+        }}
+        onCancel={() => setDeleteOpen(false)}
       />
     </View>
   );

@@ -66,7 +66,7 @@ export type LegalDoc = {
   sections: readonly LegalSection[];
 };
 
-export const legalDocs: Record<'terms' | 'refund' | 'privacy', LegalDoc> = {
+export const legalDocs: Record<'terms' | 'refund' | 'privacy' | 'about' | 'contact' | 'disclaimer', LegalDoc> = {
   terms: {
     title: 'Terms of use',
     heading: 'YDU Academy terms of use',
@@ -164,7 +164,100 @@ export const legalDocs: Record<'terms' | 'refund' | 'privacy', LegalDoc> = {
       {
         heading: 'Removing your data',
         body: [
-          'You can clear the data kept on this device from Settings. To ask for your account to be deleted, contact the academy team through Help.',
+          'You can clear the data kept on this device from Settings. To delete your account permanently — profile, purchases, progress and reviews — use Delete account in Settings, or contact the academy team through Help.',
+        ],
+      },
+    ],
+  },
+  about: {
+    title: 'About us',
+    heading: 'About YDU Academy',
+    summary: 'An education app for the dairy trade.',
+    sections: [
+      {
+        heading: 'What the academy is',
+        body: [
+          'YDU Academy is an education app for people who work with milk — dairy farmers, operators, technicians and anyone learning the trade. Courses are short video lessons you watch on your phone.',
+        ],
+      },
+      {
+        heading: 'What is taught',
+        points: [
+          'Milk handling, chilling and quality checks',
+          'Paneer, ghee, curd, cheese and frozen desserts',
+          'Farm practice and running a dairy as a business',
+        ],
+      },
+      {
+        heading: 'How a course works',
+        body: [
+          'Each course is a sequence of short lessons. You buy a course once and it stays unlocked on your account, and your progress is saved as you go.',
+        ],
+      },
+      {
+        heading: 'Who the courses are for',
+        body: [
+          'Lessons teach methods and show examples with real equipment. They are built for people running or working in a dairy, not as a substitute for formal certification.',
+        ],
+      },
+      {
+        heading: 'Getting in touch',
+        body: [
+          'Questions about a course, an order or your account? The email address and phone number are on the Contact us page.',
+        ],
+      },
+    ],
+  },
+  contact: {
+    title: 'Contact us',
+    heading: 'Contact YDU Academy',
+    summary: 'How to reach the academy team.',
+    sections: [
+      {
+        heading: 'Support',
+        body: ['Email or call the academy team with any question about the app, a course or an order.'],
+      },
+      {
+        heading: 'What to include',
+        points: [
+          'What you were doing when something went wrong',
+          'The course and lesson, if it is about one',
+          'Your order number for anything about a payment or refund',
+        ],
+      },
+      {
+        heading: 'Response time',
+        body: ['Messages are read on working days. Orders and refund questions are handled first.'],
+      },
+    ],
+  },
+  disclaimer: {
+    title: 'Disclaimer',
+    heading: 'YDU Academy disclaimer',
+    summary: 'What the lessons cover — and what they do not.',
+    sections: [
+      {
+        heading: 'Educational content only',
+        body: [
+          'Lessons teach methods and show examples. They are not food-safety, veterinary, licensing or regulatory advice, and they do not replace a qualified professional.',
+        ],
+      },
+      {
+        heading: 'Check before you change anything',
+        body: [
+          'Batch outcomes depend on your milk, your equipment and your local rules. Check with your dairy officer or a qualified advisor before you change a commercial process.',
+        ],
+      },
+      {
+        heading: 'Payments',
+        body: [
+          'Payments are handled by Razorpay. YDU Academy does not store card, UPI or bank details and is not responsible for issues on the payment provider’s side.',
+        ],
+      },
+      {
+        heading: 'Changes',
+        body: [
+          'Courses are updated over time. The version of a lesson available in the app when you watch it is the one that applies.',
         ],
       },
     ],

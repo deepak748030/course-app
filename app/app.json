@@ -4,7 +4,7 @@
     "slug": "courses-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/splash-icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "yduacademy",
     "userInterfaceStyle": "light",
     "android": {
@@ -16,9 +16,6 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "permissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
       "package": "com.yduacademy.app"
     },
     "web": {

@@ -4,7 +4,8 @@
  *
  *   npm run seed        # wipes the database and reseeds (dev only!)
  *
- * Admin login after seeding:  admin@yduacademy.com / Admin@123
+ * The admin and learner sign-in values are defined in this file (they are not
+ * printed to the terminal or listed in the READMEs).
  */
 import bcrypt from 'bcryptjs';
 import mongoose from 'mongoose';
@@ -656,13 +657,10 @@ async function run() {
 
   console.log('\nSeed complete ✔');
   console.log('──────────────────────────────────────────────');
-  console.log(' Admin login:    admin@yduacademy.com / Admin@123');
-  console.log(' Learner login:  learner@ydu.academy / Learner@123');
-  console.log('──────────────────────────────────────────────');
-  console.log(' App sign-in (+91 mobile + OTP):');
-  console.log('   +91 98765 00001   Demo Learner (also has email login)');
-  console.log('   +91 98765 00002   Asha Verma (phone only)');
-  console.log(' OTP for any number outside production: 246810 (DEMO_OTP)');
+  console.log(' Accounts created: a dashboard admin and demo learners with sample orders.');
+  console.log(' Sign-in values are defined in src/seed/seed.js (not printed here).');
+  console.log(' The app accepts any valid Indian mobile outside production with the');
+  console.log(' demo OTP configured as DEMO_OTP in .env.');
   console.log('──────────────────────────────────────────────');
   await mongoose.disconnect();
 }

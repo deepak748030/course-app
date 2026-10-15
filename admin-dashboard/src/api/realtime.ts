@@ -96,7 +96,7 @@ export function connectRealtime() {
   const token = getToken();
   if (!token) return;
 
-  // Straight to the backend server (VITE_API_URL in .env) — no proxy in between.
+  // Straight to the backend server named by VITE_API_URL in .env.
   socket = io(SERVER_URL, {
     path: '/socket.io',
     auth: { token },

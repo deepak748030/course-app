@@ -25,19 +25,28 @@ Environment variables (see `.env.example`):
 
 The server starts HTTP immediately and connects to MongoDB in the background with
 retries; while the database is down, every data route answers a clean `503` and
-`GET /api/health` reports the state.
+`GET /api/health` reports the state. The public policy pages under `/legal` keep
+working too — they fall back to the built-in copy.
+
+## Public policy pages (Google Play)
+
+The server publishes the app's policy documents as plain, sign-in-free HTML — this is
+the URL to paste into the Play Console's privacy policy field:
+
+- `GET /legal` — hub listing all six documents
+- `GET /legal/:doc` — one document: `privacy`, `terms`, `refund`, `about`, `contact`, `disclaimer`
+
+They render the admin's copy from Settings (Content page in the dashboard) when saved, and the
+built-in text otherwise, so the app and the web listing always show the same documents. No login,
+no database required.
 
 ## Seeded logins
 
-| Role | Sign in with | Credential |
-| --- | --- | --- |
-| Admin (dashboard) | email `admin@yduacademy.com` | password `Admin@123` |
-| Learner (dashboard/API) | email `learner@ydu.academy` | password `Learner@123` |
-| Learner (app) | mobile `+91 98765 00001` | OTP `246810` (demo) |
-| Learner (app, phone only) | mobile `+91 98765 00002` | OTP `246810` (demo) |
-
-Any other valid Indian mobile number also works in the app with OTP `246810`, outside
-production. Each seeded learner has a unique +91 mobile number (10 digits starting 6–9).
+`npm run seed` creates the accounts the demo runs with — a dashboard admin, learners
+with sample orders, and the fixed OTP the app accepts outside production. The actual
+values live in `src/seed/seed.js` (and `DEMO_OTP` in `.env`), so they are not
+repeated here. Each seeded learner has a unique +91 mobile number (10 digits starting
+6–9).
 
 ## Payments (Razorpay)
 
@@ -77,6 +86,8 @@ orders, enrollments and reviews so the dashboard charts have data.
 | Method | Route | Notes |
 | --- | --- | --- |
 | `GET` | `/api/health` | liveness + db state |
+| `GET` | `/legal` | public policy hub (plain HTML, no login) |
+| `GET` | `/legal/:doc` | one policy page: `privacy` · `terms` · `refund` · `about` · `contact` · `disclaimer` |
 | `GET` | `/api/categories` | catalog categories |
 | `GET` | `/api/courses` | published courses (`category`, `level`, `q`, `popular`, `beginner`) |
 | `GET` | `/api/courses/:idOrSlug` | course detail |
@@ -94,6 +105,7 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `POST` | `/api/coupons/validate` | check a code + discounted price |
 | `GET/POST` | `/api/courses/:courseId/reviews` | list / write a review (enrolled only) |
 | `GET` | `/api/enrollments/my` | owned courses + lesson progress in one call |
+| `DELETE` | `/api/users/me` | delete the signed-in account + its data (in-app, Play requirement) |
 | `PATCH` | `/api/enrollments/:courseId/progress` | push completed lessons + resume position |
 | `GET` | `/api/uploads/policy` | which storage backend answers uploads |
 | `POST` | `/api/uploads` | multipart image upload (field `file`), admins → covers, learners → avatars |

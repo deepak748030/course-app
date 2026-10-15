@@ -154,7 +154,14 @@ export interface AppSettings {
   /** Help questions in the app, in order. Empty = the app's built-in FAQ. */
   faqs?: FaqEntry[];
   /** Policies in the app. A null/missing document shows the app's built-in text. */
-  legalDocs?: { terms?: LegalDocEntry | null; refund?: LegalDocEntry | null; privacy?: LegalDocEntry | null };
+  legalDocs?: {
+    terms?: LegalDocEntry | null;
+    refund?: LegalDocEntry | null;
+    privacy?: LegalDocEntry | null;
+    about?: LegalDocEntry | null;
+    contact?: LegalDocEntry | null;
+    disclaimer?: LegalDocEntry | null;
+  };
   /** Checkout lines in the app. Empty = the built-in list. */
   purchaseTerms?: string[];
 }
@@ -162,7 +169,14 @@ export interface AppSettings {
 /** The built-in text the app shows until the admin writes their own. */
 export interface ContentDefaults {
   faqs: FaqEntry[];
-  legalDocs: { terms: LegalDocEntry; refund: LegalDocEntry; privacy: LegalDocEntry };
+  legalDocs: {
+    terms: LegalDocEntry;
+    refund: LegalDocEntry;
+    privacy: LegalDocEntry;
+    about: LegalDocEntry;
+    contact: LegalDocEntry;
+    disclaimer: LegalDocEntry;
+  };
   purchaseTerms: string[];
 }
 

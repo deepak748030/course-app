@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { updateMe } from '../controllers/users.controller.js';
+import { deleteMe, updateMe } from '../controllers/users.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 
@@ -17,5 +17,7 @@ const mePatchSchema = z.object({
 });
 
 router.patch('/me', validateBody(mePatchSchema), updateMe);
+/** Account deletion, offered in the app itself (Google Play requires the mechanism to exist). */
+router.delete('/me', deleteMe);
 
 export default router;

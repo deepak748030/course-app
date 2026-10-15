@@ -260,6 +260,9 @@ export type ServerSettings = {
     terms?: ServerLegalDoc | null;
     refund?: ServerLegalDoc | null;
     privacy?: ServerLegalDoc | null;
+    about?: ServerLegalDoc | null;
+    contact?: ServerLegalDoc | null;
+    disclaimer?: ServerLegalDoc | null;
   };
   /** Checkout lines set in the admin; empty = the built-in list. */
   purchaseTerms?: string[];
@@ -297,6 +300,11 @@ export const api = {
     request<InboxPage>('/api/notifications', { query: params }),
   updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
+  /**
+   * Deletes the signed-in account and everything tied to it (orders, enrollments, reviews,
+   * push tokens). The session dies with the account — the caller signs out afterwards.
+   */
+  deleteMe: () => request<{ ok: true }>('/api/users/me', { method: 'DELETE' }),
 
   // ---- catalog ----
   categories: () => request<{ categories: ServerCategory[] }>('/api/categories'),
