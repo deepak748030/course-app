@@ -1,8 +1,6 @@
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { isDemoMode } from '../api/client';
-import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from '../api/demo';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
 
@@ -98,7 +96,7 @@ export default function Login() {
                     autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="admin@yduacademy.com"
+                    placeholder="Enter your email address"
                     className="h-11 w-full rounded-lg border border-line bg-surface pl-9 pr-3 text-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
                   />
                 </div>
@@ -137,16 +135,6 @@ export default function Login() {
                 Sign in to dashboard
               </Button>
             </form>
-
-            <div className="mt-6 rounded-lg border border-line-soft bg-surface-alt px-4 py-3">
-              <p className="text-xs font-semibold text-brand-ink">Demo credentials</p>
-              <p className="mt-1 font-mono text-[13px] text-ink">
-                {DEMO_ADMIN_EMAIL} · {DEMO_ADMIN_PASSWORD}
-              </p>
-              {isDemoMode() && (
-                <p className="mt-1 text-xs text-muted">Server offline — the demo dataset is active.</p>
-              )}
-            </div>
           </div>
 
           <p className="mt-5 text-center text-xs text-subtle">

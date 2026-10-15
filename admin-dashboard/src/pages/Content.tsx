@@ -2,7 +2,7 @@ import { ArrowDown, ArrowUp, FileText, HelpCircle, Plus, RotateCcw, Save, Trash2
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalSectionEntry } from '../api/types';
-import { Button, Card, CardHeader, Field, Input, LoadingBlock, Textarea, useToast } from '../components/ui';
+import { Button, Card, CardHeader, Field, FormSkeleton, Input, Skeleton, Textarea, useToast } from '../components/ui';
 import { BUILT_IN_CONTENT } from '../data/builtInContent';
 
 /**
@@ -150,7 +150,25 @@ export default function Content() {
         </Card>
       );
     }
-    return <Card><LoadingBlock label="Loading content…" /></Card>;
+    return (
+      <div className="max-w-3xl space-y-4">
+        <Card>
+          <div className="border-b border-line-soft px-5 py-4">
+            <Skeleton className="h-4 w-28" />
+            <Skeleton className="mt-2 h-3 w-64 max-w-full" />
+          </div>
+          <div className="space-y-3 p-5" aria-hidden="true">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="rounded-lg border border-line-soft p-4">
+                <Skeleton className="h-10 w-full rounded-lg" />
+                <Skeleton className="mt-3 h-20 w-full rounded-lg" />
+              </div>
+            ))}
+          </div>
+        </Card>
+        <FormSkeleton sections={2} fieldsPerSection={3} />
+      </div>
+    );
   }
 
   const faqsValid = draft.faqs.every((faq) => faq.question.trim().length > 0);

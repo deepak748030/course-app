@@ -1,13 +1,11 @@
 /**
  * API client for the YDU Academy server.
  *
- * All requests go to /api (proxied to the Express server by Vite in dev). When the
- * server or its database is unreachable, the client transparently falls back to the
- * in-browser demo store so the dashboard stays usable — the layout shows a banner
- * while demo mode is active.
+ * There is no dev-server proxy: every request goes straight to the backend whose
+ * URL is set in .env as VITE_API_URL (e.g. VITE_API_URL=http://localhost:5000 or
+ * https://api.example.com — without a trailing /api).
  */
 
-import { DemoApiError, demoRequest } from './demo';
 import type {
   AdminUser,
   AnalyticsOverview,
@@ -24,7 +22,39 @@ import type {
   NotificationKind,
 } from './types';
 
+/**
+ * Base URL of the backend server, from .env (VITE_API_URL). A trailing slash or
+ * a trailing /api in the value is tolerated. Falls back to the local dev server
+ * so a fresh checkout still works without a .env file.
+ */
+export const SERVER_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'http://localhost:5000')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
+
+/** Absolute URL for an API path such as '/admin/courses'. */
+export const apiUrl = (path: string) => `${SERVER_URL}/api${path}`;
+
+/**
+ * The server returns paths like /uploads/<file> for locally stored images.
+ * Those live on the server, not on this dashboard's host, so resolve them
+ * against SERVER_URL. Absolute http(s)/data/blob URLs pass through untouched.
+ */
+export function resolveAssetUrl(url?: string | null): string {
+  if (!url) return '';
+  return url.startsWith('/') ? `${SERVER_URL}${url}` : url;
+}
+
 const TOKEN_KEY = 'ydu.admin.token';
+
+// Clean up any stale demo database or demo tokens from prior demo-mode usage
+try {
+  localStorage.removeItem('ydu-admin-demo-db-v1');
+  if (localStorage.getItem(TOKEN_KEY) === 'demo-token') {
+    localStorage.removeItem(TOKEN_KEY);
+  }
+} catch {
+  /* storage unavailable */
+}
 
 export class ApiError extends Error {
   constructor(
@@ -33,21 +63,6 @@ export class ApiError extends Error {
     public details?: unknown
   ) {
     super(message);
-  }
-}
-
-let demoMode = false;
-const demoListeners = new Set<(on: boolean) => void>();
-
-export const isDemoMode = () => demoMode;
-export function onDemoModeChange(cb: (on: boolean) => void) {
-  demoListeners.add(cb);
-  return () => demoListeners.delete(cb);
-}
-function setDemoMode(on: boolean) {
-  if (demoMode !== on) {
-    demoMode = on;
-    demoListeners.forEach((cb) => cb(on));
   }
 }
 
@@ -80,18 +95,9 @@ function queryString(query?: RequestOptions['query']) {
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, query } = options;
 
-  if (demoMode) {
-    try {
-      return demoRequest(method, path + queryString(query), body) as T;
-    } catch (err) {
-      if (err instanceof DemoApiError) throw new ApiError(err.status, err.message);
-      throw err;
-    }
-  }
-
   let res: Response;
   try {
-    res = await fetch(`/api${path}${queryString(query)}`, {
+    res = await fetch(apiUrl(`${path}${queryString(query)}`), {
       method,
       headers: {
         'Content-Type': 'application/json',
@@ -100,15 +106,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    // Server unreachable → demo mode.
-    setDemoMode(true);
-    return request<T>(path, options);
-  }
-
-  // Database down (the server answers 503 from dbGuard) → demo mode.
-  if (res.status === 503) {
-    setDemoMode(true);
-    return request<T>(path, options);
+    throw new ApiError(0, 'Unable to connect to the server. Please check your connection or ensure the server is running.');
   }
 
   if (res.status === 401) {
@@ -153,7 +151,6 @@ export async function uploadCourseVideo(
   quality: string,
   onProgress: (progress: VideoUploadProgress) => void
 ): Promise<string> {
-  if (demoMode) throw new ApiError(503, 'Video uploads need the real server — demo mode cannot store files.');
   const body = new FormData();
   body.append('file', file);
   if (courseId) body.append('courseId', courseId);
@@ -170,7 +167,7 @@ export async function uploadCourseVideo(
       poll = null;
     };
 
-    xhr.open('POST', '/api/admin/uploads/video');
+    xhr.open('POST', apiUrl('/admin/uploads/video'));
     xhr.setRequestHeader('X-Upload-Id', uploadId);
     if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.upload.onprogress = (event) => {
@@ -181,7 +178,7 @@ export async function uploadCourseVideo(
       onProgress({ stage: 'storing', percent: 0 });
       poll = setInterval(async () => {
         try {
-          const res = await fetch(`/api/admin/uploads/video/progress/${uploadId}`, {
+          const res = await fetch(apiUrl(`/admin/uploads/video/progress/${uploadId}`), {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           });
           if (!res.ok) return;
@@ -215,16 +212,15 @@ export async function uploadCourseVideo(
 
 /**
  * Multipart image upload (cover art, anything the dashboard needs hosted).
- * Goes straight to the server's /api/uploads; returns the stored URL.
+ * Goes straight to the server's /api/uploads (on SERVER_URL); returns the stored URL.
  */
 export async function uploadImage(file: File, folder = 'covers'): Promise<{ url: string; provider: string }> {
-  if (demoMode) throw new ApiError(503, 'Uploads need the real server — demo mode cannot store files.');
   const body = new FormData();
   body.append('file', file);
   body.append('folder', folder);
   let res: Response;
   try {
-    res = await fetch('/api/uploads', {
+    res = await fetch(apiUrl('/uploads'), {
       method: 'POST',
       headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
       body,
@@ -275,15 +271,12 @@ export const api = {
   deleteCategory: (id: string) => request<{ ok: boolean }>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
   /** History of messages the academy sent, plus how many devices can receive a push. */
-  listNotifications: () => {
-    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
-    return request<{ notifications: AdminNotification[]; devices: number; learnersWithDevices: number }>('/admin/notifications');
-  },
+  listNotifications: () =>
+    request<{ notifications: AdminNotification[]; devices: number; learnersWithDevices: number }>('/admin/notifications'),
   /** Saves a message to the learner inbox(es) and pushes it to their devices. */
-  sendNotification: (data: { audience: 'all' | 'user'; userId?: string; title: string; body: string; kind: NotificationKind; courseId?: string }) => {
-    if (demoMode) return Promise.reject(new ApiError(503, 'Notifications need the real server. Demo mode cannot push them.'));
-    return request<{ notification: AdminNotification }>('/admin/notifications', { method: 'POST', body: data }).then((r) => r.notification);
-  },
+  sendNotification: (data: { audience: 'all' | 'user'; userId?: string; title: string; body: string; kind: NotificationKind; courseId?: string }) =>
+    request<{ notification: AdminNotification }>('/admin/notifications', { method: 'POST', body: data }).then((r) => r.notification),
+
   listUsers: (params: { search?: string; role?: string; blocked?: string }) =>
     request<{ users: AdminUser[] }>('/admin/users', { query: params }).then((r) => r.users),
   getUser: (id: string) => request<UserDetail>(`/admin/users/${id}`),
@@ -318,10 +311,6 @@ export const api = {
   updateSettings: (data: Partial<AppSettings>) =>
     request<{ settings: AppSettings }>('/admin/settings', { method: 'PUT', body: data }).then((r) => r.settings),
   /** Changes the admin's login (username = email) and/or password. The current password is always required. */
-  updateAccount: (data: { email?: string; currentPassword: string; newPassword?: string }) => {
-    if (demoMode) {
-      return Promise.reject(new ApiError(503, 'Login changes need the real server — demo mode cannot change them.'));
-    }
-    return request<{ user: { email: string } }>('/admin/account', { method: 'PATCH', body: data });
-  },
+  updateAccount: (data: { email?: string; currentPassword: string; newPassword?: string }) =>
+    request<{ user: { email: string } }>('/admin/account', { method: 'PATCH', body: data }),
 };

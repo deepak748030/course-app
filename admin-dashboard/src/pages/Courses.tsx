@@ -14,7 +14,7 @@ import {
   EmptyState,
   Field,
   Input,
-  LoadingBlock,
+  TableSkeleton,
   Pagination,
   SearchInput,
   Select,
@@ -407,7 +407,7 @@ export default function Courses() {
       {/* table */}
       <Card>
         {courses === null ? (
-          <LoadingBlock label="Loading courses…" />
+          <TableSkeleton rows={7} />
         ) : courses.length === 0 ? (
           <EmptyState
             icon={BookOpen}

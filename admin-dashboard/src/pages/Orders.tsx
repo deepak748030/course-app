@@ -9,7 +9,7 @@ import {
   Card,
   ConfirmDialog,
   EmptyState,
-  LoadingBlock,
+  TableSkeleton,
   Modal,
   Pagination,
   SearchInput,
@@ -183,7 +183,7 @@ export default function Orders() {
 
       <Card>
         {orders === null ? (
-          <LoadingBlock label="Loading orders…" />
+          <TableSkeleton rows={7} />
         ) : orders.length === 0 ? (
           <EmptyState icon={ShoppingBag} title="No orders here" message="Try another status tab or a different search." />
         ) : (

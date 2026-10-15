@@ -4,12 +4,13 @@
     "slug": "courses-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/logo.png",
-    "scheme": "coursesapp",
+    "icon": "./assets/images/splash-icon.png",
+    "scheme": "yduacademy",
     "userInterfaceStyle": "light",
     "android": {
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#0B5C1E",
+        "backgroundColor": "#01500E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -18,7 +19,7 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.deeepak748930.coursesapp"
+      "package": "com.yduacademy.app"
     },
     "web": {
       "output": "static",
@@ -31,7 +32,7 @@
         {
           "backgroundColor": "#FFFFFF",
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 160
+          "imageWidth": 240
         }
       ],
       [
@@ -75,7 +76,8 @@
           "phonepe",
           "paytmmp"
         ]
-      }
+      },
+      "bundleIdentifier": "com.yduacademy.app"
     },
     "extra": {
       "router": {},

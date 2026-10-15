@@ -26,7 +26,10 @@ export interface AuthService {
   verifyOtp(
     phone: string,
     code: string,
-  ): Promise<{ ok: true; session: Session; interests: string[] } | { ok: false; error: OtpFailure }>;
+  ): Promise<
+    | { ok: true; session: Session; interests: string[]; isNewUser: boolean }
+    | { ok: false; error: OtpFailure }
+  >;
   getSession(): Promise<Session | null>;
   /** Persists profile edits made in the app. Same storage as the session token. */
   saveSession(session: Session): Promise<void>;
@@ -98,10 +101,10 @@ export const authService: AuthService = {
 
   async verifyOtp(phone, code) {
     try {
-      const { token, user } = await api.verifyOtp(phone, code);
+      const { token, user, isNewUser } = await api.verifyOtp(phone, code);
       const session = persistAndApply(sessionFromUser(token, user));
       await writeStored(SESSION_KEY, JSON.stringify(session));
-      return { ok: true, session, interests: user.interests ?? [] };
+      return { ok: true, session, interests: user.interests ?? [], isNewUser: Boolean(isNewUser) };
     } catch (err) {
       return { ok: false, error: otpFailureFrom(err) };
     }

@@ -11,11 +11,11 @@
  *   settings.updated the app settings changed
  *
  * The dashboard uses this for two things: instant toasts in the layout, and automatic
- * refreshes on the page whose data just changed. In demo mode (server unreachable) the
- * socket simply stays disconnected and everything keeps working against the demo store.
+ * refreshes on the page whose data just changed.
  */
 import { io, type Socket } from 'socket.io-client';
-import { getToken } from './client';
+import { useEffect, useState } from 'react';
+import { getToken, SERVER_URL } from './client';
 
 export type RealtimeEvent =
   | 'order.created'
@@ -28,7 +28,6 @@ type Handler = (payload: Record<string, unknown>) => void;
 
 let socket: Socket | null = null;
 let connected = false;
-let demoModeActive = false;
 
 /** Live presence pushed by the server (online learners, admins, visitors). */
 export type Presence = {
@@ -58,16 +57,15 @@ export function onPresence(cb: (p: Presence | null) => void) {
 const statusListeners = new Set<(on: boolean) => void>();
 const handlers = new Map<RealtimeEvent, Set<Handler>>();
 
-function setConnected(on: boolean) {
-  if (connected !== on) {
-    connected = on;
-    statusListeners.forEach((cb) => cb(on));
+function setConnected(next: boolean) {
+  if (connected !== next) {
+    connected = next;
+    statusListeners.forEach((cb) => cb(next));
   }
 }
 
-/** Live indicator state for the layout's status dot. */
 export const isRealtimeConnected = () => connected;
-export function onRealtimeStatus(cb: (on: boolean) => void) {
+export function onRealtimeStatus(cb: (connected: boolean) => void) {
   statusListeners.add(cb);
   return () => {
     statusListeners.delete(cb);
@@ -75,8 +73,10 @@ export function onRealtimeStatus(cb: (on: boolean) => void) {
 }
 
 export function onRealtimeEvent(event: RealtimeEvent, handler: Handler) {
-  if (!handlers.has(event)) handlers.set(event, new Set());
-  handlers.get(event)!.add(handler);
+  if (!handlers.has(event)) {
+    handlers.set(event, new Set());
+  }
+  handlers.get(event)?.add(handler);
   return () => {
     handlers.get(event)?.delete(handler);
   };
@@ -92,12 +92,12 @@ function wire(socketInstance: Socket) {
 
 /** Called once the admin is signed in and the dashboard talks to a real server. */
 export function connectRealtime() {
-  if (socket || demoModeActive) return;
+  if (socket) return;
   const token = getToken();
   if (!token) return;
 
-  // Same origin serves the API (Vite proxies /api and /socket.io to the server).
-  socket = io(window.location.origin, {
+  // Straight to the backend server (VITE_API_URL in .env) — no proxy in between.
+  socket = io(SERVER_URL, {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],
@@ -124,14 +124,6 @@ export function disconnectRealtime() {
   setConnected(false);
   setPresence(null);
 }
-
-/** Demo mode means no server — keep the socket down so it does not retry forever. */
-export function setRealtimeDemoMode(on: boolean) {
-  demoModeActive = on;
-  if (on) disconnectRealtime();
-}
-
-import { useEffect, useState } from 'react';
 
 /**
  * Re-run `reload` whenever one of the given server events arrives.

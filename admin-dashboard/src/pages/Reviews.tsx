@@ -9,7 +9,7 @@ import {
   Card,
   ConfirmDialog,
   EmptyState,
-  LoadingBlock,
+  ListSkeleton,
   Pagination,
   SearchInput,
   Stars,
@@ -104,7 +104,7 @@ export default function Reviews() {
 
       <Card>
         {reviews === null ? (
-          <LoadingBlock label="Loading reviews…" />
+          <ListSkeleton rows={6} />
         ) : reviews.length === 0 ? (
           <EmptyState icon={Star} title="No reviews" message="Reviews written in the app will appear here for moderation." />
         ) : pager.total === 0 ? (

@@ -101,7 +101,9 @@ export const verifyOtp = asyncHandler(async (req, res) => {
     trackEvent({ userId: user._id, event: 'signup' });
   }
 
-  res.json({ token: signToken(user), user });
+  // isNewUser = this verify created the account. The app shows its one-time
+  // "what do you work with" step only then; returning numbers go straight home.
+  res.json({ token: signToken(user), user, isNewUser: created });
 });
 
 /** POST /api/auth/register — email + password accounts (admin bootstrap and API use). */

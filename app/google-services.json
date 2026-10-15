@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "922545216729",
+    "project_id": "ydu-academy-86d55",
+    "storage_bucket": "ydu-academy-86d55.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:922545216729:android:c192314a57e8177ea632c8",
+        "android_client_info": {
+          "package_name": "com.yduacademy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtYwRnOkv8iHkPJy2enYPuH8h3qL0aC_k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

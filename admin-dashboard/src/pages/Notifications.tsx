@@ -2,7 +2,7 @@ import { Bell, Send, Smartphone, Users } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { AdminNotification, AdminUser, Course, NotificationKind } from '../api/types';
-import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, Field, Input, LoadingBlock, Select, Textarea, formatDateTime, useToast } from '../components/ui';
+import { Badge, Button, Card, CardHeader, ConfirmDialog, EmptyState, Field, Input, ListSkeleton, Skeleton, Select, Textarea, formatDateTime, useToast } from '../components/ui';
 
 const KINDS: { value: NotificationKind; label: string }[] = [
   { value: 'announcement', label: 'Announcement' },
@@ -249,7 +249,7 @@ export default function Notifications() {
         <Card>
           <CardHeader title="Sent" subtitle="Newest first. Push status shows what happened on the devices." />
           {history === null ? (
-            <LoadingBlock label="Loading notifications…" />
+            <ListSkeleton rows={5} />
           ) : history.length === 0 ? (
             <EmptyState icon={Bell} title="Nothing sent yet" message="Messages you send appear here with their push result." />
           ) : (
@@ -294,10 +294,17 @@ export default function Notifications() {
               <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-soft text-brand-ink">
                 <Smartphone size={18} />
               </span>
-              <div>
-                <p className="text-2xl font-bold">{devices?.devices ?? '—'}</p>
-                <p className="text-xs text-muted">devices · {devices?.learnersWithDevices ?? '—'} learners</p>
-              </div>
+              {devices ? (
+                <div>
+                  <p className="text-2xl font-bold">{devices.devices}</p>
+                  <p className="text-xs text-muted">devices · {devices.learnersWithDevices} learners</p>
+                </div>
+              ) : (
+                <div role="status" aria-label="Loading devices">
+                  <Skeleton className="h-8 w-16" />
+                  <Skeleton className="mt-1.5 h-3 w-32" />
+                </div>
+              )}
             </div>
             <p className="text-[13px] leading-relaxed text-muted">
               A learner’s phone registers when they open the app signed in. Learners who have never opened the app
