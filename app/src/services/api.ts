@@ -260,6 +260,7 @@ export type ServerSettings = {
     terms?: ServerLegalDoc | null;
     refund?: ServerLegalDoc | null;
     privacy?: ServerLegalDoc | null;
+    'delete-account'?: ServerLegalDoc | null;
     about?: ServerLegalDoc | null;
     contact?: ServerLegalDoc | null;
     disclaimer?: ServerLegalDoc | null;

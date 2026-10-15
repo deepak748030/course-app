@@ -12,18 +12,25 @@ import { BUILT_IN_CONTENT } from '../data/builtInContent';
  * the default back. Saved to the server; the app and the web pages update live.
  */
 
-type DocKey = 'terms' | 'refund' | 'privacy' | 'about' | 'contact' | 'disclaimer';
-const DOC_KEYS: DocKey[] = ['terms', 'refund', 'privacy', 'about', 'contact', 'disclaimer'];
+type DocKey = 'terms' | 'refund' | 'privacy' | 'delete-account' | 'about' | 'contact' | 'disclaimer';
+const DOC_KEYS: DocKey[] = ['terms', 'refund', 'privacy', 'delete-account', 'about', 'contact', 'disclaimer'];
 const DOC_LABELS: Record<DocKey, string> = {
   terms: 'Terms of use',
   refund: 'Refund policy',
   privacy: 'Privacy policy',
+  'delete-account': 'Delete account',
   about: 'About us',
   contact: 'Contact us',
   disclaimer: 'Disclaimer',
 };
 const MAX_FAQS = 50;
 const MAX_SECTIONS = 30;
+
+/** Where each link goes in the Play Console — the two pages Google requires for an app with accounts. */
+const PLAY_CONSOLE_FIELD: Partial<Record<DocKey, string>> = {
+  privacy: 'App content → Privacy policy',
+  'delete-account': 'App content → Data safety → Delete account URL',
+};
 
 /** `builtIn` = this part is showing the built-in text (it is stored as "not set", so the app keeps its own copy). */
 type ContentState = {
@@ -39,6 +46,7 @@ const EMPTY_DEFAULTS: ContentDefaults = {
     terms: { title: 'Terms of use', heading: '', summary: '', sections: [] },
     refund: { title: 'Refund policy', heading: '', summary: '', sections: [] },
     privacy: { title: 'Privacy policy', heading: '', summary: '', sections: [] },
+    'delete-account': { title: 'Delete account', heading: '', summary: '', sections: [] },
     about: { title: 'About us', heading: '', summary: '', sections: [] },
     contact: { title: 'Contact us', heading: '', summary: '', sections: [] },
     disclaimer: { title: 'Disclaimer', heading: '', summary: '', sections: [] },
@@ -71,6 +79,7 @@ function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
     terms: !s.legalDocs?.terms,
     refund: !s.legalDocs?.refund,
     privacy: !s.legalDocs?.privacy,
+    'delete-account': !s.legalDocs?.['delete-account'],
     about: !s.legalDocs?.about,
     contact: !s.legalDocs?.contact,
     disclaimer: !s.legalDocs?.disclaimer,
@@ -87,6 +96,7 @@ function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
       terms: pick('terms'),
       refund: pick('refund'),
       privacy: pick('privacy'),
+      'delete-account': pick('delete-account'),
       about: pick('about'),
       contact: pick('contact'),
       disclaimer: pick('disclaimer'),
@@ -224,6 +234,9 @@ export default function Content() {
           terms: draft.builtIn.terms ? null : cleanDoc('terms', draft.legalDocs.terms),
           refund: draft.builtIn.refund ? null : cleanDoc('refund', draft.legalDocs.refund),
           privacy: draft.builtIn.privacy ? null : cleanDoc('privacy', draft.legalDocs.privacy),
+          'delete-account': draft.builtIn['delete-account']
+            ? null
+            : cleanDoc('delete-account', draft.legalDocs['delete-account']),
           about: draft.builtIn.about ? null : cleanDoc('about', draft.legalDocs.about),
           contact: draft.builtIn.contact ? null : cleanDoc('contact', draft.legalDocs.contact),
           disclaimer: draft.builtIn.disclaimer ? null : cleanDoc('disclaimer', draft.legalDocs.disclaimer),
@@ -291,17 +304,21 @@ export default function Content() {
       <Card>
         <CardHeader
           title="Google Play policy links"
-          subtitle="Public pages served by your server — they open in any browser without signing in. Paste the privacy link into the Play Console."
+          subtitle="Public pages served by your server — they open in any browser without signing in. Paste the privacy and delete-account links into the Play Console."
         />
         <div className="space-y-2 p-5">
           {DOC_KEYS.map((key) => {
             const url = `${SERVER_URL}/legal/${key}`;
+            const playField = PLAY_CONSOLE_FIELD[key];
             return (
               <div key={key} className="flex items-center gap-2 rounded-lg border border-line-soft px-3 py-2">
                 <span className="w-32 shrink-0 text-[13px] font-semibold text-ink">{DOC_LABELS[key]}</span>
-                <code className="min-w-0 flex-1 truncate rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink">
-                  {url}
-                </code>
+                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                  <code className="truncate rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink">{url}</code>
+                  {playField ? (
+                    <span className="truncate px-1.5 text-[11px] font-medium text-brand-ink">Play Console: {playField}</span>
+                  ) : null}
+                </span>
                 <button
                   type="button"
                   title="Copy link"
@@ -409,7 +426,7 @@ export default function Content() {
       <Card>
         <CardHeader
           title="Policies"
-          subtitle="Terms, refund, privacy, about, contact and disclaimer — from Profile in the app and /legal on the web"
+          subtitle="Terms, refund, privacy, account deletion, about, contact and disclaimer — from Profile in the app and /legal on the web"
         />
         <div className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -441,6 +458,11 @@ export default function Content() {
           <Field label="Summary line" hint="One line under the heading, e.g. the date it applies from">
             <Input value={doc.summary} onChange={(e) => patchDoc({ summary: e.target.value })} maxLength={200} />
           </Field>
+          <p className="rounded-lg bg-canvas px-3 py-2 text-[12px] leading-relaxed text-muted">
+            Write <code className="text-ink">{'{{supportEmail}}'}</code>, <code className="text-ink">{'{{supportPhone}}'}</code>{' '}
+            or <code className="text-ink">{'{{appName}}'}</code> anywhere in a document and the app and the web page show
+            the current value from Settings — on the web as a tap-to-email or tap-to-call link.
+          </p>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">

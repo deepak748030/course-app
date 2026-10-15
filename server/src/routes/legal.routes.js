@@ -7,9 +7,10 @@ const router = Router();
 const CACHE = 'public, max-age=300';
 
 /**
- * Public policy pages — no auth, no session, plain HTML for the Play Console's privacy URL.
- *   GET /legal            — the hub, all six documents
- *   GET /legal/privacy    — one document (terms, refund, about, contact, disclaimer too)
+ * Public policy pages — no auth, no session, plain HTML for the URLs the Play Console asks for.
+ *   GET /legal                  — the hub, every document
+ *   GET /legal/privacy          — one document (terms, refund, about, contact, disclaimer too)
+ *   GET /legal/delete-account   — how to delete an account with or without the app
  */
 router.get('/', async (_req, res) => {
   const content = await loadLegalContent();

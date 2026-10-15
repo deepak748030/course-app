@@ -38,7 +38,7 @@ const legalSectionSchema = new Schema(
   { _id: false }
 );
 
-/** A policy document (terms, refund, privacy). Empty = the app shows its built-in text. */
+/** A policy document (terms, refund, privacy, …). Empty = the app shows its built-in text. */
 const legalDocSchema = new Schema(
   {
     title: { type: String, default: '', trim: true, maxlength: 60 },
@@ -74,6 +74,8 @@ const settingsSchema = new Schema(
       terms: { type: legalDocSchema, default: undefined },
       refund: { type: legalDocSchema, default: undefined },
       privacy: { type: legalDocSchema, default: undefined },
+      /** How to delete an account without the app — the Play Console's "Delete account URL". */
+      'delete-account': { type: legalDocSchema, default: undefined },
       about: { type: legalDocSchema, default: undefined },
       contact: { type: legalDocSchema, default: undefined },
       disclaimer: { type: legalDocSchema, default: undefined },
