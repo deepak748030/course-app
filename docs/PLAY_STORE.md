@@ -141,8 +141,31 @@ deletion without deleting the account: yes (`/delete-account#delete-some-data-an
   The first build uploads as version code 1. Every later upload needs a higher one: add
   `"versionCode": 2` (then 3, …) under `expo.android` in `app.json` (`eas.json` reads versions
   locally), and raise `expo.version` when you want the store to show a new version name.
+- `expo.icon` is the supplied `logo.png` (the green field and disc), the same artwork as the adaptive
+  launcher icon and the 512 px store icon. `splash-icon.png` stays the splash image.
 
-## 8. Store listing draft
+## 8. Store listing (text and graphics)
 
 The dashboard's Play Store page has a ready app name (≤30), short description (≤80) and full
 description (≤4000) with character counts and copy buttons.
+
+Its **Store listing — graphics** card has the images Play asks for under *Main store listing →
+Graphics*, with download buttons. The files live in `admin-dashboard/public/play-store/`:
+
+| File | Play field | Spec |
+| --- | --- | --- |
+| `icon-512.png` | App icon | 512 × 512, 32-bit PNG, full square (Play rounds the corners), from `logo.png` |
+| `feature-graphic-1024x500.png` | Feature graphic | 1024 × 500 PNG, no transparency |
+| `phone-1-welcome.jpg` … `phone-8-testing.jpg` | Phone screenshots | 8 × 1080 × 1920 (9:16) JPEG |
+
+- Play needs 2 to 8 phone screenshots; four or more at 1080 px make the app eligible for
+  recommendations. Upload them in the numbered order (the first three show in search).
+- The screenshots were taken from the app running on the seeded sample catalog, whose courses have no
+  covers yet, so the course screens show the logo. Play wants screenshots of the real app: once your
+  courses have covers (dashboard → Courses), retake those screens on a phone and swap the files
+  (keep the names, or update `SCREENSHOTS` in `admin-dashboard/src/pages/PlayStore.tsx`).
+- Phone screenshots from tall 20:9 phones (for example 1080 × 2400) break Play's 2:1 limit; crop
+  them to 9:16 (1080 × 1920) before uploading.
+- The feature graphic's source is `docs/play-store/feature-graphic.html`. To change the wording, edit
+  it, open it in Chrome, set DevTools' device toolbar to 1024 × 500 and use *Capture screenshot*.
+  Save the result as JPEG if Play Console complains about transparency.

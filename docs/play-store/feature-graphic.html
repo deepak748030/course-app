@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>YDU Academy — Play Store feature graphic (1024 × 500)</title>
+<!--
+  Source of admin-dashboard/public/play-store/feature-graphic-1024x500.png.
+  To change it: edit the text below, open this file in Chrome, open DevTools, turn on the device
+  toolbar, set the size to 1024 × 500 (zoom 100%), then ⋮ → "Capture screenshot".
+  Play wants exactly 1024 × 500 with no transparency (save as JPEG if Play Console complains).
+  Fonts come from Google Fonts, so stay online while capturing.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600&family=Noto+Sans+Devanagari:wght@600&display=block" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1024px; height: 500px; overflow: hidden; background: #01500E; }
+  .fg {
+    position: relative; width: 1024px; height: 500px; overflow: hidden;
+    background:
+      radial-gradient(circle at 230px 250px, rgba(255, 255, 255, 0.16) 0, rgba(255, 255, 255, 0) 300px),
+      radial-gradient(circle at 1000px 0px, rgba(132, 204, 22, 0.22) 0, rgba(132, 204, 22, 0) 380px),
+      linear-gradient(115deg, #013F0B 0%, #01500E 45%, #0B6A1F 100%);
+    font-family: 'DM Sans', sans-serif; color: #fff;
+  }
+  /* Soft leaf shapes in the background, echoing the logo's leaves. */
+  .leaf { position: absolute; border-radius: 0 70% 0 70%; background: linear-gradient(135deg, rgba(163, 230, 53, 0.22), rgba(163, 230, 53, 0.04)); }
+  .leaf.a { width: 190px; height: 190px; right: -70px; bottom: -80px; transform: rotate(12deg); opacity: 0.8; }
+  .disc {
+    position: absolute; left: 70px; top: 70px; width: 360px; height: 360px; border-radius: 50%;
+    box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35), 0 0 0 8px rgba(255, 255, 255, 0.10);
+    overflow: hidden; background: #fff;
+  }
+  /* logo.png is the disc on its own green field; clipping to the disc keeps only the artwork. */
+  .disc img { width: 100%; height: 100%; display: block; clip-path: circle(49.2% at 50% 50%); transform: scale(1.012); }
+  .copy { position: absolute; left: 480px; right: 56px; top: 50%; transform: translateY(-50%); }
+  .eyebrow {
+    display: inline-block; font-weight: 600; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: #01500E; background: #FFC93C; border-radius: 999px; padding: 7px 16px 6px;
+  }
+  h1 { margin-top: 18px; font-weight: 600; font-size: 70px; line-height: 1.02; letter-spacing: -0.02em; }
+  .hi { margin-top: 14px; font-family: 'Noto Sans Devanagari', sans-serif; font-weight: 600; font-size: 34px; line-height: 1.35; color: #FFC93C; }
+  .en { margin-top: 6px; font-size: 25px; line-height: 1.35; color: rgba(255, 255, 255, 0.88); }
+  .chips { margin-top: 22px; display: flex; flex-wrap: nowrap; gap: 8px; }
+  .chips span {
+    font-size: 17px; font-weight: 600; padding: 7px 13px 6px; border-radius: 999px; white-space: nowrap;
+    background: rgba(255, 255, 255, 0.12); border: 1.5px solid rgba(255, 255, 255, 0.28);
+  }
+</style>
+</head>
+<body>
+  <div class="fg">
+    <div class="leaf a"></div>
+    <div class="disc"><img src="../../app/assets/images/logo.png" alt="" /></div>
+    <div class="copy">
+      <div class="eyebrow">Dairy video courses</div>
+      <h1>YDU Academy</h1>
+      <p class="hi">डेरी सीखें, व्यवसाय बढ़ाएं</p>
+      <p class="en">Learn the numbers, not the guesswork.</p>
+      <div class="chips"><span>Milk testing</span><span>Paneer</span><span>Ghee</span><span>Curd</span><span>Cheese</span></div>
+    </div>
+  </div>
+</body>
+</html>

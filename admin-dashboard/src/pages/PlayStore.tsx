@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   CircleDashed,
   Copy,
+  Download,
   ExternalLink,
   Globe,
   RotateCcw,
@@ -75,6 +76,19 @@ const DATA_TYPES: { category: string; type: string; required: boolean; purposes:
 
 const NOT_COLLECTED =
   'Precise location, contacts, messages (SMS/email), audio, files and documents, calendar, health and fitness, web browsing history, crash logs and diagnostics, other device data.';
+
+/** Listing graphics that ship with the dashboard (public/play-store), ready for Play Console. */
+const GRAPHICS_BASE = `${import.meta.env.BASE_URL}play-store/`;
+const SCREENSHOTS: { file: string; label: string }[] = [
+  { file: 'phone-1-welcome.jpg', label: 'Welcome' },
+  { file: 'phone-2-good-milk.jpg', label: 'Good milk' },
+  { file: 'phone-3-home.jpg', label: 'Home' },
+  { file: 'phone-4-explore.jpg', label: 'Explore' },
+  { file: 'phone-5-course.jpg', label: 'Course' },
+  { file: 'phone-6-curriculum.jpg', label: 'Curriculum' },
+  { file: 'phone-7-progress.jpg', label: 'Progress' },
+  { file: 'phone-8-testing.jpg', label: 'Milk testing' },
+];
 
 function storeListing(appName: string) {
   const short = 'Learn dairy skills: milk, paneer, ghee, curd & cheese in easy video courses.';
@@ -498,12 +512,106 @@ PLAY_REVIEW_OTP=123456         # any 6 digits`}</pre>
         </div>
       </Card>
 
+      {/* ---------- store graphics ---------- */}
+      <Card>
+        <CardHeader
+          title="Store listing — graphics"
+          subtitle="Main store listing → Graphics. Made from the app and its logo; download and upload them as they are."
+        />
+        <div className="space-y-6 p-5">
+          <div className="grid gap-6 md:grid-cols-[minmax(0,200px)_minmax(0,1fr)]">
+            <GraphicTile
+              src={`${GRAPHICS_BASE}icon-512.png`}
+              title="App icon"
+              spec="512 × 512 PNG. Play rounds the corners itself."
+              imageClassName="h-24 w-24 rounded-[22%]"
+            />
+            <GraphicTile
+              src={`${GRAPHICS_BASE}feature-graphic-1024x500.png`}
+              title="Feature graphic"
+              spec="1024 × 500 PNG, no transparency."
+              imageClassName="aspect-[1024/500] w-full rounded-lg"
+              className="max-w-[440px]"
+            />
+          </div>
+          <div>
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <p className="text-[13px] font-semibold">
+                Phone screenshots <span className="font-normal text-subtle">· 8 × 1080 × 1920 JPEG · click one to download</span>
+              </p>
+              <p className="text-xs text-subtle">Play needs 2 to 8. Four or more at 1080 px make the app eligible for recommendations.</p>
+            </div>
+            <ul className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+              {SCREENSHOTS.map((shot, i) => (
+                <li key={shot.file}>
+                  <a href={`${GRAPHICS_BASE}${shot.file}`} download={shot.file} className="group block" title={`Download ${shot.file}`}>
+                    <img
+                      src={`${GRAPHICS_BASE}thumbs/${shot.file}`}
+                      alt={`Screenshot ${i + 1}: ${shot.label}`}
+                      width={270}
+                      height={480}
+                      loading="lazy"
+                      className="aspect-[9/16] w-full rounded-lg border border-line-soft object-cover transition-opacity group-hover:opacity-80"
+                    />
+                    <span className="mt-1.5 flex items-center gap-1 text-[12px] text-muted group-hover:text-ink">
+                      <Download size={12} className="shrink-0" />
+                      <span className="truncate">
+                        {i + 1}. {shot.label}
+                      </span>
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <p className="rounded-lg bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
+            The screenshots come from the app running on the sample catalog, which has no course covers yet, so the courses show
+            the logo. Play wants screenshots to show the real app: once your courses have their covers (Courses page), retake the
+            course screens on a phone. Screenshots from tall 20:9 phones break Play&apos;s 2:1 limit, so crop them to 9:16 first.
+          </p>
+        </div>
+      </Card>
+
       <p className="px-1 text-xs leading-relaxed text-subtle">
         The built-in policies follow Indian law (IT Act 2000, DPDP Act 2023, Consumer Protection (E-Commerce) Rules 2020) and
         describe what this app really does. Have them reviewed by your legal adviser, and edit them on the{' '}
         <Link to="/content" className="font-semibold text-brand-ink hover:underline">Content</Link> page. Terms, refund and
         privacy also appear inside the app.
       </p>
+    </div>
+  );
+}
+
+function GraphicTile({
+  src,
+  title,
+  spec,
+  imageClassName,
+  className = '',
+}: {
+  src: string;
+  title: string;
+  spec: string;
+  imageClassName: string;
+  className?: string;
+}) {
+  const file = src.slice(src.lastIndexOf('/') + 1);
+  return (
+    <div className={`flex min-w-0 flex-col gap-3 ${className}`}>
+      <img src={src} alt={title} loading="lazy" className={`border border-line-soft object-cover ${imageClassName}`} />
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold">{title}</p>
+          <p className="text-xs text-subtle">{spec}</p>
+        </div>
+        <a
+          href={src}
+          download={file}
+          className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-[13px] font-semibold text-ink transition-colors hover:bg-surface-alt md:h-8"
+        >
+          <Download size={14} /> Download
+        </a>
+      </div>
     </div>
   );
 }
