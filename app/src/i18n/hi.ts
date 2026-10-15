@@ -402,4 +402,11 @@ export const hi: Record<string, string> = {
   'Call us': 'कॉल करें',
   'All policies': 'सभी पॉलिसी',
   'About the academy, contact and disclaimer': 'अकादमी के बारे में, संपर्क और अस्वीकरण',
+  'Account': 'खाता',
+  'Signed in with your mobile number': 'अपने मोबाइल नंबर से साइन इन',
+  'Delete account': 'खाता हटाएँ',
+  'Deletes your profile, purchases, progress and reviews for good': 'आपकी प्रोफ़ाइल, खरीद, प्रगति और रिव्यू हमेशा के लिए हट जाएँगे',
+  'Could not delete the account. Check your connection and try again.': 'खाता हटा नहीं सका। कनेक्शन जाँचें और फिर कोशिश करें।',
+  'Delete your account?': 'अपना खाता हटाएँ?',
+  'Your profile, purchases, lesson progress and reviews are permanently deleted from the academy. Signing in with the same number afterwards starts a new account.': 'आपकी प्रोफ़ाइल, खरीद, लेसन प्रगति और रिव्यू अकादमी से स्थायी रूप से हट जाएँगे। बाद में उसी नंबर से साइन इन करने पर नया खाता बनेगा।',
 };

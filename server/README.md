@@ -105,6 +105,7 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `POST` | `/api/coupons/validate` | check a code + discounted price |
 | `GET/POST` | `/api/courses/:courseId/reviews` | list / write a review (enrolled only) |
 | `GET` | `/api/enrollments/my` | owned courses + lesson progress in one call |
+| `DELETE` | `/api/users/me` | delete the signed-in account + its data (in-app, Play requirement) |
 | `PATCH` | `/api/enrollments/:courseId/progress` | push completed lessons + resume position |
 | `GET` | `/api/uploads/policy` | which storage backend answers uploads |
 | `POST` | `/api/uploads` | multipart image upload (field `file`), admins → covers, learners → avatars |

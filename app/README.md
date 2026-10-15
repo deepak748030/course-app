@@ -257,10 +257,12 @@ The UI follows the project's design rules document and is generated from one tok
   as the place to reach someone: it adds tappable Email us / Call us rows from the server's support
   details. The same six documents are published as sign-in-free HTML by the server under `/legal`,
   which is the URL the Google Play listing takes.
-- **Settings is only what Settings is for.** Settings now holds notifications and the device data
-  controls (reset demo data, log out) and nothing else: the Account block, the Payments block with the
-  payment-security row and the Policies block are gone, because the account details live on Profile and
-  every policy has one home there. No screen lost a destination — each row moved, it was not deleted.
+- **Settings is only what Settings is for.** Settings now holds notifications, the device data
+  controls (reset demo data, log out) and account deletion (`DELETE /api/users/me` — Google Play
+  wants the mechanism inside the app), and nothing else: the old Account block with profile details,
+  the Payments block with the payment-security row and the Policies block are gone, because the
+  account details live on Profile and every policy has one home there. No screen lost a destination —
+  each row moved, it was not deleted.
 - **A course is a flat list of lessons.** Sections were removed: `Course.lessons[]` is the whole curriculum,
   with no `sectionId`. `catalogService.mapCourse` maps it straight to `Course.lessons`, the course page
   and the player's “All lessons in this course” sheet render one numbered list, and the header reads

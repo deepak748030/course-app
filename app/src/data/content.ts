@@ -164,7 +164,7 @@ export const legalDocs: Record<'terms' | 'refund' | 'privacy' | 'about' | 'conta
       {
         heading: 'Removing your data',
         body: [
-          'You can clear the data kept on this device from Settings. To ask for your account to be deleted, contact the academy team through Help.',
+          'You can clear the data kept on this device from Settings. To delete your account permanently — profile, purchases, progress and reviews — use Delete account in Settings, or contact the academy team through Help.',
         ],
       },
     ],
