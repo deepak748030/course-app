@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, clearToken, getToken, onUnauthorized, setToken } from '../api/client';
+import { ApiError, api, clearToken, getToken, onUnauthorized, setToken } from '../api/client';
 import { connectRealtime, disconnectRealtime } from '../api/realtime';
 import type { AdminUser } from '../api/types';
 
@@ -30,8 +30,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { user: me } = await api.me();
         if (!cancelled && me.role === 'admin') setUser(me);
         if (!cancelled && me.role !== 'admin') clearToken();
-      } catch {
-        clearToken();
+      } catch (error) {
+        // Only a session the server rejects signs the admin out. A network error, a server that is
+        // still waking up, or a request cut short by a reload keeps the token for the next load.
+        if (error instanceof ApiError && (error.status === 401 || error.status === 403)) clearToken();
       } finally {
         if (!cancelled) setReady(true);
       }

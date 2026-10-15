@@ -14,16 +14,19 @@ import {
   Shapes,
   ShoppingBag,
   Star,
+  Store,
   TicketPercent,
   UserPlus,
+  UserX,
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { api } from '../api/client';
 import { isRealtimeConnected, onRealtimeEvent, onRealtimeStatus, usePresence } from '../api/realtime';
 import { useAuth } from '../auth/AuthContext';
-import { initials } from './ui';
+import { FormSkeleton, initials } from './ui';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -37,6 +40,8 @@ const NAV = [
   { to: '/banners', label: 'Banners', icon: Images },
   { to: '/content', label: 'Content', icon: ScrollText },
   { to: '/notifications', label: 'Notifications', icon: Bell },
+  { to: '/play-store', label: 'Play Store', icon: Store },
+  { to: '/deletion-requests', label: 'Deletion requests', icon: UserX },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
@@ -52,7 +57,9 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/reviews': { title: 'Reviews', subtitle: 'What learners say about each course' },
   '/coupons': { title: 'Coupons', subtitle: 'Discount codes for checkout' },
   '/banners': { title: 'Banners', subtitle: 'The posters at the top of the app’s home screen' },
-  '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy the app shows' },
+  '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy — in the app and on the public website' },
+  '/play-store': { title: 'Play Store', subtitle: 'Public policy pages, links and answers for Google Play Console' },
+  '/deletion-requests': { title: 'Deletion requests', subtitle: 'Account deletion requests from the public website and the app' },
   '/notifications': { title: 'Notifications', subtitle: 'Message all learners or one learner, in the app and as a push' },
   '/settings': { title: 'Settings', subtitle: 'App-wide controls the whole platform follows' },
 };
@@ -81,6 +88,23 @@ export default function Layout() {
   const navigate = useNavigate();
   const [live, setLive] = useState(isRealtimeConnected());
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [pendingDeletions, setPendingDeletions] = useState(0);
+
+  // Open deletion requests: a count on the sidebar, refreshed whenever one arrives or is closed.
+  useEffect(() => {
+    let alive = true;
+    const refresh = () =>
+      api
+        .listDeletionRequests('pending')
+        .then((res) => alive && setPendingDeletions(res.counts.pending))
+        .catch(() => {});
+    refresh();
+    const offs = [onRealtimeEvent('deletion.requested', refresh), onRealtimeEvent('deletion.updated', refresh)];
+    return () => {
+      alive = false;
+      offs.forEach((off) => off());
+    };
+  }, []);
 
   // Live status dot follows the realtime connection.
   useEffect(() => {
@@ -111,6 +135,9 @@ export default function Layout() {
         push(BookOpen, 'Catalog updated', String(p.courseTitle || p.reason || 'The catalog changed'))
       ),
       onRealtimeEvent('settings.updated', () => push(Settings, 'App settings updated', 'Learners see the change immediately')),
+      onRealtimeEvent('deletion.requested', (p) =>
+        push(UserX, 'Account deletion request', `${p.reference ?? 'A new request'} — from the website`)
+      ),
     ];
     return () => {
       offs.forEach((off) => off());
@@ -186,8 +213,21 @@ export default function Layout() {
                 }`
               }
             >
-              <Icon size={17} className="shrink-0" />
-              <span className={collapsed ? 'md:hidden' : ''}>{label}</span>
+              <span className="relative shrink-0">
+                <Icon size={17} />
+                {to === '/deletion-requests' && pendingDeletions > 0 && collapsed && (
+                  <span className="absolute -right-1 -top-1 hidden h-2 w-2 rounded-full bg-error md:block" />
+                )}
+              </span>
+              <span className={`min-w-0 flex-1 truncate ${collapsed ? 'md:hidden' : ''}`}>{label}</span>
+              {to === '/deletion-requests' && pendingDeletions > 0 && (
+                <span
+                  className={`rounded-full bg-error px-1.5 text-[11px] font-bold leading-[18px] text-white ${collapsed ? 'md:hidden' : ''}`}
+                  aria-label={`${pendingDeletions} waiting`}
+                >
+                  {pendingDeletions}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>
@@ -264,7 +304,10 @@ export default function Layout() {
         </header>
 
         <main className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
-          <Outlet />
+          {/* Pages load on demand (App.tsx); the skeleton holds the space while one arrives. */}
+          <Suspense fallback={<FormSkeleton sections={2} fieldsPerSection={3} className="max-w-3xl" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
 

@@ -64,6 +64,9 @@ production. Each seeded learner has a unique +91 mobile number (10 digits starti
   one. Until then, development prints the code to the server console, and production returns
   `503` rather than logging a code.
 - `DEMO_OTP` (default `246810`) is accepted for any number outside `NODE_ENV=production`.
+- **Google Play review account:** set `PLAY_REVIEW_PHONE` (10 digits) and `PLAY_REVIEW_OTP` (6 digits)
+  and that one number signs in with that fixed code — in production too, and without an SMS. Give
+  both to Google in Play Console → App content → App access. Leave them empty otherwise.
 - After changing the user model, re-run `npm run seed`: the phone and email indexes are now
   partial (empty values are allowed), so an older database may still carry the stricter ones.
 
@@ -81,7 +84,8 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `GET` | `/api/courses` | published courses (`category`, `level`, `q`, `popular`, `beginner`) |
 | `GET` | `/api/courses/:idOrSlug` | course detail |
 | `GET` | `/api/courses/:idOrSlug/related` | recommendation rail — co-purchase first, then same track |
-| `GET` | `/api/settings` | app settings (maintenance mode, support, …) |
+| `GET` | `/api/settings` | app settings (maintenance mode, support, business details, …) + `contentDefaults` (built-in FAQ and policies) |
+| `POST` | `/api/account-deletion` | public account-deletion request from the website's `/delete-account` page (rate-limited, never reveals whether an account exists) |
 | `POST` | `/api/auth/otp/request` | send a one-time code to a +91 mobile |
 | `POST` | `/api/auth/otp/verify` | mobile + code → JWT (creates the learner on first sign-in) |
 | `POST` | `/api/auth/register` | create email + password account |
@@ -98,6 +102,8 @@ orders, enrollments and reviews so the dashboard charts have data.
 | `GET` | `/api/uploads/policy` | which storage backend answers uploads |
 | `POST` | `/api/uploads` | multipart image upload (field `file`), admins → covers, learners → avatars |
 | `POST` | `/api/analytics/events` | batched behaviour events from the app (≤50 per call, anonymous allowed) |
+| `PATCH` | `/api/users/me` | the learner edits their profile |
+| `DELETE` | `/api/users/me` | the learner deletes their own account (app → Settings → Delete account) |
 
 ### Admin (JWT + `role: admin`, all under `/api/admin`)
 
@@ -107,7 +113,8 @@ orders, enrollments and reviews so the dashboard charts have data.
 | Analytics | `GET /analytics/overview?days=30` — requests/uniques per day, DAU/WAU/MAU, funnel, peak hours, most viewed/purchased, top searches |
 | Courses | `GET/POST /courses`, `GET/PUT/DELETE /courses/:id`, `PATCH /courses/:id/publish` |
 | Categories | `GET/POST /categories`, `PUT/DELETE /categories/:id` |
-| Users | `GET /users`, `GET/PATCH/DELETE /users/:id` (block, role, cascade delete) |
+| Users | `GET /users`, `GET/PATCH/DELETE /users/:id` (block, role, delete — see *Account deletion*) |
+| Deletion requests | `GET /deletion-requests?status=pending\|completed\|rejected\|all`, `PATCH /deletion-requests/:id` (`{ status, deleteAccount?, note? }`) |
 | Orders | `GET /orders`, `PATCH /orders/:id` (status changes grant/revoke access) |
 | Reviews | `GET /reviews`, `PATCH /reviews/:id` (hide), `DELETE /reviews/:id` |
 | Coupons | `GET/POST /coupons`, `PUT/DELETE /coupons/:id` |
@@ -128,7 +135,31 @@ and `admins` (role: admin). Events pushed today:
 | `app` | `catalog.changed` | a course/category is created, edited, published or deleted |
 | `app` | `settings.updated` | app settings change |
 | `user:<id>` | `enrollment.granted` | an order is marked paid or access is granted |
-| `admins` | `order.created`, `user.registered`, `review.created`, `catalog.changed`, `settings.updated` | live dashboard feed |
+| `admins` | `order.created`, `user.registered`, `review.created`, `catalog.changed`, `settings.updated`, `deletion.requested`, `deletion.updated` | live dashboard feed |
+
+## Account deletion
+
+One implementation (`src/services/accountDeletion.js`) serves all three paths — the learner in the
+app (`DELETE /api/users/me`), an admin closing a web request (`PATCH /api/admin/deletion-requests/:id`
+with `deleteAccount: true`) and an admin deleting a learner (`DELETE /api/admin/users/:id`):
+
+- **deleted:** the user, profile photo (learner uploads only), enrollments + progress, reviews (course
+  ratings recomputed), personal notifications, push tokens, unpaid orders, open OTP codes;
+- **de-linked:** analytics events (`user` set to `null`);
+- **kept:** paid and refunded orders — the tax/accounting record, shown as "Deleted learner".
+
+Deletion requests (`DeletionRequest`) mask the mobile number when they close and are removed by a
+TTL index 180 days later. The public policies (`src/data/defaultContent.js`) promise exactly this —
+change both together.
+
+## Policies and the public website
+
+`src/data/defaultContent.js` holds the built-in FAQ and the six documents the public website and the
+app show (terms, privacy, refund, delivery, account deletion, about). Admins override any of them on
+the dashboard's Content page; business details (legal name, address, Grievance Officer, website) come
+from Settings and fill `{{placeholders}}` in the text. After editing the built-in text, run
+`node scripts/sync-content.mjs` from the repository root to refresh the app's and dashboard's
+offline copies. See [`docs/PLAY_STORE.md`](../docs/PLAY_STORE.md).
 
 ## Image uploads
 

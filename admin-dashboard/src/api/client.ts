@@ -7,6 +7,7 @@
  */
 
 import type {
+  AccountDeletionSummary,
   AdminUser,
   AnalyticsOverview,
   AppSettings,
@@ -20,6 +21,8 @@ import type {
   Order,
   AdminNotification,
   NotificationKind,
+  DeletionRequest,
+  DeletionRequestStatus,
 } from './types';
 
 /**
@@ -282,7 +285,8 @@ export const api = {
   getUser: (id: string) => request<UserDetail>(`/admin/users/${id}`),
   updateUser: (id: string, data: Partial<AdminUser>) =>
     request<{ user: AdminUser }>(`/admin/users/${id}`, { method: 'PATCH', body: data }).then((r) => r.user),
-  deleteUser: (id: string) => request<{ ok: boolean }>(`/admin/users/${id}`, { method: 'DELETE' }),
+  deleteUser: (id: string) =>
+    request<{ ok: boolean; deleted?: string; summary?: AccountDeletionSummary }>(`/admin/users/${id}`, { method: 'DELETE' }),
 
   listOrders: (params: { status?: string; search?: string }) =>
     request<{ orders: Order[]; totals: { count: number; paid: number; discounts: number } }>('/admin/orders', {
@@ -313,4 +317,86 @@ export const api = {
   /** Changes the admin's login (username = email) and/or password. The current password is always required. */
   updateAccount: (data: { email?: string; currentPassword: string; newPassword?: string }) =>
     request<{ user: { email: string } }>('/admin/account', { method: 'PATCH', body: data }),
+
+  /** Account deletion requests from the public /delete-account page (and the record of in-app deletions). */
+  listDeletionRequests: (status: DeletionRequestStatus | 'all') =>
+    request<{ requests: DeletionRequest[]; counts: Record<DeletionRequestStatus, number> }>('/admin/deletion-requests', {
+      query: { status },
+    }),
+  /** Close a request: completed (optionally deleting the account the number opens) or rejected. */
+  updateDeletionRequest: (id: string, data: { status: 'completed' | 'rejected'; deleteAccount?: boolean; note?: string }) =>
+    request<{
+      request: DeletionRequest;
+      deleted: AccountDeletionSummary | null;
+    }>(`/admin/deletion-requests/${id}`, { method: 'PATCH', body: data }),
+};
+
+// ---------- public website (no sign-in) ------------------------------------------------
+/**
+ * Requests made by the public pages (/privacy-policy, /delete-account …). They never send the admin
+ * token and never trigger the sign-out listeners: a visitor is not an admin session. A timeout keeps a
+ * sleeping server (free hosting cold start) from leaving a policy page blank — the page falls back to
+ * the built-in text instead.
+ */
+async function publicRequest<T>(path: string, options: { method?: 'GET' | 'POST'; body?: unknown; timeoutMs?: number } = {}): Promise<T> {
+  const { method = 'GET', body, timeoutMs = 15000 } = options;
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  let res: Response;
+  try {
+    res = await fetch(apiUrl(path), {
+      method,
+      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch {
+    throw new ApiError(0, 'We could not reach our server. Check your internet connection and try again.');
+  } finally {
+    window.clearTimeout(timer);
+  }
+  if (!res.ok) {
+    let message = `Request failed (${res.status})`;
+    let details: unknown;
+    try {
+      const data = await res.json();
+      message = data.error || message;
+      details = data.details;
+    } catch {
+      /* not json */
+    }
+    throw new ApiError(res.status, message, details);
+  }
+  return res.json() as Promise<T>;
+}
+
+/** A course as the public catalog sends it (published courses only). */
+export interface PublicCourse {
+  _id: string;
+  slug: string;
+  title: string;
+  promise: string;
+  coverUrl: string;
+  level: string;
+  language: string;
+  priceInr: number;
+  listPriceInr?: number | null;
+  lessonCount: number;
+  hours?: number;
+  rating: number;
+  reviewCount: number;
+  category: { slug: string; label: string } | null;
+}
+
+export const publicApi = {
+  /** App settings + the built-in documents. Same data the mobile app reads. */
+  content: () =>
+    publicRequest<{ settings: AppSettings | null; contentDefaults?: ContentDefaults }>('/settings', { timeoutMs: 12000 }),
+  courses: () => publicRequest<{ courses: PublicCourse[] }>('/courses', { timeoutMs: 20000 }).then((r) => r.courses),
+  /** The public account-deletion request form. Never says whether an account exists. */
+  requestDeletion: (data: { phone: string; name?: string; reason?: string; details?: string; confirm: true; company?: string }) =>
+    publicRequest<{ ok: boolean; reference: string; status: string; createdAt: string; duplicate?: boolean }>(
+      '/account-deletion',
+      { method: 'POST', body: data, timeoutMs: 30000 }
+    ),
 };

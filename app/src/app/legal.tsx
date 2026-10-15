@@ -12,13 +12,15 @@
  * app's own type scale: 19 for the document title, 15 for clause headings, 12 for the body, which are
  * four steps of the same 1.25 ladder the rest of the app uses.
  *
- * The document copy stays in English on purpose — it is placeholder material a lawyer has to replace —
- * and the note at the foot of the screen says so in whichever language the interface is in.
+ * The documents come from the admin's Content page (or the built-in text, with the academy's
+ * business details filled in — see services/app-content.ts) and are the same ones the public website
+ * shows. Their copy stays in English, and the note at the foot of the screen says so in whichever
+ * language the interface is in.
  */
 
 import { useLocalSearchParams } from 'expo-router';
 import { useRouter } from '@/lib/router';
-import { LifeBuoy, TriangleAlert } from 'lucide-react-native';
+import { LifeBuoy } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
@@ -76,16 +78,6 @@ export default function LegalScreen() {
           ))}
         </View>
 
-        {/* The warning that matters is the one a reader can see before the text. */}
-        <View style={styles.note}>
-          <TriangleAlert size={14} color={colors.textMuted} strokeWidth={2} />
-          <Text style={[styles.noteText, { color: colors.textMuted }]}>
-            {t(
-              'Before distributing YDU Academy, replace this placeholder with documents reviewed by a lawyer.',
-            )}
-          </Text>
-        </View>
-
         <View style={styles.footNote}>
           <Text style={[docText, { color: colors.textSubtle }]}>
             {t('Course titles and lesson copy stay in English.')}
@@ -126,13 +118,6 @@ const styles = createStyles(() => StyleSheet.create({
   point: { flexDirection: 'row', gap: spacing.sm },
   bullet: { fontSize: type.label.fontSize, lineHeight: 19, width: 6 },
   pointText: { flex: 1 },
-  note: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    alignItems: 'flex-start',
-    paddingTop: spacing.lg,
-  },
-  noteText: { flex: 1, fontFamily: type.label.fontFamily, fontSize: type.label.fontSize, lineHeight: 18 },
-  footNote: { paddingTop: spacing.sm },
+  footNote: { paddingTop: spacing.lg },
   pad: { paddingHorizontal: layout.screen },
 }));

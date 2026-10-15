@@ -13,7 +13,7 @@ course-app/
 | --- | --- | --- |
 | [`app/`](app/) | The learner-facing mobile app (catalog, checkout, lessons, reviews). | `cd app && bun install && bun run start` |
 | [`server/`](server/) | REST API the app and the admin dashboard share. | `cd server && npm install && npm run seed && npm run dev` |
-| [`admin-dashboard/`](admin-dashboard/) | Full-control admin console: courses, categories, learners, orders, reviews, coupons, settings — with live charts. | `cd admin-dashboard && npm install && npm run dev` |
+| [`admin-dashboard/`](admin-dashboard/) | Full-control admin console: courses, categories, learners, orders, reviews, coupons, settings — with live charts. Also serves the public website (privacy policy, terms, refund, delivery, account deletion, contact) that needs no sign-in. | `cd admin-dashboard && npm install && npm run dev` |
 
 ## How the pieces talk
 
@@ -64,3 +64,12 @@ bun run start               # Expo dev server → press w for web, a for Android
 ```
 
 Each workspace has its own README with the full details.
+
+## Google Play and Razorpay
+
+The policies and the account-deletion page Google Play and Razorpay ask for are public pages of the
+admin dashboard deployment (`/privacy-policy`, `/terms`, `/refund-policy`, `/shipping-policy`,
+`/delete-account`, `/about`, `/contact`, `/pricing`, all listed at `/legal`). Their text is edited on
+the dashboard's **Content** page and filled in from **Settings → Business and legal details**; the
+dashboard's **Play Store** page lists every link to paste and suggested Data safety answers. The full
+checklist is in [`docs/PLAY_STORE.md`](docs/PLAY_STORE.md).

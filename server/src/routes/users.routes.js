@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { deleteMe } from '../controllers/accountDeletion.controller.js';
 import { updateMe } from '../controllers/users.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
@@ -17,5 +18,9 @@ const mePatchSchema = z.object({
 });
 
 router.patch('/me', validateBody(mePatchSchema), updateMe);
+
+/** The learner deletes their own account (app: Profile → Settings → Delete account). */
+const deleteMeSchema = z.object({ reason: z.string().trim().max(200).optional() });
+router.delete('/me', validateBody(deleteMeSchema), deleteMe);
 
 export default router;

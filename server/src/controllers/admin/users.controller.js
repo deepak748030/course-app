@@ -1,9 +1,10 @@
-import { revokeUserSockets } from '../../realtime/socket.js';
+import { emitToAdmins, revokeUserSockets } from '../../realtime/socket.js';
+import { DeletionRequest, closingFields } from '../../models/DeletionRequest.js';
 import { Enrollment } from '../../models/Enrollment.js';
 import { PushToken } from '../../models/PushToken.js';
 import { Order } from '../../models/Order.js';
-import { Review } from '../../models/Review.js';
 import { User } from '../../models/User.js';
+import { deleteAccountAndData } from '../../services/accountDeletion.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 
 /** GET /api/admin/users — search + role/blocked filters + enrollment counts. */
@@ -69,18 +70,38 @@ export const updateUser = asyncHandler(async (req, res) => {
   res.json({ user });
 });
 
-/** DELETE /api/admin/users/:id — cascades that user's orders, enrollments and reviews. */
+/**
+ * DELETE /api/admin/users/:id — removes the account and its data the same way an account deletion
+ * request does (services/accountDeletion.js): enrollments, progress, reviews, push tokens, personal
+ * notifications and unpaid orders go; paid and refunded orders stay in the order book as the
+ * accounting record ("Deleted learner").
+ */
 export const deleteUser = asyncHandler(async (req, res) => {
   if (req.user && String(req.user._id) === req.params.id) {
     throw new HttpError(400, 'You cannot delete your own account');
   }
-  const user = await User.findByIdAndDelete(req.params.id);
+  const user = await User.findById(req.params.id);
   if (!user) throw new HttpError(404, 'User not found');
-  await Promise.all([
-    Order.deleteMany({ user: user._id }),
-    Enrollment.deleteMany({ user: user._id }),
-    Review.deleteMany({ user: user._id }),
-    PushToken.deleteMany({ user: user._id }),
-  ]);
-  res.json({ ok: true, deleted: user.email });
+
+  const deleted = await deleteAccountAndData(user);
+  revokeUserSockets(String(user._id));
+
+  // A deletion request still open for this number has just been fulfilled.
+  if (user.phone) {
+    const closed = await DeletionRequest.updateMany(
+      { phone: user.phone, status: 'pending' },
+      {
+        $set: {
+          status: 'completed',
+          accountDeleted: true,
+          note: 'Deleted from the Learners page.',
+          handledBy: req.user?._id ?? null,
+          ...closingFields(user.phone),
+        },
+      }
+    );
+    if (closed.modifiedCount) emitToAdmins('deletion.updated', {});
+  }
+
+  res.json({ ok: true, deleted: user.email || user.phone, summary: deleted });
 });

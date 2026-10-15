@@ -70,8 +70,9 @@ export default function Users() {
   async function confirmDelete() {
     if (!deleting) return;
     try {
-      await api.deleteUser(deleting._id);
-      toast('success', `${deleting.name} deleted`);
+      const { summary } = await api.deleteUser(deleting._id);
+      const kept = summary?.keptOrders ? ` · ${summary.keptOrders} paid order(s) kept as "Deleted learner"` : '';
+      toast('success', `${deleting.name} deleted${kept}`);
       setDeleting(null);
       load();
     } catch (e) {
@@ -178,7 +179,7 @@ export default function Users() {
       <ConfirmDialog
         open={deleting !== null}
         title="Delete this learner?"
-        message={`${deleting?.name} (${deleting?.email}) will be removed along with their orders, enrollments and reviews. This cannot be undone.`}
+        message={`${deleting?.name}${deleting?.email || deleting?.phone ? ` (${deleting?.email || `+91 ${deleting?.phone}`})` : ''} will be removed with their profile, photo, enrollments, progress, reviews and unpaid orders. Paid orders stay in the order book as "Deleted learner" for your accounts. This cannot be undone.`}
         onCancel={() => setDeleting(null)}
         onConfirm={confirmDelete}
       />

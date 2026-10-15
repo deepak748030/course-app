@@ -261,6 +261,19 @@ export type ServerSettings = {
     refund?: ServerLegalDoc | null;
     privacy?: ServerLegalDoc | null;
   };
+  /** Who runs the academy; fills the {{placeholders}} in the policies (see services/app-content). */
+  business?: {
+    legalName?: string;
+    address?: string;
+    gstin?: string;
+    supportHours?: string;
+    grievanceName?: string;
+    grievanceEmail?: string;
+    grievancePhone?: string;
+    jurisdiction?: string;
+    /** Public website with the policy pages, e.g. https://example.com (its /delete-account page). */
+    websiteUrl?: string;
+  };
   /** Checkout lines set in the admin; empty = the built-in list. */
   purchaseTerms?: string[];
 };
@@ -270,6 +283,7 @@ export type ServerLegalDoc = {
   heading: string;
   summary: string;
   sections: { heading: string; body?: string[]; points?: string[] }[];
+  updatedAt?: string;
 };
 
 export const api = {
@@ -297,6 +311,12 @@ export const api = {
     request<InboxPage>('/api/notifications', { query: params }),
   updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
+  /**
+   * Permanently deletes the signed-in account and its data (Settings → Delete account). Paid order
+   * records the law requires are kept by the server without the profile; see the privacy policy.
+   */
+  deleteAccount: (reason?: string) =>
+    request<{ ok: boolean }>('/api/users/me', { method: 'DELETE', body: reason ? { reason } : {} }),
 
   // ---- catalog ----
   categories: () => request<{ categories: ServerCategory[] }>('/api/categories'),

@@ -10,6 +10,13 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   /** Fixed demo code accepted on every phone outside production (see README → Phone sign-in). */
   demoOtp: process.env.DEMO_OTP || '246810',
+  /**
+   * Google Play review account (Play Console → App content → App access). One mobile number whose
+   * sign-in code is fixed and never sent by SMS — works in production too. Both must be set, or
+   * neither does anything. Use a number nobody owns as a real account.
+   */
+  reviewPhone: String(process.env.PLAY_REVIEW_PHONE || '').replace(/\D/g, '').slice(-10),
+  reviewOtp: String(process.env.PLAY_REVIEW_OTP || '').trim(),
   /** Razorpay keys from the Razorpay dashboard (test keys start with rzp_test_). */
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',

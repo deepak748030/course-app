@@ -10,6 +10,12 @@
             "android": {
                 "buildType": "apk"
             }
+        },
+        "playstore": {
+            "extends": "production",
+            "android": {
+                "buildType": "app-bundle"
+            }
         }
     }
 }

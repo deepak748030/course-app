@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { dbState } from '../config/db.js';
 import { dbGuard } from '../middleware/dbGuard.js';
+import accountDeletionRoutes from './accountDeletion.routes.js';
 import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import authRoutes from './auth.routes.js';
@@ -31,6 +32,7 @@ router.get('/health', (_req, res) => {
 router.use(dbGuard);
 
 router.use('/auth', authRoutes);
+router.use('/account-deletion', accountDeletionRoutes); // public form on the website's /delete-account page
 router.use('/', catalogRoutes); // /api/categories, /api/courses
 router.use('/analytics', analyticsRoutes); // /api/analytics/events
 router.use('/orders', ordersRoutes);

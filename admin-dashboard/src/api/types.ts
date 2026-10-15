@@ -153,17 +153,42 @@ export interface AppSettings {
   checkoutMode: 'web' | 'sdk';
   /** Help questions in the app, in order. Empty = the app's built-in FAQ. */
   faqs?: FaqEntry[];
-  /** Policies in the app. A null/missing document shows the app's built-in text. */
-  legalDocs?: { terms?: LegalDocEntry | null; refund?: LegalDocEntry | null; privacy?: LegalDocEntry | null };
+  /** Policy and information documents. A null/missing document shows the built-in text. */
+  legalDocs?: Partial<Record<LegalDocKey, LegalDocEntry | null>>;
   /** Checkout lines in the app. Empty = the built-in list. */
   purchaseTerms?: string[];
+  /** Who runs the academy — shown on the public Contact page and filled into the policies. */
+  business?: Partial<BusinessDetails>;
 }
 
-/** The built-in text the app shows until the admin writes their own. */
+/**
+ * The documents the academy publishes. terms / refund / privacy are also shown inside the app;
+ * delivery, deletion and about live on the public website only.
+ */
+export type LegalDocKey = 'terms' | 'privacy' | 'refund' | 'delivery' | 'deletion' | 'about';
+
+/** Business and grievance details. Every field is optional; empty ones are left out of the pages. */
+export interface BusinessDetails {
+  legalName: string;
+  address: string;
+  gstin: string;
+  supportHours: string;
+  grievanceName: string;
+  grievanceEmail: string;
+  grievancePhone: string;
+  jurisdiction: string;
+  websiteUrl: string;
+}
+
+/** The built-in text shown until the admin writes their own. */
 export interface ContentDefaults {
   faqs: FaqEntry[];
-  legalDocs: { terms: LegalDocEntry; refund: LegalDocEntry; privacy: LegalDocEntry };
+  legalDocs: Record<LegalDocKey, LegalDocEntry>;
   purchaseTerms: string[];
+  /** Display order of the documents. */
+  legalDocKeys?: LegalDocKey[];
+  /** When the built-in documents were last revised (ISO date). */
+  updatedAt?: string;
 }
 
 export interface FaqEntry {
@@ -182,6 +207,49 @@ export interface LegalDocEntry {
   heading: string;
   summary: string;
   sections: LegalSectionEntry[];
+  /** Set by the server whenever the text changes (ISO). */
+  updatedAt?: string;
+}
+
+/** A request to delete an account — from the public /delete-account page or from the app itself. */
+export type DeletionRequestStatus = 'pending' | 'completed' | 'rejected';
+
+/** What deleting an account removed (and how many paid orders stayed as the tax record). */
+export interface AccountDeletionSummary {
+  enrollments: number;
+  reviews: number;
+  pendingOrders: number;
+  keptOrders: number;
+}
+
+export interface DeletionRequest {
+  _id: string;
+  reference: string;
+  /** Full 10-digit number while open; masked (XXXXXX3210) once closed. */
+  phone: string;
+  name: string;
+  reason: string;
+  details: string;
+  source: 'web' | 'app';
+  status: DeletionRequestStatus;
+  accountDeleted: boolean;
+  note: string;
+  handledBy: { _id: string; name: string; email: string } | null;
+  closedAt: string | null;
+  createdAt: string;
+  /** The account this number opens (open requests only); null = no account uses the number. */
+  account: {
+    _id: string;
+    name: string;
+    role: 'user' | 'admin';
+    blocked: boolean;
+    avatarUrl?: string;
+    createdAt: string;
+    lastLoginAt?: string;
+    enrollmentCount: number;
+    paidOrders: number;
+    totalPaidInr: number;
+  } | null;
 }
 
 /** A poster on the app's home screen. Empty imageUrl = the linked course's cover. */

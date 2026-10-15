@@ -1,19 +1,27 @@
-import { ArrowDown, ArrowUp, FileText, HelpCircle, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Braces, ExternalLink, FileText, HelpCircle, Plus, RotateCcw, Save, Smartphone, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
-import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalSectionEntry } from '../api/types';
+import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalDocKey, LegalSectionEntry } from '../api/types';
 import { Button, Card, CardHeader, Field, FormSkeleton, Input, Skeleton, Textarea, useToast } from '../components/ui';
 import { BUILT_IN_CONTENT } from '../data/builtInContent';
+import { DOC_PATHS, LEGAL_DOC_META, PLACEHOLDERS, contentDefaultsOrBuiltIn, formatLongDate, publicBaseUrl } from '../lib/legal';
 
 /**
- * What the app's Help, policy and checkout screens show. Every field starts with the text the app
- * already shows (the built-in defaults), so nothing is blank. Editing a field makes it "your text";
- * "Use built-in text" puts the default back. Saved to the server; the app updates live.
+ * What the app's Help, policy and checkout screens — and the public website's policy pages — show.
+ * Every field starts with the built-in text, so nothing is blank. Editing a field makes it "your text";
+ * "Use built-in text" puts the default back. Saved to the server; the app and the website update live.
  */
 
-type DocKey = 'terms' | 'refund' | 'privacy';
-const DOC_KEYS: DocKey[] = ['terms', 'refund', 'privacy'];
-const DOC_LABELS: Record<DocKey, string> = { terms: 'Terms of use', refund: 'Refund policy', privacy: 'Privacy policy' };
+type DocKey = LegalDocKey;
+const DOC_KEYS: DocKey[] = ['terms', 'privacy', 'refund', 'delivery', 'deletion', 'about'];
+const DOC_LABELS: Record<DocKey, string> = {
+  terms: 'Terms',
+  privacy: 'Privacy',
+  refund: 'Refunds',
+  delivery: 'Delivery',
+  deletion: 'Account deletion',
+  about: 'About us',
+};
 const MAX_FAQS = 50;
 const MAX_SECTIONS = 30;
 
@@ -25,15 +33,6 @@ type ContentState = {
   builtIn: { faqs: boolean; purchaseTerms: boolean } & Record<DocKey, boolean>;
 };
 
-const EMPTY_DEFAULTS: ContentDefaults = {
-  faqs: [],
-  legalDocs: {
-    terms: { title: 'Terms of use', heading: '', summary: '', sections: [] },
-    refund: { title: 'Refund policy', heading: '', summary: '', sections: [] },
-    privacy: { title: 'Privacy policy', heading: '', summary: '', sections: [] },
-  },
-  purchaseTerms: [],
-};
 
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 
@@ -54,20 +53,17 @@ function normalizeDoc(doc: LegalDocEntry): LegalDocEntry {
 
 /** Builds the editor state from what is stored, filling every empty part with the built-in text. */
 function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
+  const docBuiltIn = Object.fromEntries(DOC_KEYS.map((key) => [key, !s.legalDocs?.[key]])) as Record<DocKey, boolean>;
   const builtIn = {
     faqs: !(s.faqs && s.faqs.length > 0),
     purchaseTerms: !(s.purchaseTerms && s.purchaseTerms.length > 0),
-    terms: !s.legalDocs?.terms,
-    refund: !s.legalDocs?.refund,
-    privacy: !s.legalDocs?.privacy,
+    ...docBuiltIn,
   };
   return {
     faqs: copy(builtIn.faqs ? defaults.faqs : s.faqs ?? []),
-    legalDocs: {
-      terms: copy(builtIn.terms ? defaults.legalDocs.terms : normalizeDoc(s.legalDocs!.terms!)),
-      refund: copy(builtIn.refund ? defaults.legalDocs.refund : normalizeDoc(s.legalDocs!.refund!)),
-      privacy: copy(builtIn.privacy ? defaults.legalDocs.privacy : normalizeDoc(s.legalDocs!.privacy!)),
-    },
+    legalDocs: Object.fromEntries(
+      DOC_KEYS.map((key) => [key, copy(builtIn[key] ? normalizeDoc(defaults.legalDocs[key]) : normalizeDoc(s.legalDocs![key]!))])
+    ) as Record<DocKey, LegalDocEntry>,
     purchaseTerms: builtIn.purchaseTerms ? [...defaults.purchaseTerms] : [...(s.purchaseTerms ?? [])],
     builtIn,
   };
@@ -88,9 +84,9 @@ const cleanLines = (items?: string[] | null) => (items ?? []).map((item) => item
 const toLines = (items?: string[] | null) => (items ?? []).join('\n');
 const fromLines = (text: string) => text.split('\n');
 
-function cleanDoc(key: DocKey, doc: LegalDocEntry): LegalDocEntry {
+function cleanDoc(key: DocKey, doc: LegalDocEntry, defaults: ContentDefaults): LegalDocEntry {
   return {
-    title: doc.title.trim() || DOC_LABELS[key],
+    title: doc.title.trim() || defaults.legalDocs[key]?.title || LEGAL_DOC_META[key].label,
     heading: doc.heading.trim(),
     summary: doc.summary.trim(),
     sections: doc.sections
@@ -105,7 +101,8 @@ function cleanDoc(key: DocKey, doc: LegalDocEntry): LegalDocEntry {
 
 export default function Content() {
   const toast = useToast();
-  const [defaults, setDefaults] = useState<ContentDefaults>(EMPTY_DEFAULTS);
+  const [defaults, setDefaults] = useState<ContentDefaults>(BUILT_IN_CONTENT);
+  const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState<ContentState | null>(null);
   const [draft, setDraft] = useState<ContentState | null>(null);
   const [tab, setTab] = useState<DocKey>('terms');
@@ -117,9 +114,10 @@ export default function Content() {
     api
       .getSettingsWithDefaults()
       .then(({ settings, contentDefaults }) => {
-        // An older server does not send contentDefaults: fall back to the copy bundled in this console.
-        const d = contentDefaults ?? BUILT_IN_CONTENT;
+        // An older server does not send contentDefaults (or only some documents): fill in from the bundled copy.
+        const d = contentDefaultsOrBuiltIn(contentDefaults);
         setDefaults(d);
+        setSettings(settings);
         const next = fromSettings(settings, d);
         setSaved(next);
         setDraft(next);
@@ -184,17 +182,16 @@ export default function Content() {
           : draft.faqs
               .map((faq) => ({ question: faq.question.trim(), answer: faq.answer.trim() }))
               .filter((faq) => faq.question),
-        legalDocs: {
-          terms: draft.builtIn.terms ? null : cleanDoc('terms', draft.legalDocs.terms),
-          refund: draft.builtIn.refund ? null : cleanDoc('refund', draft.legalDocs.refund),
-          privacy: draft.builtIn.privacy ? null : cleanDoc('privacy', draft.legalDocs.privacy),
-        },
+        legalDocs: Object.fromEntries(
+          DOC_KEYS.map((key) => [key, draft.builtIn[key] ? null : cleanDoc(key, draft.legalDocs[key], defaults)])
+        ),
         purchaseTerms: draft.builtIn.purchaseTerms ? [] : cleanLines(draft.purchaseTerms),
       } as Partial<AppSettings>);
       const next = fromSettings(updated, defaults);
+      setSettings(updated);
       setSaved(next);
       setDraft(next);
-      toast('success', 'Saved — the app shows this content now');
+      toast('success', 'Saved — the app and the public pages show this content now');
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Save failed');
     } finally {
@@ -225,7 +222,7 @@ export default function Content() {
       d
         ? {
             ...d,
-            legalDocs: { ...d.legalDocs, [tab]: copy(defaults.legalDocs[tab]) },
+            legalDocs: { ...d.legalDocs, [tab]: copy(normalizeDoc(defaults.legalDocs[tab])) },
             builtIn: { ...d.builtIn, [tab]: true },
           }
         : d
@@ -325,16 +322,19 @@ export default function Content() {
 
       {/* ---------- Policies ---------- */}
       <Card>
-        <CardHeader title="Policies" subtitle="Terms, refund and privacy, shown from Profile → Policies in the app" />
+        <CardHeader
+          title="Policies and pages"
+          subtitle="Shown on the public website (no sign-in needed). Terms, privacy and refunds also appear in the app under Profile."
+        />
         <div className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border border-line bg-surface p-1">
+            <div className="flex max-w-full flex-wrap gap-1 rounded-lg border border-line bg-surface p-1">
               {DOC_KEYS.map((key) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setTab(key)}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
+                  className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-semibold transition-colors ${
                     tab === key ? 'bg-brand-soft text-brand-ink' : 'text-muted hover:text-ink'
                   }`}>
                   <FileText size={13} />
@@ -345,15 +345,44 @@ export default function Content() {
             {badge(draft.builtIn[tab])}
           </div>
 
+          <div className="flex flex-col gap-2 rounded-lg bg-canvas px-4 py-3 text-[13px] sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 text-muted">
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-semibold text-ink">{LEGAL_DOC_META[tab].label}</span>
+                {LEGAL_DOC_META[tab].inApp ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">
+                    <Smartphone size={12} /> Also in the app
+                  </span>
+                ) : (
+                  <span className="text-xs">Website only</span>
+                )}
+              </p>
+              <p className="mt-0.5 truncate text-xs">
+                {publicBaseUrl(settings)}
+                {DOC_PATHS[tab]}
+                {!draft.builtIn[tab] && saved.legalDocs[tab].updatedAt
+                  ? ` · last updated ${formatLongDate(saved.legalDocs[tab].updatedAt)}`
+                  : ''}
+              </p>
+            </div>
+            <a
+              href={DOC_PATHS[tab]}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex shrink-0 items-center gap-1.5 font-semibold text-brand-ink hover:underline">
+              View public page <ExternalLink size={13} />
+            </a>
+          </div>
+
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Field label="Screen name" hint="Shown in the app's title bar and on Profile">
+            <Field label="Short name" hint={LEGAL_DOC_META[tab].inApp ? "The app's title bar for this document" : 'Used in lists and the browser tab'}>
               <Input value={doc.title} onChange={(e) => patchDoc({ title: e.target.value })} maxLength={60} />
             </Field>
             <Field label="Document heading">
               <Input value={doc.heading} onChange={(e) => patchDoc({ heading: e.target.value })} maxLength={160} />
             </Field>
           </div>
-          <Field label="Summary line" hint="One line under the heading, e.g. the date it applies from">
+          <Field label="Summary line" hint="One line under the heading. “Last updated” is added automatically when you save changes.">
             <Input value={doc.summary} onChange={(e) => patchDoc({ summary: e.target.value })} maxLength={200} />
           </Field>
 
@@ -413,6 +442,29 @@ export default function Content() {
               </div>
             ))}
           </div>
+
+          <details className="group rounded-lg border border-line-soft">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-[13px] font-semibold">
+              <Braces size={14} className="text-brand-ink" />
+              Placeholders you can use in any field
+              <span className="ml-auto text-xs font-normal text-subtle group-open:hidden">Show</span>
+            </summary>
+            <div className="border-t border-line-soft px-4 py-3">
+              <p className="mb-3 text-xs leading-relaxed text-muted">
+                Write a placeholder like <code className="rounded bg-canvas px-1">{'{{supportEmail}}'}</code> and it is replaced with the
+                value from Settings when the page is shown. A paragraph or point whose placeholder is still empty is hidden, so
+                nothing shows a blank — fill the detail in Settings and the line appears.
+              </p>
+              <ul className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                {PLACEHOLDERS.map((item) => (
+                  <li key={item.token} className="flex min-w-0 items-baseline gap-2 text-xs">
+                    <code className="shrink-0 rounded bg-canvas px-1 text-ink">{`{{${item.token}}}`}</code>
+                    <span className="truncate text-subtle">{item.from}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line-soft pt-4">
             <p className="text-[13px] text-muted">Editing here makes this document your own text.</p>

@@ -38,13 +38,42 @@ const legalSectionSchema = new Schema(
   { _id: false }
 );
 
-/** A policy document (terms, refund, privacy). Empty = the app shows its built-in text. */
+/**
+ * A policy or information document (terms, privacy, refund, delivery, deletion, about). A missing one
+ * = the built-in text in data/defaultContent.js. `updatedAt` is set by the server whenever the text
+ * changes and is shown as "Last updated" on the public pages.
+ */
 const legalDocSchema = new Schema(
   {
     title: { type: String, default: '', trim: true, maxlength: 60 },
     heading: { type: String, default: '', trim: true, maxlength: 160 },
     summary: { type: String, default: '', trim: true, maxlength: 200 },
     sections: { type: [legalSectionSchema], default: [] },
+    updatedAt: { type: Date },
+  },
+  { _id: false }
+);
+
+/**
+ * Who runs the academy. Shown on the public Contact page and filled into the policies
+ * ({{legalName}}, {{address}}, {{grievanceName}} …). Empty fields are simply left out.
+ */
+const businessSchema = new Schema(
+  {
+    /** Registered business / legal entity name. Empty = the app name. */
+    legalName: { type: String, default: '', trim: true, maxlength: 120 },
+    /** Registered or postal address (multi-line allowed). Razorpay asks for it on the Contact page. */
+    address: { type: String, default: '', trim: true, maxlength: 400 },
+    gstin: { type: String, default: '', trim: true, uppercase: true, maxlength: 15 },
+    supportHours: { type: String, default: '', trim: true, maxlength: 80 },
+    /** Grievance Officer required by the IT Rules / DPDP Act. Email and phone fall back to support. */
+    grievanceName: { type: String, default: '', trim: true, maxlength: 80 },
+    grievanceEmail: { type: String, default: '', trim: true, lowercase: true, maxlength: 120 },
+    grievancePhone: { type: String, default: '', trim: true, maxlength: 30 },
+    /** City whose courts handle disputes, e.g. "Bhopal, Madhya Pradesh". */
+    jurisdiction: { type: String, default: '', trim: true, maxlength: 80 },
+    /** Public address of the policy pages (the admin dashboard's domain), e.g. "https://ydu.academy". */
+    websiteUrl: { type: String, default: '', trim: true, maxlength: 200 },
   },
   { _id: false }
 );
@@ -69,12 +98,20 @@ const settingsSchema = new Schema(
     checkoutMode: { type: String, enum: ['web', 'sdk'], default: 'web' },
     /** Help screen questions, in display order. Empty = the built-in FAQ. */
     faqs: { type: [faqSchema], default: [] },
-    /** Policy documents. A missing document falls back to the app's built-in text. */
+    /** Policy documents. A missing document falls back to the built-in text. */
     legalDocs: {
       terms: { type: legalDocSchema, default: undefined },
       refund: { type: legalDocSchema, default: undefined },
       privacy: { type: legalDocSchema, default: undefined },
+      /** Shipping & delivery (digital) — public website only. */
+      delivery: { type: legalDocSchema, default: undefined },
+      /** Account & data deletion — the public /delete-account page. */
+      deletion: { type: legalDocSchema, default: undefined },
+      /** About us — public website only. */
+      about: { type: legalDocSchema, default: undefined },
     },
+    /** Business and grievance details for the public pages and policies. */
+    business: { type: businessSchema, default: undefined },
     /** Lines shown on the checkout screen. Empty = the built-in list. */
     purchaseTerms: { type: [String], default: [] },
   },

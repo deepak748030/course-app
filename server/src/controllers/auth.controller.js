@@ -28,6 +28,13 @@ const sameCode = (a, b) => {
 /** Demo code is only honoured outside production, so it can never open a live account. */
 const demoCodeAllowed = (code) => !isProd && sameCode(code, env.demoOtp);
 
+/**
+ * The Play review number (PLAY_REVIEW_PHONE + PLAY_REVIEW_OTP): its code is the fixed one from the
+ * environment and no SMS is sent, so Google's reviewers can sign in. Off unless both are set.
+ */
+const isReviewPhone = (phone) =>
+  /^[6-9]\d{9}$/.test(env.reviewPhone) && /^\d{6}$/.test(env.reviewOtp) && phone === env.reviewPhone;
+
 /** POST /api/auth/otp/request — sends a one-time code to an Indian mobile number. */
 export const requestOtp = asyncHandler(async (req, res) => {
   const { phone } = req.body;
@@ -41,7 +48,8 @@ export const requestOtp = asyncHandler(async (req, res) => {
     throw new HttpError(429, 'A code was just sent. Wait a few seconds before asking for another.');
   }
 
-  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+  const review = isReviewPhone(phone);
+  const code = review ? env.reviewOtp : String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
   const now = Date.now();
   await OtpCode.findOneAndUpdate(
     { phone },
@@ -55,7 +63,7 @@ export const requestOtp = asyncHandler(async (req, res) => {
     { upsert: true, new: true }
   );
 
-  await sendOtpSms(phone, code);
+  if (!review) await sendOtpSms(phone, code);
   res.json({ ok: true, expiresInSeconds: OTP_TTL_MS / 1000, resendInSeconds: OTP_RESEND_MS / 1000 });
 });
 

@@ -121,6 +121,11 @@ type StoreValue = {
 
   signIn: (session: Session) => void;
   signOut: () => Promise<void>;
+  /**
+   * Permanently deletes the account on the server, then clears everything this phone kept for it.
+   * Throws (and changes nothing locally) when the server could not delete it.
+   */
+  deleteAccount: (reason?: string) => Promise<void>;
   /** Merges profile edits into the session, persists them and syncs them to the server. */
   updateProfile: (patch: Partial<UserProfile>) => Promise<void>;
   /** Sets the local avatar and — when signed in — uploads it to the server. */
@@ -335,6 +340,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const deleteAccount = useCallback(async (reason?: string) => {
+    await api.deleteAccount(reason);
+    // The account no longer exists, so its token is dropped first: anything sent with it now would
+    // only come back 401. The push token is already gone on the server; forget the local copy too.
+    disconnectRealtime();
+    await authService.clearSession();
+    await forgetPushToken();
+    setSession(null);
+    // Everything learned under the account goes; the look and the language belong to the phone.
+    setState((prev) => ({
+      ...seedState(),
+      onboardingDone: true,
+      preferences: prev.preferences,
+      theme: prev.theme,
+      themeChosen: prev.themeChosen,
+      language: prev.language,
+    }));
+  }, []);
+
   // A blocked account is signed out at once, even while the app is open: the server pushes the
   // news on the realtime socket, and every request it rejects with 403 ends the session too.
   useEffect(() => {
@@ -509,6 +533,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
 
       signOut: endAccountSession,
+      deleteAccount,
       completeOnboarding: () => setState((prev) => ({ ...prev, onboardingDone: true })),
 
       restoreInterests: (ids) =>

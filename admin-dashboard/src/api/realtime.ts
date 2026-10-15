@@ -9,6 +9,8 @@
  *   review.created   a learner posted a review
  *   catalog.changed  a course or category was created/edited/deleted
  *   settings.updated the app settings changed
+ *   deletion.requested  someone asked for an account to be deleted on the public page
+ *   deletion.updated    a deletion request was closed (or a learner deleted their account in the app)
  *
  * The dashboard uses this for two things: instant toasts in the layout, and automatic
  * refreshes on the page whose data just changed.
@@ -22,7 +24,9 @@ export type RealtimeEvent =
   | 'user.registered'
   | 'review.created'
   | 'catalog.changed'
-  | 'settings.updated';
+  | 'settings.updated'
+  | 'deletion.requested'
+  | 'deletion.updated';
 
 type Handler = (payload: Record<string, unknown>) => void;
 
@@ -82,12 +86,14 @@ export function onRealtimeEvent(event: RealtimeEvent, handler: Handler) {
   };
 }
 
+/**
+ * One catch-all listener, so an event a page starts listening to after the socket connected (a page
+ * opened later) is delivered too — not only the events registered before the connection.
+ */
 function wire(socketInstance: Socket) {
-  for (const event of handlers.keys()) {
-    socketInstance.on(event, (payload: Record<string, unknown>) => {
-      handlers.get(event as RealtimeEvent)?.forEach((handler) => handler(payload ?? {}));
-    });
-  }
+  socketInstance.onAny((event: string, payload?: Record<string, unknown>) => {
+    handlers.get(event as RealtimeEvent)?.forEach((handler) => handler(payload ?? {}));
+  });
 }
 
 /** Called once the admin is signed in and the dashboard talks to a real server. */

@@ -1,10 +1,11 @@
-import { CreditCard, KeyRound, Save, Smartphone, Wrench } from 'lucide-react';
+import { CreditCard, ExternalLink, Globe, KeyRound, Save, Smartphone, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
-import type { AppSettings } from '../api/types';
+import type { AppSettings, BusinessDetails } from '../api/types';
+import { PUBLIC_PATHS } from '../lib/legal';
 import { ADMIN_THEMES, useAdminTheme, type AdminThemeId } from '../theme/adminTheme';
 import { Button, Card, CardHeader, Field, FormSkeleton, Input, PasswordInput, Select, Textarea, Toggle, useToast } from '../components/ui';
 
@@ -197,6 +198,9 @@ export default function Settings() {
   }
 
   const set = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setForm((f) => (f ? { ...f, [key]: value } : f));
+  const business = form.business ?? {};
+  const setBusiness = (key: keyof BusinessDetails, value: string) =>
+    setForm((f) => (f ? { ...f, business: { ...(f.business ?? {}), [key]: value } } : f));
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -225,6 +229,106 @@ export default function Settings() {
           </Field>
           <Field label="Support phone">
             <Input value={form.supportPhone} onChange={(e) => set('supportPhone', e.target.value)} />
+          </Field>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Business and legal details"
+          subtitle="Shown on the public Contact page and filled into the policies. Empty fields are simply left out."
+          action={
+            <a
+              href={PUBLIC_PATHS.contact}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden shrink-0 items-center gap-1 text-[13px] font-semibold text-brand-ink hover:underline sm:inline-flex"
+            >
+              View Contact page <ExternalLink size={13} />
+            </a>
+          }
+        />
+        <div className="space-y-4 p-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Registered business name" hint="The legal name of the company or proprietor. Empty = the app name.">
+              <Input
+                value={business.legalName ?? ''}
+                onChange={(e) => setBusiness('legalName', e.target.value)}
+                placeholder={form.appName || 'YDU Academy'}
+                maxLength={120}
+              />
+            </Field>
+            <Field label="GSTIN" hint="Optional. Shown on the Contact page.">
+              <Input
+                value={business.gstin ?? ''}
+                onChange={(e) => setBusiness('gstin', e.target.value.toUpperCase())}
+                placeholder="22AAAAA0000A1Z5"
+                maxLength={15}
+              />
+            </Field>
+          </div>
+          <Field label="Registered address" hint="Razorpay and India’s e-commerce rules expect a physical address on the Contact page.">
+            <Textarea
+              rows={3}
+              value={business.address ?? ''}
+              onChange={(e) => setBusiness('address', e.target.value)}
+              placeholder={'Building, street\nCity, State PIN'}
+              maxLength={400}
+            />
+          </Field>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Support hours" hint="For example: Mon–Sat, 10 am – 6 pm IST">
+              <Input value={business.supportHours ?? ''} onChange={(e) => setBusiness('supportHours', e.target.value)} maxLength={80} />
+            </Field>
+            <Field label="Courts for disputes" hint="City named in the Terms, e.g. Bhopal, Madhya Pradesh">
+              <Input value={business.jurisdiction ?? ''} onChange={(e) => setBusiness('jurisdiction', e.target.value)} maxLength={80} />
+            </Field>
+          </div>
+          <div className="rounded-lg border border-line-soft p-4">
+            <p className="text-[13px] font-semibold">Grievance Officer</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted">
+              Required by the IT Rules and the Digital Personal Data Protection Act. Email and phone fall back to the support details.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <Field label="Name">
+                <Input value={business.grievanceName ?? ''} onChange={(e) => setBusiness('grievanceName', e.target.value)} maxLength={80} />
+              </Field>
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={business.grievanceEmail ?? ''}
+                  onChange={(e) => setBusiness('grievanceEmail', e.target.value)}
+                  placeholder={form.supportEmail}
+                  maxLength={120}
+                />
+              </Field>
+              <Field label="Phone">
+                <Input
+                  value={business.grievancePhone ?? ''}
+                  onChange={(e) => setBusiness('grievancePhone', e.target.value)}
+                  placeholder={form.supportPhone}
+                  maxLength={30}
+                />
+              </Field>
+            </div>
+          </div>
+          <Field
+            label="Website address"
+            hint="Where the public policy pages live (this dashboard’s address, or your own domain pointed at it). The app’s privacy policy links to /delete-account here."
+          >
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={business.websiteUrl ?? ''}
+                onChange={(e) => setBusiness('websiteUrl', e.target.value.trim())}
+                placeholder="https://www.example.com"
+                maxLength={200}
+              />
+              {business.websiteUrl !== window.location.origin && (
+                <Button variant="outline" icon={Globe} onClick={() => setBusiness('websiteUrl', window.location.origin)} className="shrink-0">
+                  Use this address
+                </Button>
+              )}
+            </div>
           </Field>
         </div>
       </Card>

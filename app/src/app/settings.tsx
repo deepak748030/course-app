@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { useRouter } from '@/lib/router';
-import { LogOut, RefreshCcw } from 'lucide-react-native';
+import { LogOut, RefreshCcw, UserX } from 'lucide-react-native';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -14,7 +14,7 @@ export default function SettingsScreen() {
   const t = useT();
 
   const router = useRouter();
-  const { state, setPreference, resetDeviceData, signOut } = useStore();
+  const { state, session, setPreference, resetDeviceData, signOut } = useStore();
   const [resetOpen, setResetOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -64,6 +64,21 @@ export default function SettingsScreen() {
             />
           </DataList>
         </View>
+
+        {session ? (
+          <View style={styles.section}>
+            <SectionHeader title={t("Account")} />
+            <DataList>
+              <ListRow
+                icon={UserX}
+                label={t("Delete account")}
+                tone="danger"
+                subtitle={t("Permanently delete your account and its data")}
+                onPress={() => router.push('/delete-account')}
+              />
+            </DataList>
+          </View>
+        ) : null}
 
         <View style={styles.about}>
           <Text style={[type.label, { color: colors.textSubtle }]}>

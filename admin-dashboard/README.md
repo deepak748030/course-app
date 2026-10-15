@@ -24,7 +24,36 @@ lucide icons.
   revoked automatically)
 - **Reviews** — moderation: hide/show (rating recomputes) and delete
 - **Coupons** — percent/flat codes with usage caps, expiry and active toggle
-- **Settings** — app name/tagline/support, maintenance mode, minimum app version
+- **Content** — help FAQ, checkout lines and six documents: terms, privacy, refund & cancellation,
+  shipping & delivery, account deletion and about (with `{{placeholders}}` for business details)
+- **Play Store** — every public link to paste into Play Console / Razorpay, a checklist of missing
+  business details, suggested Data safety and App content answers, and a draft store listing
+- **Deletion requests** — requests from the public *Delete account* page (with the matching account,
+  call/WhatsApp shortcuts and one-step deletion) plus the record of in-app deletions; live badge
+- **Settings** — app name/tagline/support, business & legal details (address, GSTIN, Grievance
+  Officer, courts, website), maintenance mode, minimum app version
+
+## Public website (no sign-in)
+
+The same deployment serves the pages Google Play, Razorpay and learners open without an account:
+
+| Path | Page |
+| --- | --- |
+| `/privacy-policy` | Privacy Policy |
+| `/terms` | Terms and Conditions |
+| `/refund-policy` | Refund and Cancellation Policy |
+| `/shipping-policy` | Shipping and Delivery Policy (digital courses) |
+| `/delete-account` | Account deletion — request form (Play's "Delete account URL") |
+| `/about` | About us |
+| `/contact` | Contact, business details and Grievance Officer |
+| `/pricing` | Published courses with prices |
+| `/legal` | All of the above |
+
+They read `GET /api/settings` (the admin's own text, or the built-in documents, with Settings →
+Business details filled in), always use the green look, and fall back to the bundled text when the
+server is slow to wake. Point a custom domain (e.g. `www.yourdomain.com`) at this Vercel project if
+you prefer the policies not to live on the admin's address. Admin pages load on demand, so these
+pages stay light.
 
 ## Run it
 

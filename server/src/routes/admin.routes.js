@@ -7,6 +7,7 @@ import * as account from '../controllers/admin/account.controller.js';
 import * as categories from '../controllers/admin/categories.controller.js';
 import * as coupons from '../controllers/admin/coupons.controller.js';
 import * as courses from '../controllers/admin/courses.controller.js';
+import * as deletionRequests from '../controllers/admin/deletionRequests.controller.js';
 import * as notifications from '../controllers/admin/notifications.controller.js';
 import * as orders from '../controllers/admin/orders.controller.js';
 import * as reviews from '../controllers/admin/reviews.controller.js';
@@ -274,6 +275,43 @@ const legalDocInput = z
   })
   .nullable();
 
+/** Empty, or a valid email address. */
+const optionalEmail = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(120)
+  .refine((value) => value === '' || z.string().email().safeParse(value).success, 'Enter a valid email address, or leave it empty.');
+
+/**
+ * Business details shown on the public pages and filled into the policies. Every field is optional, and
+ * only the fields sent are changed (the controller writes them one by one), so a partial save never
+ * blanks the rest.
+ */
+const businessInput = z.object({
+  legalName: z.string().trim().max(120).optional(),
+  address: z.string().trim().max(400).optional(),
+  gstin: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .max(15)
+    .refine((value) => value === '' || /^\d{2}[A-Z0-9]{13}$/.test(value), 'A GSTIN has 15 characters and starts with the 2-digit state code.')
+    .optional(),
+  supportHours: z.string().trim().max(80).optional(),
+  grievanceName: z.string().trim().max(80).optional(),
+  grievanceEmail: optionalEmail.optional(),
+  grievancePhone: z.string().trim().max(30).optional(),
+  jurisdiction: z.string().trim().max(80).optional(),
+  websiteUrl: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((value) => value === '' || /^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(value), 'Enter a full URL starting with https://, or leave it empty.')
+    .transform((value) => value.replace(/\/+$/, ''))
+    .optional(),
+});
+
 const settingsSchema = z.object({
   appName: z.string().trim().min(2).max(60).optional(),
   faqs: z
@@ -290,8 +328,12 @@ const settingsSchema = z.object({
       terms: legalDocInput.optional(),
       refund: legalDocInput.optional(),
       privacy: legalDocInput.optional(),
+      delivery: legalDocInput.optional(),
+      deletion: legalDocInput.optional(),
+      about: legalDocInput.optional(),
     })
     .optional(),
+  business: businessInput.optional(),
   purchaseTerms: z.array(z.string().trim().min(1).max(300)).max(30).optional(),
   tagline: z.string().trim().max(200).optional(),
   supportEmail: z.string().trim().email().optional(),
@@ -328,6 +370,28 @@ const accountSchema = z.object({
   newPassword: z.string().min(8, 'The new password needs at least 8 characters').max(128).optional(),
 });
 router.patch('/account', validateBody(accountSchema), account.updateAccount);
+
+// ---------- account deletion requests (public /delete-account form + in-app deletions) ----------
+const deletionListQuery = z.object({
+  status: z.enum(['pending', 'completed', 'rejected', 'all']).default('pending'),
+});
+const deletionUpdateSchema = z
+  .object({
+    status: z.enum(['completed', 'rejected']),
+    deleteAccount: z.boolean().default(false),
+    note: z.string().trim().max(500).default(''),
+  })
+  .refine((value) => value.status === 'completed' || !value.deleteAccount, {
+    message: 'Only a completed request can delete the account',
+    path: ['deleteAccount'],
+  });
+router.get('/deletion-requests', validateQuery(deletionListQuery), deletionRequests.listDeletionRequests);
+router.patch(
+  '/deletion-requests/:id',
+  validateParams(objectIdParam),
+  validateBody(deletionUpdateSchema),
+  deletionRequests.updateDeletionRequest
+);
 
 router.get('/settings', settings.getSettings);
 router.put('/settings', validateBody(settingsSchema), settings.updateSettings);
