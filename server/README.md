@@ -42,15 +42,11 @@ no database required.
 
 ## Seeded logins
 
-| Role | Sign in with | Credential |
-| --- | --- | --- |
-| Admin (dashboard) | email `admin@yduacademy.com` | password `Admin@123` |
-| Learner (dashboard/API) | email `learner@ydu.academy` | password `Learner@123` |
-| Learner (app) | mobile `+91 98765 00001` | OTP `246810` (demo) |
-| Learner (app, phone only) | mobile `+91 98765 00002` | OTP `246810` (demo) |
-
-Any other valid Indian mobile number also works in the app with OTP `246810`, outside
-production. Each seeded learner has a unique +91 mobile number (10 digits starting 6–9).
+`npm run seed` creates the accounts the demo runs with — a dashboard admin, learners
+with sample orders, and the fixed OTP the app accepts outside production. The actual
+values live in `src/seed/seed.js` (and `DEMO_OTP` in `.env`), so they are not
+repeated here. Each seeded learner has a unique +91 mobile number (10 digits starting
+6–9).
 
 ## Payments (Razorpay)
 

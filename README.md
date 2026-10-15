@@ -19,7 +19,7 @@ course-app/
 
 ```
 app/ ──────────────► server/ ◄────────────── admin-dashboard/
-  REST + socket.io      (Express + Mongoose,      REST (/api proxy)
+  REST + socket.io      (Express + Mongoose,      REST (/api, VITE_API_URL)
   (catalog, auth,        MongoDB, JWT auth,       + socket.io live feed
    orders, progress,      socket.io realtime,      (orders, signups,
    reviews)               Cloudinary uploads)       reviews, catalog)
@@ -34,8 +34,8 @@ app/ ──────────────► server/ ◄──────
   lesson progress and reviews all live on the server — there is no bundled catalog. Set
   `EXPO_PUBLIC_API_URL` in `app/.env` to point at the server (Android emulators can use
   `http://localhost:5000`). Lesson videos stay bundled as demo media.
-- The **admin dashboard** signs in with an admin account (`admin@yduacademy.com /
-  Admin@123` after seeding) and controls everything the app shows, with a live activity
+- The **admin dashboard** signs in with the admin account the seed creates (values in
+  `server/src/seed/seed.js`) and controls everything the app shows, with a live activity
   feed.
 - **Google Play policy pages**: the server publishes the app's documents as plain,
   sign-in-free HTML at `/legal` (`privacy`, `terms`, `refund`, `about`, `contact`,

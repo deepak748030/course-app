@@ -1,9 +1,10 @@
 /**
  * API client for the YDU Academy server.
  *
- * There is no dev-server proxy: every request goes straight to the backend whose
- * URL is set in .env as VITE_API_URL (e.g. VITE_API_URL=http://localhost:5000 or
- * https://api.example.com — without a trailing /api).
+ * Every request goes straight to the backend whose URL is set in .env as
+ * VITE_API_URL (e.g. VITE_API_URL=http://localhost:5000 or
+ * https://api.example.com — without a trailing /api). Nothing is routed through
+ * the dev server: change the URL in .env and restart to point elsewhere.
  */
 
 import type {

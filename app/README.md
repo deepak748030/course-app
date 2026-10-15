@@ -23,7 +23,8 @@ npx expo start                       # then press i / a / w, or scan with Expo G
 ```
 
 If the server is unreachable the app shows an honest offline state with retry — it never fakes data.
-Seeded learner account: `learner@ydu.academy / Learner@123` (after `npm run seed` in the server).
+Learner accounts for local testing are created by `npm run seed` in the server
+workspace (values defined there, not listed here).
 
 Handy scripts:
 

@@ -37,14 +37,15 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-There is no proxy: the browser sends every API request (and the realtime socket)
-straight to the server named by `VITE_API_URL` in `.env`
-(`http://localhost:5000` by default). Point it at a deployed backend, e.g.
-`VITE_API_URL=https://api.example.com`, and restart the dev server — the
-dashboard itself can be hosted anywhere. The server must allow this origin via
-its `CORS_ORIGIN` setting (defaults to `*`).
+The server URL comes only from `.env`: set `VITE_API_URL` to your backend
+(`http://localhost:5000` by default, or a deployed backend such as
+`VITE_API_URL=https://api.example.com`) and restart the dev server — every API
+request and the realtime socket go straight there, and the dashboard itself can
+be hosted anywhere. The server must allow this origin via its `CORS_ORIGIN`
+setting (defaults to `*`).
 
-Seeded admin login: `admin@yduacademy.com / Admin@123`.
+Sign in with the admin account created by `npm run seed` in the server workspace —
+the credential values are defined there, not shown in this dashboard.
 
 ## Build
 
