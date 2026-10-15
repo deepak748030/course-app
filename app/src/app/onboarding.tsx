@@ -118,7 +118,11 @@ export default function OnboardingScreen() {
       finish();
       return;
     }
-    listRef.current?.scrollToOffset({ offset: (index + 1) * width, animated: true });
+    const target = index + 1;
+    listRef.current?.scrollToOffset({ offset: target * width, animated: true });
+    // A programmatic scroll does not always end with onMomentumScrollEnd (the web never sends one),
+    // so the button moves the index itself. Swipes still sync it from onMomentumScrollEnd.
+    setIndex(target);
   }, [finish, index, width]);
 
   return (

@@ -106,7 +106,9 @@ export async function fetchCatalog(): Promise<CatalogData> {
 
 import { storage } from '@/lib/storage';
 
-const CACHE_KEY = 'ydu.catalog.v1';
+// v2: covers are stored as data (see `CachedCover`). v1 stored the bundled placeholder itself.
+const CACHE_KEY = 'ydu.catalog.v2';
+const OLD_CACHE_KEYS = ['ydu.catalog.v1'];
 /** A cache older than this is still shown, but never trusted for a 304-only refresh. */
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -116,21 +118,56 @@ export interface CatalogCache {
   data: CatalogData;
 }
 
+/**
+ * A cover as it is saved on the device: the remote image, or null for "no cover".
+ *
+ * The bundled placeholder is never saved. `require()` returns a handle that only means something
+ * inside the build that made it: a registry number on Android and iOS (it can point at another
+ * image after an app update) and a `{ uri }` object on web (it is no longer the same object once
+ * read back, so CourseImage would stop treating it as the placeholder and crop it). Saving null
+ * and mapping it back to COVER_PLACEHOLDER on read keeps the fallback right in every build.
+ */
+type CachedCover = { uri: string } | null;
+type CachedCourse = Omit<Course, 'cover'> & { cover: CachedCover };
+interface StoredCatalogCache extends Omit<CatalogCache, 'data'> {
+  data: Omit<CatalogData, 'courses'> & { courses: CachedCourse[] };
+}
+
+function toCachedCover(cover: Course['cover']): CachedCover {
+  if (cover === COVER_PLACEHOLDER || !cover || typeof cover !== 'object' || Array.isArray(cover)) return null;
+  const uri = (cover as { uri?: unknown }).uri;
+  return typeof uri === 'string' && uri ? { uri } : null;
+}
+
+function fromCachedCover(cover: unknown): Course['cover'] {
+  const uri = cover && typeof cover === 'object' ? (cover as { uri?: unknown }).uri : undefined;
+  return typeof uri === 'string' && uri ? { uri } : COVER_PLACEHOLDER;
+}
+
 export async function readCatalogCache(): Promise<CatalogCache | null> {
+  // Runs once per launch: drop caches from older app versions (never read again).
+  for (const key of OLD_CACHE_KEYS) void storage.remove(key);
   try {
     const raw = await storage.get(CACHE_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as CatalogCache;
+    const parsed = JSON.parse(raw) as StoredCatalogCache;
     if (!parsed?.etag || !Array.isArray(parsed?.data?.courses)) return null;
-    return parsed;
+    return {
+      ...parsed,
+      data: { ...parsed.data, courses: parsed.data.courses.map((course) => ({ ...course, cover: fromCachedCover(course.cover) })) },
+    };
   } catch {
     return null;
   }
 }
 
 export function writeCatalogCache(cache: CatalogCache) {
+  const stored: StoredCatalogCache = {
+    ...cache,
+    data: { ...cache.data, courses: cache.data.courses.map((course) => ({ ...course, cover: toCachedCover(course.cover) })) },
+  };
   // Fire-and-forget; storage failures are already swallowed by lib/storage.
-  void storage.set(CACHE_KEY, JSON.stringify(cache)).catch(() => {});
+  void storage.set(CACHE_KEY, JSON.stringify(stored)).catch(() => {});
 }
 
 export type CatalogRefreshResult =

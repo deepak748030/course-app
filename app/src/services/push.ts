@@ -27,8 +27,11 @@ const TOKEN_KEY = 'ydu.pushToken';
  * expo-notifications cannot load in Expo Go on Android (SDK 53+): its remote-push module throws the
  * moment it is imported. So it is loaded only where it works, and push quietly stays off in Expo Go;
  * the app itself runs normally there. Development and store builds get the real module.
+ * The web build has no Expo push either (methods such as getLastNotificationResponseAsync throw
+ * there), so push stays off on web too.
  */
 function loadNotifications(): typeof NotificationsApi | null {
+  if (Platform.OS === 'web') return null;
   if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
   try {
     return require('expo-notifications') as typeof NotificationsApi;
