@@ -504,7 +504,9 @@ check('every onboarding slide fills the window, and the poster leads it', () => 
   // The artwork is the screen: `cover` on a full-window box, in a pager that is absolute-filled, so
   // no slide can end up letterboxed (which is what a `contain` image with page padding did).
   assert.ok(screen.includes('contentFit="cover"'), 'the artwork is cropped to fill, never letterboxed');
-  assert.ok(!/contentFit="contain"/.test(screen), 'no slide falls back to a letterboxed image');
+  // The brand row's small logo is the one image shown whole on purpose: a logo is never cropped.
+  const slideArt = screen.replace(/<Image source=\{images\.brandMark\}[^>]*\/>/g, '');
+  assert.ok(!/contentFit="contain"/.test(slideArt), 'no slide falls back to a letterboxed image');
   assert.ok(
     /canvas: \{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 \}/.test(screen),
     'the pager covers the whole window, status bar included',

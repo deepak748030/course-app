@@ -4,7 +4,7 @@
     "slug": "courses-app",
     "version": "1.0.0",
     "orientation": "default",
-    "icon": "./assets/images/splash-icon.png",
+    "icon": "./assets/images/logo.png",
     "scheme": "yduacademy",
     "userInterfaceStyle": "light",
     "android": {
