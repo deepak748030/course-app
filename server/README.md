@@ -45,8 +45,12 @@ no database required. Long documents open with an "On this page" index, and ever
 stable anchor (for example `/legal/privacy#deleting-your-account`).
 
 `{{supportEmail}}`, `{{supportPhone}}` and `{{appName}}` in the copy are filled in from Settings —
-as tap-to-email / tap-to-call links on the web — so set the real support email and phone in the
-dashboard's **Settings** page; the defaults are placeholders.
+as tap-to-email / tap-to-call links on the web. The academy's details are the defaults
+(`yduacademy@gmail.com`, `+91 7489301982` — `DEFAULT_SUPPORT_EMAIL` / `DEFAULT_SUPPORT_PHONE` in
+`src/models/Settings.js`), and the dashboard's **Settings** page can change them. A database seeded by
+an earlier build still holding the old demo values (`support@ydu.academy`, `+91 98765 43210`) is
+switched to the real ones automatically when the server connects; values an admin typed are never
+touched.
 
 The built-in text lives in `app/src/data/content.ts`. After editing it, run
 `node scripts/export-content.mjs` from `app/` to regenerate `src/data/defaultContent.js` here and
@@ -57,11 +61,12 @@ the dashboard's fallback copy; the script refuses copy the dashboard could not s
 1. Deploy the API behind **HTTPS** and open `https://<api-host>/legal/privacy` and
    `https://<api-host>/legal/delete-account` in a private browser window — both must load
    without signing in.
-2. In the dashboard: **Settings** → set the real support email and phone. **Content** → add your
-   legal entity name and address and the Grievance Officer's name to the privacy policy and the
-   Contact page, and check the business choices in the built-in copy (the 7-day / 25%
-   change-of-mind refund window, deletion requests completed within 7 days). Have a lawyer review
-   the final text.
+2. Check the contact details on both pages: support email `yduacademy@gmail.com`, phone
+   `+91 7489301982`, Grievance Officer Deepak Kushwah, address YDU Academy, Khandwa, Madhya
+   Pradesh, India (dashboard: **Settings** for the email and phone, **Content** for the rest). The
+   business choices in the built-in copy — the 7-day / 25% change-of-mind refund window, deletion
+   requests completed within 7 days — can be changed on the **Content** page too. Have a lawyer
+   review the final text.
 3. Play Console → **App content** → Privacy policy: the `/legal/privacy` URL.
 4. Play Console → **App content** → Data safety, consistent with the privacy policy:
 

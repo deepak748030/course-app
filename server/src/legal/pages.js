@@ -17,7 +17,7 @@
  */
 
 import { defaultLegalDocs } from '../data/defaultContent.js';
-import { getSettings } from '../models/Settings.js';
+import { DEFAULT_SUPPORT_EMAIL, DEFAULT_SUPPORT_PHONE, getSettings } from '../models/Settings.js';
 
 /**
  * The documents served, in hub order. Privacy and account deletion lead — they are the two links
@@ -32,8 +32,8 @@ const TOC_MIN_SECTIONS = 6;
 const DEFAULTS = {
   appName: 'YDU Academy',
   tagline: 'Learn the dairy trade, one batch at a time.',
-  supportEmail: 'support@ydu.academy',
-  supportPhone: '+91 98765 43210',
+  supportEmail: DEFAULT_SUPPORT_EMAIL,
+  supportPhone: DEFAULT_SUPPORT_PHONE,
 };
 
 /**

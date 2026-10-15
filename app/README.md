@@ -334,10 +334,11 @@ repository.
 - **No dark theme.** Both themes are light-first (white surfaces); the only dark area in the app is
   the video itself.
 - **Policy copy needs a final legal review.** The seven documents (Terms, Privacy, Delete account,
-  Refunds, About, Contact, Disclaimer) describe what the app and server actually do and follow Google
-  Play's requirements, but they still need the business's own details (legal entity, address,
-  Grievance Officer) and a lawyer's review — edit them from the admin's Content page, or edit
-  `src/data/content.ts` and run `node scripts/export-content.mjs` to update the server's copy.
+  Refunds, About, Contact, Disclaimer) describe what the app and server actually do, follow Google
+  Play's requirements and carry the academy's details (support email and phone, Grievance Officer,
+  address in Khandwa, Madhya Pradesh), but have not had a lawyer's review — edit them from the
+  admin's Content page, or edit `src/data/content.ts` and run `node scripts/export-content.mjs` to
+  update the server's copy.
 
 Demo data lives on the device: logging out clears the learning data stored for the session, while
 onboarding completion and app preferences are kept.

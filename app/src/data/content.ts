@@ -59,6 +59,13 @@ export const faqs: FaqItem[] = [
  * admin-dashboard copies, which also checks every document against the limits the admin can save.
  */
 
+/**
+ * The academy's contact details as the copy uses them before the server's settings arrive (first
+ * launch offline, or a database with no settings yet). The same values the server falls back to;
+ * once settings load, Admin → Settings wins.
+ */
+export const supportContact = { email: 'yduacademy@gmail.com', phone: '+91 7489301982' } as const;
+
 /** One clause of a policy document: a heading, then paragraphs and/or bullet points. */
 export type LegalSection = {
   heading: string;
@@ -348,6 +355,7 @@ export const legalDocs: Record<
         heading: 'About this policy',
         body: [
           'This privacy policy explains how YDU Academy (“YDU Academy”, “we”, “us” or “our”) collects, uses, shares, stores and protects personal data when you use the YDU Academy mobile app, our courses and the web pages we publish, including this one (together, the “service”).',
+          'YDU Academy is based in Khandwa, Madhya Pradesh, India. Our contact details, including our Grievance Officer’s, are at the end of this policy.',
           'It applies to everyone who uses the service, whether or not they have an account. Please read it together with our Terms of use. By creating an account or using the service, you agree to the processing described here. If you do not agree, please do not use the service.',
         ],
       },
@@ -563,8 +571,10 @@ export const legalDocs: Record<
           'For questions, requests about your personal data, or complaints about how we handle it, contact our Grievance Officer. Please include the mobile number registered with your account. We acknowledge complaints within 48 hours and resolve them within 30 days of receiving them.',
         ],
         points: [
+          'Grievance Officer: Deepak Kushwah',
           'Email: {{supportEmail}} (subject “Privacy request” or “Grievance”)',
           'Phone: {{supportPhone}}',
+          'Address: YDU Academy, Khandwa, Madhya Pradesh, India',
         ],
       },
     ],
@@ -714,7 +724,7 @@ export const legalDocs: Record<
       {
         heading: 'Support',
         body: ['Email or call the YDU Academy team with any question about the app, a course, a payment or your account.'],
-        points: ['Email: {{supportEmail}}', 'Phone: {{supportPhone}}'],
+        points: ['Email: {{supportEmail}}', 'Phone: {{supportPhone}}', 'Address: YDU Academy, Khandwa, Madhya Pradesh, India'],
       },
       {
         heading: 'When we are available',
@@ -746,7 +756,7 @@ export const legalDocs: Record<
       {
         heading: 'Grievance Officer',
         body: [
-          'If your issue is not resolved, or you want to make a formal complaint — including about your personal data — write to our Grievance Officer at {{supportEmail}} with “Grievance” in the subject line. We acknowledge complaints within 48 hours and resolve them within 30 days of receiving them.',
+          'If your issue is not resolved, or you want to make a formal complaint — including about your personal data — write to our Grievance Officer, Deepak Kushwah, at {{supportEmail}} with “Grievance” in the subject line. We acknowledge complaints within 48 hours and resolve them within 30 days of receiving them.',
         ],
       },
       {

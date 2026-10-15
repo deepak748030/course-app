@@ -27,6 +27,7 @@ import { Linking, StyleSheet, Text, View } from 'react-native';
 import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { useStore } from '@/store';
+import { supportContact } from '@/data/content';
 import { useAppContent, type LegalKey } from '@/services/app-content';
 import { useT } from '@/i18n';
 
@@ -53,15 +54,17 @@ export default function LegalScreen() {
   const key: DocKey = DOC_KEYS.includes(doc as DocKey) ? (doc as DocKey) : 'terms';
   const document = legalDocs[key];
 
-  /** The contact page doubles as the place to actually reach someone: the rows below the copy. */
-  const supportEmail = settings?.supportEmail?.trim() ?? '';
-  const supportPhone = settings?.supportPhone?.trim() ?? '';
-  /** Before settings arrive (first launch offline) the copy points at the Contact us page instead. */
+  /**
+   * The contact page doubles as the place to actually reach someone: the rows below the copy. Until
+   * the server's settings arrive (first launch offline) the academy's own details stand in.
+   */
+  const supportEmail = settings?.supportEmail?.trim() || supportContact.email;
+  const supportPhone = settings?.supportPhone?.trim() || supportContact.phone;
   const fill = (text: string) =>
     fillTokens(text, {
       appName: settings?.appName?.trim() || 'YDU Academy',
-      supportEmail: supportEmail || 'the support email on the Contact us page',
-      supportPhone: supportPhone || 'the support number on the Contact us page',
+      supportEmail,
+      supportPhone,
     });
 
   return (
