@@ -2,9 +2,9 @@ import { revokeUserSockets } from '../../realtime/socket.js';
 import { Enrollment } from '../../models/Enrollment.js';
 import { PushToken } from '../../models/PushToken.js';
 import { Order } from '../../models/Order.js';
-import { Review } from '../../models/Review.js';
 import { User } from '../../models/User.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
+import { purgeUserData } from '../shared.js';
 
 /** GET /api/admin/users — search + role/blocked filters + enrollment counts. */
 export const listUsers = asyncHandler(async (req, res) => {
@@ -69,18 +69,13 @@ export const updateUser = asyncHandler(async (req, res) => {
   res.json({ user });
 });
 
-/** DELETE /api/admin/users/:id — cascades that user's orders, enrollments and reviews. */
+/** DELETE /api/admin/users/:id — the same cascade as a learner's own delete (see purgeUserData). */
 export const deleteUser = asyncHandler(async (req, res) => {
   if (req.user && String(req.user._id) === req.params.id) {
     throw new HttpError(400, 'You cannot delete your own account');
   }
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) throw new HttpError(404, 'User not found');
-  await Promise.all([
-    Order.deleteMany({ user: user._id }),
-    Enrollment.deleteMany({ user: user._id }),
-    Review.deleteMany({ user: user._id }),
-    PushToken.deleteMany({ user: user._id }),
-  ]);
+  await purgeUserData(user);
   res.json({ ok: true, deleted: user.email });
 });
