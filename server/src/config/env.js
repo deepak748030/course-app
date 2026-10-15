@@ -26,6 +26,9 @@ export const env = {
 
 export const isProd = env.nodeEnv === 'production';
 
+/** The Play review sign-in is on only when both variables are set and well-formed. */
+export const reviewLoginEnabled = /^[6-9]\d{9}$/.test(env.reviewPhone) && /^\d{6}$/.test(env.reviewOtp);
+
 if (isProd && env.jwtSecret === 'dev-only-secret-change-me') {
   // Fail loudly rather than sign production tokens with a known secret.
   throw new Error('JWT_SECRET must be set in production. See .env.example.');

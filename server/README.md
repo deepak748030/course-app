@@ -60,13 +60,29 @@ production. Each seeded learner has a unique +91 mobile number (10 digits starti
 - `POST /api/auth/otp/verify` `{ phone, code }` returns `{ token, user }`. Three wrong codes
   expire the current code (`410`). A wrong code returns `401`.
 - Codes are stored as an HMAC (never in plain text) and deleted once used.
-- **SMS delivery:** no provider is wired up yet. `src/services/sms.js` is the single place to add
-  one. Until then, development prints the code to the server console, and production returns
-  `503` rather than logging a code.
+- **SMS delivery** (`src/services/sms.js`): set `SMS_PROVIDER` and that provider's keys (see
+  `.env.example`). The server makes and checks the code; the provider only delivers it.
+
+  | `SMS_PROVIDER` | Variables | Notes |
+  | --- | --- | --- |
+  | `msg91` | `MSG91_AUTH_KEY`, `MSG91_TEMPLATE_ID` | OTP API; your DLT-approved OTP template's `##OTP##` is filled in |
+  | `2factor` | `TWOFACTOR_API_KEY`, optional `TWOFACTOR_TEMPLATE` | 2Factor's default OTP template unless you name your own — handy for a first test |
+  | `fast2sms` | `FAST2SMS_API_KEY` + `FAST2SMS_OTP_ID`, or + `FAST2SMS_SENDER_ID` and `FAST2SMS_MESSAGE_ID` | OTP API, or the DLT route with your sender ID and template; `FAST2SMS_VARIABLES` fills `{#var#}` slots (`{otp}`, `{minutes}`) |
+
+  Indian SMS must match a DLT-registered template (entity, sender ID and template registered on a
+  DLT portal — Jio, Airtel, Vi or BSNL — then added in the provider's panel), for example *"Your YDU
+  Academy sign-in code is {#var#}. It is valid for 5 minutes. Do not share it with anyone."*
+  The boot log says which provider is in use or what is missing, and the dashboard's Play Store page
+  shows the same. A provider that refuses or cannot be reached answers `502` (logged with numbers
+  masked — never the code, the full number or a key), and the learner may ask again at once.
+  Without a provider, development prints the code to the console and production answers `503`
+  rather than logging a code.
 - `DEMO_OTP` (default `246810`) is accepted for any number outside `NODE_ENV=production`.
 - **Google Play review account:** set `PLAY_REVIEW_PHONE` (10 digits) and `PLAY_REVIEW_OTP` (6 digits)
   and that one number signs in with that fixed code — in production too, and without an SMS. Give
   both to Google in Play Console → App content → App access. Leave them empty otherwise.
+- `npm test` runs the server's tests (Node's built-in runner — the SMS requests for each provider,
+  how their answers are read, and that nothing secret reaches the log).
 - After changing the user model, re-run `npm run seed`: the phone and email indexes are now
   partial (empty values are allowed), so an older database may still carry the stricter ones.
 

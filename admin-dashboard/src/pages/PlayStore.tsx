@@ -12,7 +12,7 @@ import {
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
-import type { AppSettings, ContentDefaults, LegalDocKey } from '../api/types';
+import type { AppSettings, ContentDefaults, LegalDocKey, ServerSetupStatus } from '../api/types';
 import { Badge, Button, Card, CardHeader, FormSkeleton, useToast } from '../components/ui';
 import { PUBLIC_PATHS, contentDefaultsOrBuiltIn, publicBaseUrl, resolveDoc, slugify } from '../lib/legal';
 
@@ -105,10 +105,14 @@ Lessons are for education only and are not food-safety, veterinary or licensing 
   return { title: `${appName}: Dairy Courses`.slice(0, 30), short, full };
 }
 
+/** One line of the "Before you submit" checklist. */
+type Check = { ok: boolean; optional?: boolean; title: string; detail: string; fix?: React.ReactNode };
+
 export default function PlayStore() {
   const toast = useToast();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [defaults, setDefaults] = useState<ContentDefaults | null>(null);
+  const [server, setServer] = useState<ServerSetupStatus | null>(null);
   const [pending, setPending] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [savingSite, setSavingSite] = useState(false);
@@ -117,9 +121,10 @@ export default function PlayStore() {
     setError(null);
     api
       .getSettingsWithDefaults()
-      .then(({ settings: s, contentDefaults }) => {
+      .then(({ settings: s, contentDefaults, server: setup }) => {
         setSettings(s ?? ({} as AppSettings));
         setDefaults(contentDefaultsOrBuiltIn(contentDefaults));
+        setServer(setup ?? null);
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not load settings'));
     api
@@ -170,7 +175,41 @@ export default function PlayStore() {
     }
   }
 
-  const checks: { ok: boolean; optional?: boolean; title: string; detail: string; fix?: React.ReactNode }[] = [
+  // Launch blockers only the API server can report (its environment variables, never the keys).
+  // They are fixed where the server is hosted, not in Settings.
+  const onServer = <Badge tone="neutral">API server env</Badge>;
+  const serverChecks: Check[] = server
+    ? [
+        {
+          ok: server.sms.configured,
+          title: 'Sign-in SMS',
+          fix: !server.sms.configured && onServer,
+          detail: server.sms.configured
+            ? `Sign-in codes go out through ${server.sms.label}.`
+            : server.sms.provider
+              ? `SMS_PROVIDER=${server.sms.provider} on the API server is missing ${server.sms.missing.join(', ')}.`
+              : 'No SMS provider on the API server, so learners cannot sign in (only the Play review number can). Set SMS_PROVIDER and its keys — MSG91, 2Factor or Fast2SMS (server README → Phone sign-in).',
+        },
+        {
+          ok: server.reviewLogin,
+          title: 'Reviewer sign-in',
+          fix: !server.reviewLogin && onServer,
+          detail: server.reviewLogin
+            ? 'PLAY_REVIEW_PHONE and PLAY_REVIEW_OTP are set on the API server.'
+            : 'Not set on the API server, so Google’s reviewers cannot get past the sign-in screen. See “App access” below.',
+        },
+        {
+          ok: server.payments,
+          title: 'Payments',
+          fix: !server.payments && onServer,
+          detail: server.payments
+            ? 'Razorpay keys are set on the API server.'
+            : 'Razorpay keys are not set on the API server, so no course can be bought (server README → Payments).',
+        },
+      ]
+    : [];
+
+  const businessChecks: Check[] = [
     {
       ok: websiteSaved,
       title: 'Website address',
@@ -232,6 +271,7 @@ export default function PlayStore() {
       ) : undefined,
     },
   ];
+  const checks = [...serverChecks, ...businessChecks];
   const missing = checks.filter((check) => !check.ok && !check.optional).length;
 
   return (
@@ -315,7 +355,7 @@ export default function PlayStore() {
       <Card>
         <CardHeader
           title="Before you submit"
-          subtitle="Details the policies and the Contact page show. Fill them in Settings → Business and legal details."
+          subtitle="Server items are environment variables on the API server; the rest are filled in Settings → Business and legal details."
           action={missing === 0 ? <Badge tone="success">All set</Badge> : <Badge tone="error">{missing} to fix</Badge>}
         />
         <ul className="divide-y divide-line-soft">

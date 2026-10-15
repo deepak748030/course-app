@@ -214,6 +214,16 @@ export interface LegalDocEntry {
 /** A request to delete an account — from the public /delete-account page or from the app itself. */
 export type DeletionRequestStatus = 'pending' | 'completed' | 'rejected';
 
+/** What only the API server knows about its own setup (GET /admin/settings) — never the keys. */
+export interface ServerSetupStatus {
+  /** Sign-in SMS: SMS_PROVIDER and its keys. */
+  sms: { provider: string | null; label: string | null; configured: boolean; missing: string[] };
+  /** PLAY_REVIEW_PHONE + PLAY_REVIEW_OTP are set and valid. */
+  reviewLogin: boolean;
+  /** Razorpay keys are set. */
+  payments: boolean;
+}
+
 /** What deleting an account removed (and how many paid orders stayed as the tax record). */
 export interface AccountDeletionSummary {
   enrollments: number;

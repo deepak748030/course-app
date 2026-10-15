@@ -4,7 +4,7 @@ import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
 import { connectDb } from './config/db.js';
-import { env, isProd } from './config/env.js';
+import { env, isProd, reviewLoginEnabled } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { initializeRealtime } from './realtime/socket.js';
 import routes from './routes/index.js';
@@ -12,6 +12,7 @@ import { requestCounter } from './services/analytics.js';
 import { razorpayWebhook } from './controllers/payments.controller.js';
 import { uploadDir } from './services/uploads.js';
 import { checkRazorpayKeys } from './services/razorpay.js';
+import { logSmsStatus } from './services/sms.js';
 
 const app = express();
 const server = http.createServer(app);
@@ -59,6 +60,8 @@ server.listen(env.port, () => {
   console.log(`[api] Health: http://localhost:${env.port}/api/health`);
   console.log(`[api] Realtime: socket.io on the same port (/socket.io)`);
   void checkRazorpayKeys();
+  logSmsStatus();
+  logReviewLogin();
 });
 
 connectDb();
@@ -66,3 +69,12 @@ connectDb();
 process.on('unhandledRejection', (reason) => {
   console.error('[api] unhandled rejection:', reason);
 });
+
+/** Says at boot whether Google's reviewers can sign in, so a typo in the variables is caught early. */
+function logReviewLogin() {
+  if (reviewLoginEnabled) {
+    console.log(`[auth] Play review sign-in is on for +91 XXXXXX${env.reviewPhone.slice(-4)} (fixed code, no SMS)`);
+  } else if (process.env.PLAY_REVIEW_PHONE || process.env.PLAY_REVIEW_OTP) {
+    console.warn('[auth] PLAY_REVIEW_PHONE / PLAY_REVIEW_OTP are set but not valid (a 10-digit mobile starting 6-9 and a 6-digit code) — the review sign-in is off.');
+  }
+}

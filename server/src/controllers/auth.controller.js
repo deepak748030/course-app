@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
-import { env, isProd } from '../config/env.js';
+import { env, isProd, reviewLoginEnabled } from '../config/env.js';
 import { OtpCode } from '../models/OtpCode.js';
 import { User } from '../models/User.js';
 import { emitToAdmins } from '../realtime/socket.js';
@@ -32,8 +32,7 @@ const demoCodeAllowed = (code) => !isProd && sameCode(code, env.demoOtp);
  * The Play review number (PLAY_REVIEW_PHONE + PLAY_REVIEW_OTP): its code is the fixed one from the
  * environment and no SMS is sent, so Google's reviewers can sign in. Off unless both are set.
  */
-const isReviewPhone = (phone) =>
-  /^[6-9]\d{9}$/.test(env.reviewPhone) && /^\d{6}$/.test(env.reviewOtp) && phone === env.reviewPhone;
+const isReviewPhone = (phone) => reviewLoginEnabled && phone === env.reviewPhone;
 
 /** POST /api/auth/otp/request — sends a one-time code to an Indian mobile number. */
 export const requestOtp = asyncHandler(async (req, res) => {
@@ -63,7 +62,16 @@ export const requestOtp = asyncHandler(async (req, res) => {
     { upsert: true, new: true }
   );
 
-  if (!review) await sendOtpSms(phone, code);
+  if (!review) {
+    try {
+      await sendOtpSms(phone, code);
+    } catch (error) {
+      // Nothing went out, so the learner may ask again straight away instead of waiting out the
+      // resend timer for a code that never arrived.
+      await OtpCode.deleteOne({ phone }).catch(() => {});
+      throw error;
+    }
+  }
   res.json({ ok: true, expiresInSeconds: OTP_TTL_MS / 1000, resendInSeconds: OTP_RESEND_MS / 1000 });
 });
 

@@ -393,7 +393,7 @@ router.patch(
   deletionRequests.updateDeletionRequest
 );
 
-router.get('/settings', settings.getSettings);
+router.get('/settings', settings.getAdminSettings);
 router.put('/settings', validateBody(settingsSchema), settings.updateSettings);
 
 // ---------- notifications (in-app inbox + push) ----------------------------------

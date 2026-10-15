@@ -1,3 +1,4 @@
+import { reviewLoginEnabled } from '../../config/env.js';
 import { Settings } from '../../models/Settings.js';
 import {
   DEFAULT_CONTENT_UPDATED_AT,
@@ -7,6 +8,8 @@ import {
   defaultPurchaseTerms,
 } from '../../data/defaultContent.js';
 import { emitToApp } from '../../realtime/socket.js';
+import { paymentsConfigured } from '../../services/razorpay.js';
+import { smsStatus } from '../../services/sms.js';
 import { asyncHandler } from '../../utils/http.js';
 
 // Clients get both lists on every section (an editor field per list), even when one is empty.
@@ -35,6 +38,19 @@ const contentDefaults = {
 export const getSettings = asyncHandler(async (_req, res) => {
   const settings = await Settings.findById('app').lean();
   res.json({ settings, contentDefaults });
+});
+
+/**
+ * GET /api/admin/settings — the same, plus what only the server knows about its own setup, for the
+ * dashboard's launch checklist: sign-in SMS, the Play review login and payments. Never the keys.
+ */
+export const getAdminSettings = asyncHandler(async (_req, res) => {
+  const settings = await Settings.findById('app').lean();
+  res.json({
+    settings,
+    contentDefaults,
+    server: { sms: smsStatus(), reviewLogin: reviewLoginEnabled, payments: paymentsConfigured() },
+  });
 });
 
 /** The parts of a document a reader sees — what decides whether "Last updated" moves. */

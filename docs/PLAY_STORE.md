@@ -76,7 +76,18 @@ Paid lessons stay locked for this account (checkout needs a real payment of at l
 free preview on at least one course (dashboard → Courses → edit → a lesson's preview length) for the
 reviewers to watch.
 
-## 4. Data safety — suggested answers
+## 4. Sign-in SMS (before real learners arrive)
+
+The reviewer number works without SMS, but every real learner signs in with a code sent by SMS. Set
+`SMS_PROVIDER` and its keys on the API server — MSG91, 2Factor or Fast2SMS (server README → Phone
+sign-in). Indian SMS must use a DLT-approved template, for example:
+
+> Your YDU Academy sign-in code is {#var#}. It is valid for 5 minutes. Do not share it with anyone.
+
+2Factor also has a default OTP template, handy for a first test (ask 2Factor whether it suits a live
+launch). The dashboard's Play Store checklist turns green once the server reports a working setup.
+
+## 5. Data safety — suggested answers
 
 Collected (none is "shared": Razorpay, the SMS gateway, Expo/Firebase push, Cloudinary and hosting are
 service providers). All encrypted in transit (keep the production API on `https://`). Users can
@@ -103,7 +114,7 @@ crash logs/diagnostics.
 Account creation: phone number + one-time code. Delete account URL: `/delete-account`. Partial
 deletion without deleting the account: yes (`/delete-account#delete-some-data-and-keep-your-account`).
 
-## 5. Other App content answers
+## 6. Other App content answers
 
 - **Ads:** No.
 - **Advertising ID:** No — the build blocks `com.google.android.gms.permission.AD_ID`.
@@ -115,7 +126,7 @@ deletion without deleting the account: yes (`/delete-account#delete-some-data-an
   camera and microphone permissions are blocked in `app/app.json`.
 - **Category:** Education.
 
-## 6. The Android build
+## 7. The Android build
 
 - `app/app.json` no longer requests `RECORD_AUDIO` (it was unused) and blocks `CAMERA`, `RECORD_AUDIO`
   and `AD_ID`, so the manifest matches the privacy policy ("no camera, no microphone").
@@ -131,7 +142,7 @@ deletion without deleting the account: yes (`/delete-account#delete-some-data-an
   `"versionCode": 2` (then 3, …) under `expo.android` in `app.json` (`eas.json` reads versions
   locally), and raise `expo.version` when you want the store to show a new version name.
 
-## 7. Store listing draft
+## 8. Store listing draft
 
 The dashboard's Play Store page has a ready app name (≤30), short description (≤80) and full
 description (≤4000) with character counts and copy buttons.
