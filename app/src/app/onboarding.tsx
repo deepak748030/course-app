@@ -162,8 +162,9 @@ export default function OnboardingScreen() {
 
       <View style={[styles.topBar, { paddingTop: insets.top + spacing.sm }]}>
         <View style={styles.brand}>
-          {/* The same brand-mark artwork the Home header carries, at the same size. */}
-          <Image source={images.brandMark} style={{ width: 40, height: 40 }} contentFit="contain" />
+          {/* The same brand-mark artwork the Home header carries, at the same size. Square artwork
+              in a square box, so the default fit draws it whole with nothing cropped. */}
+          <Image source={images.brandMark} style={{ width: 40, height: 40 }} />
           <Text style={[type.bodyStrong, { color: colors.text }]}>YDU Academy</Text>
         </View>
       </View>

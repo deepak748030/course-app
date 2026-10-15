@@ -33,7 +33,14 @@ export function resolveAppContent(settings: ServerSettings | null | undefined): 
 
   return {
     faqs,
-    legalDocs: { terms: pick('terms'), refund: pick('refund'), privacy: pick('privacy') },
+    legalDocs: {
+      terms: pick('terms'),
+      refund: pick('refund'),
+      privacy: pick('privacy'),
+      about: pick('about'),
+      contact: pick('contact'),
+      disclaimer: pick('disclaimer'),
+    },
     purchaseTerms,
   };
 }

@@ -8,6 +8,7 @@ import {
   Clock,
   LogOut,
   FileText,
+  Info,
   Languages,
   LifeBuoy,
   Mail,
@@ -274,6 +275,12 @@ export default function ProfileScreen() {
               label={t("Terms and conditions")}
               subtitle={t("Terms, refunds and privacy")}
               onPress={() => router.push({ pathname: '/legal', params: { doc: 'terms' } })}
+            />
+            <ListRow
+              icon={Info}
+              label={t("All policies")}
+              subtitle={t("About the academy, contact and disclaimer")}
+              onPress={() => router.push('/policies')}
             />
             <ListRow
               icon={LifeBuoy}

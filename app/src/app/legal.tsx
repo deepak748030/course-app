@@ -18,25 +18,34 @@
 
 import { useLocalSearchParams } from 'expo-router';
 import { useRouter } from '@/lib/router';
-import { LifeBuoy, TriangleAlert } from 'lucide-react-native';
-import { StyleSheet, Text, View } from 'react-native';
+import { LifeBuoy, Mail, Phone, TriangleAlert } from 'lucide-react-native';
+import { Linking, StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, DataList, ListRow, Screen } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
+import { useStore } from '@/store';
 import { useAppContent, type LegalKey } from '@/services/app-content';
 import { useT } from '@/i18n';
 
 type DocKey = LegalKey;
 
+/** Every document the route accepts; anything else falls back to the terms. */
+const DOC_KEYS: readonly DocKey[] = ['terms', 'privacy', 'refund', 'about', 'contact', 'disclaimer'];
+
 export default function LegalScreen() {
   const { legalDocs } = useAppContent();
   const t = useT();
+  const { settings } = useStore();
 
   const { doc } = useLocalSearchParams<{ doc?: string }>();
   const router = useRouter();
 
-  const key: DocKey = doc === 'privacy' || doc === 'refund' ? doc : 'terms';
+  const key: DocKey = DOC_KEYS.includes(doc as DocKey) ? (doc as DocKey) : 'terms';
   const document = legalDocs[key];
+
+  /** The contact page doubles as the place to actually reach someone: the rows below the copy. */
+  const supportEmail = settings?.supportEmail?.trim() ?? '';
+  const supportPhone = settings?.supportPhone?.trim() ?? '';
 
   return (
     <Screen
@@ -92,6 +101,30 @@ export default function LegalScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Contact is the one document with something to act on: reach the team right from the page. */}
+      {key === 'contact' && (supportEmail || supportPhone) ? (
+        <View style={styles.pad}>
+          <DataList>
+            {supportEmail ? (
+              <ListRow
+                icon={Mail}
+                label={t('Email us')}
+                subtitle={supportEmail}
+                onPress={() => void Linking.openURL(`mailto:${supportEmail}`).catch(() => {})}
+              />
+            ) : null}
+            {supportPhone ? (
+              <ListRow
+                icon={Phone}
+                label={t('Call us')}
+                subtitle={supportPhone}
+                onPress={() => void Linking.openURL(`tel:${supportPhone.replace(/[^\d+]/g, '')}`).catch(() => {})}
+              />
+            ) : null}
+          </DataList>
+        </View>
+      ) : null}
 
       <View style={styles.pad}>
         <DataList>

@@ -25,7 +25,20 @@ Environment variables (see `.env.example`):
 
 The server starts HTTP immediately and connects to MongoDB in the background with
 retries; while the database is down, every data route answers a clean `503` and
-`GET /api/health` reports the state.
+`GET /api/health` reports the state. The public policy pages under `/legal` keep
+working too — they fall back to the built-in copy.
+
+## Public policy pages (Google Play)
+
+The server publishes the app's policy documents as plain, sign-in-free HTML — this is
+the URL to paste into the Play Console's privacy policy field:
+
+- `GET /legal` — hub listing all six documents
+- `GET /legal/:doc` — one document: `privacy`, `terms`, `refund`, `about`, `contact`, `disclaimer`
+
+They render the admin's copy from Settings (Content page in the dashboard) when saved, and the
+built-in text otherwise, so the app and the web listing always show the same documents. No login,
+no database required.
 
 ## Seeded logins
 
@@ -77,6 +90,8 @@ orders, enrollments and reviews so the dashboard charts have data.
 | Method | Route | Notes |
 | --- | --- | --- |
 | `GET` | `/api/health` | liveness + db state |
+| `GET` | `/legal` | public policy hub (plain HTML, no login) |
+| `GET` | `/legal/:doc` | one policy page: `privacy` · `terms` · `refund` · `about` · `contact` · `disclaimer` |
 | `GET` | `/api/categories` | catalog categories |
 | `GET` | `/api/courses` | published courses (`category`, `level`, `q`, `popular`, `beginner`) |
 | `GET` | `/api/courses/:idOrSlug` | course detail |

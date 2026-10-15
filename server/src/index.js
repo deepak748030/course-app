@@ -8,6 +8,7 @@ import { env, isProd } from './config/env.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 import { initializeRealtime } from './realtime/socket.js';
 import routes from './routes/index.js';
+import legalRoutes from './routes/legal.routes.js';
 import { requestCounter } from './services/analytics.js';
 import { razorpayWebhook } from './controllers/payments.controller.js';
 import { uploadDir } from './services/uploads.js';
@@ -44,6 +45,16 @@ app.use('/api', requestCounter);
 
 // Local fallback storage for image uploads (Cloudinary is used when configured).
 app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
+
+// Public policy pages (privacy, terms, …): plain HTML for the Play Console, no login, no database
+// required — they fall back to the built-in copy when MongoDB is unreachable.
+app.use('/legal', legalRoutes);
+
+// The API's own root: browsers are sent to the public policy pages; anything else keeps the JSON 404.
+app.get('/', (req, res, next) => {
+  if (req.accepts('html')) res.redirect('/legal');
+  else next();
+});
 
 app.use('/api', routes);
 

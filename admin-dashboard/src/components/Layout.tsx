@@ -52,7 +52,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/reviews': { title: 'Reviews', subtitle: 'What learners say about each course' },
   '/coupons': { title: 'Coupons', subtitle: 'Discount codes for checkout' },
   '/banners': { title: 'Banners', subtitle: 'The posters at the top of the app’s home screen' },
-  '/content': { title: 'Content', subtitle: 'Help, policies and checkout copy the app shows' },
+  '/content': { title: 'Content', subtitle: 'FAQ, policy pages and Play Store links the app shows' },
   '/notifications': { title: 'Notifications', subtitle: 'Message all learners or one learner, in the app and as a push' },
   '/settings': { title: 'Settings', subtitle: 'App-wide controls the whole platform follows' },
 };

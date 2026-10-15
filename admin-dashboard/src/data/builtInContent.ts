@@ -157,6 +157,115 @@ export const BUILT_IN_CONTENT: ContentDefaults = {
           "points": []
         }
       ]
+    },
+    "about": {
+      "title": "About us",
+      "heading": "About YDU Academy",
+      "summary": "An education app for the dairy trade.",
+      "sections": [
+        {
+          "heading": "What the academy is",
+          "body": [
+            "YDU Academy is an education app for people who work with milk — dairy farmers, operators, technicians and anyone learning the trade. Courses are short video lessons you watch on your phone."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What is taught",
+          "body": [],
+          "points": [
+            "Milk handling, chilling and quality checks",
+            "Paneer, ghee, curd, cheese and frozen desserts",
+            "Farm practice and running a dairy as a business"
+          ]
+        },
+        {
+          "heading": "How a course works",
+          "body": [
+            "Each course is a sequence of short lessons. You buy a course once and it stays unlocked on your account, and your progress is saved as you go."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Who the courses are for",
+          "body": [
+            "Lessons teach methods and show examples with real equipment. They are built for people running or working in a dairy, not as a substitute for formal certification."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Getting in touch",
+          "body": [
+            "Questions about a course, an order or your account? The email address and phone number are on the Contact us page."
+          ],
+          "points": []
+        }
+      ]
+    },
+    "contact": {
+      "title": "Contact us",
+      "heading": "Contact YDU Academy",
+      "summary": "How to reach the academy team.",
+      "sections": [
+        {
+          "heading": "Support",
+          "body": [
+            "Email or call the academy team with any question about the app, a course or an order."
+          ],
+          "points": []
+        },
+        {
+          "heading": "What to include",
+          "body": [],
+          "points": [
+            "What you were doing when something went wrong",
+            "The course and lesson, if it is about one",
+            "Your order number for anything about a payment or refund"
+          ]
+        },
+        {
+          "heading": "Response time",
+          "body": [
+            "Messages are read on working days. Orders and refund questions are handled first."
+          ],
+          "points": []
+        }
+      ]
+    },
+    "disclaimer": {
+      "title": "Disclaimer",
+      "heading": "YDU Academy disclaimer",
+      "summary": "What the lessons cover — and what they do not.",
+      "sections": [
+        {
+          "heading": "Educational content only",
+          "body": [
+            "Lessons teach methods and show examples. They are not food-safety, veterinary, licensing or regulatory advice, and they do not replace a qualified professional."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Check before you change anything",
+          "body": [
+            "Batch outcomes depend on your milk, your equipment and your local rules. Check with your dairy officer or a qualified advisor before you change a commercial process."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Payments",
+          "body": [
+            "Payments are handled by Razorpay. YDU Academy does not store card, UPI or bank details and is not responsible for issues on the payment provider’s side."
+          ],
+          "points": []
+        },
+        {
+          "heading": "Changes",
+          "body": [
+            "Courses are updated over time. The version of a lesson available in the app when you watch it is the one that applies."
+          ],
+          "points": []
+        }
+      ]
     }
   },
   "purchaseTerms": [

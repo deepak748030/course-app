@@ -101,7 +101,7 @@ src/
     checkout/[id].tsx      demo checkout with scenarios and coupons
     purchase-success.tsx   confirmation → first lesson
     lesson/[courseId]/[lessonId].tsx   player: Overview · Sheet (batch sheet) · Notes
-    saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx
+    saved.tsx · notifications.tsx · settings.tsx · help.tsx · legal.tsx · policies.tsx
   components/              UI kit (ui.tsx), course cards, animated icons, bottom sheet, brand marks
   constants/theme.ts       design tokens: colours, spacing, radii, type scale, motion (no shadows)
   data/content.ts          editorial content kept in-app: notifications, FAQs, legal docs
@@ -245,15 +245,17 @@ The UI follows the project's design rules document and is generated from one tok
   reduced-motion first.
 - **Profile is the one door to money, policies and help.** The profile screen's last group is
   `Settings & policies` and carries, in order: Settings, *Transactions*, *Refund policy*,
-  *Privacy policy*, *Terms and conditions* and *Help and support*. Transactions (`/transactions`)
+  *Privacy policy*, *Terms and conditions*, *All policies* and *Help and support*. Transactions (`/transactions`)
   lists every order on the account newest-first — cover, title, date, the coupon that was applied,
   a `Saved ₹…` badge and the amount — over a summary of what was paid in total, fetched from the
   server (`GET /api/orders/my`), with the honest line that payments are simulated. A new purchase
   or a refund changes it immediately, and the empty state offers the catalog.
-  The legal screen (`/legal`) now serves three documents — Terms, Privacy and Refunds — behind a
-  segmented switcher instead of a two-way “read the other one” button, and its refund copy sets out the
-  policy a shipped build would run on (seven-day window, nothing refunded past a quarter of the
-  lessons, coupons refunded at the price paid) under a badge that says it is still a sample document.
+  The legal screen (`/legal?doc=…`) serves one document per screen — Terms, Privacy, Refunds, About,
+  Contact and Disclaimer — and the policies hub (`/policies`) lists all six with Profile and the
+  sign-in screen linking to it, so every page opens without an account. The contact document doubles
+  as the place to reach someone: it adds tappable Email us / Call us rows from the server's support
+  details. The same six documents are published as sign-in-free HTML by the server under `/legal`,
+  which is the URL the Google Play listing takes.
 - **Settings is only what Settings is for.** Settings now holds notifications and the device data
   controls (reset demo data, log out) and nothing else: the Account block, the Payments block with the
   payment-security row and the Policies block are gone, because the account details live on Profile and
@@ -326,7 +328,9 @@ repository.
 - **No support inbox.** Help offers shareable feedback instead of a contact form that pretends to send.
 - **No dark theme.** Both themes are light-first (white surfaces); the only dark area in the app is
   the video itself.
-- **No legal documents.** Terms and Privacy are marked placeholder copy that must be replaced before shipping.
+- **Policy copy needs a lawyer.** The six documents (Terms, Privacy, Refunds, About, Contact,
+  Disclaimer) ship as built-in sample copy; replace them from the admin's Content page with
+  reviewed documents before distributing the app.
 
 Demo data lives on the device: logging out clears the learning data stored for the session, while
 onboarding completion and app preferences are kept.

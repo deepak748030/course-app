@@ -74,6 +74,9 @@ const settingsSchema = new Schema(
       terms: { type: legalDocSchema, default: undefined },
       refund: { type: legalDocSchema, default: undefined },
       privacy: { type: legalDocSchema, default: undefined },
+      about: { type: legalDocSchema, default: undefined },
+      contact: { type: legalDocSchema, default: undefined },
+      disclaimer: { type: legalDocSchema, default: undefined },
     },
     /** Lines shown on the checkout screen. Empty = the built-in list. */
     purchaseTerms: { type: [String], default: [] },

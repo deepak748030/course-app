@@ -1,19 +1,27 @@
-import { ArrowDown, ArrowUp, FileText, HelpCircle, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Copy, ExternalLink, FileText, HelpCircle, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api } from '../api/client';
+import { api, SERVER_URL } from '../api/client';
 import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalSectionEntry } from '../api/types';
 import { Button, Card, CardHeader, Field, FormSkeleton, Input, Skeleton, Textarea, useToast } from '../components/ui';
 import { BUILT_IN_CONTENT } from '../data/builtInContent';
 
 /**
- * What the app's Help, policy and checkout screens show. Every field starts with the text the app
- * already shows (the built-in defaults), so nothing is blank. Editing a field makes it "your text";
- * "Use built-in text" puts the default back. Saved to the server; the app updates live.
+ * What the app's Help, policy and checkout screens show, and the public /legal pages the Google
+ * Play listing links to. Every field starts with the text the app already shows (the built-in
+ * defaults), so nothing is blank. Editing a field makes it "your text"; "Use built-in text" puts
+ * the default back. Saved to the server; the app and the web pages update live.
  */
 
-type DocKey = 'terms' | 'refund' | 'privacy';
-const DOC_KEYS: DocKey[] = ['terms', 'refund', 'privacy'];
-const DOC_LABELS: Record<DocKey, string> = { terms: 'Terms of use', refund: 'Refund policy', privacy: 'Privacy policy' };
+type DocKey = 'terms' | 'refund' | 'privacy' | 'about' | 'contact' | 'disclaimer';
+const DOC_KEYS: DocKey[] = ['terms', 'refund', 'privacy', 'about', 'contact', 'disclaimer'];
+const DOC_LABELS: Record<DocKey, string> = {
+  terms: 'Terms of use',
+  refund: 'Refund policy',
+  privacy: 'Privacy policy',
+  about: 'About us',
+  contact: 'Contact us',
+  disclaimer: 'Disclaimer',
+};
 const MAX_FAQS = 50;
 const MAX_SECTIONS = 30;
 
@@ -31,6 +39,9 @@ const EMPTY_DEFAULTS: ContentDefaults = {
     terms: { title: 'Terms of use', heading: '', summary: '', sections: [] },
     refund: { title: 'Refund policy', heading: '', summary: '', sections: [] },
     privacy: { title: 'Privacy policy', heading: '', summary: '', sections: [] },
+    about: { title: 'About us', heading: '', summary: '', sections: [] },
+    contact: { title: 'Contact us', heading: '', summary: '', sections: [] },
+    disclaimer: { title: 'Disclaimer', heading: '', summary: '', sections: [] },
   },
   purchaseTerms: [],
 };
@@ -60,13 +71,25 @@ function fromSettings(s: AppSettings, defaults: ContentDefaults): ContentState {
     terms: !s.legalDocs?.terms,
     refund: !s.legalDocs?.refund,
     privacy: !s.legalDocs?.privacy,
+    about: !s.legalDocs?.about,
+    contact: !s.legalDocs?.contact,
+    disclaimer: !s.legalDocs?.disclaimer,
+  };
+  /** An older server without this document falls back to the bundled copy rather than crashing. */
+  const pick = (key: DocKey): LegalDocEntry => {
+    const stored = s.legalDocs?.[key];
+    const fallback = defaults.legalDocs[key] ?? EMPTY_DEFAULTS.legalDocs[key];
+    return copy(builtIn[key] || !stored ? fallback : normalizeDoc(stored));
   };
   return {
     faqs: copy(builtIn.faqs ? defaults.faqs : s.faqs ?? []),
     legalDocs: {
-      terms: copy(builtIn.terms ? defaults.legalDocs.terms : normalizeDoc(s.legalDocs!.terms!)),
-      refund: copy(builtIn.refund ? defaults.legalDocs.refund : normalizeDoc(s.legalDocs!.refund!)),
-      privacy: copy(builtIn.privacy ? defaults.legalDocs.privacy : normalizeDoc(s.legalDocs!.privacy!)),
+      terms: pick('terms'),
+      refund: pick('refund'),
+      privacy: pick('privacy'),
+      about: pick('about'),
+      contact: pick('contact'),
+      disclaimer: pick('disclaimer'),
     },
     purchaseTerms: builtIn.purchaseTerms ? [...defaults.purchaseTerms] : [...(s.purchaseTerms ?? [])],
     builtIn,
@@ -117,8 +140,13 @@ export default function Content() {
     api
       .getSettingsWithDefaults()
       .then(({ settings, contentDefaults }) => {
-        // An older server does not send contentDefaults: fall back to the copy bundled in this console.
-        const d = contentDefaults ?? BUILT_IN_CONTENT;
+        // An older server does not send contentDefaults: fall back to the copy bundled in this console,
+        // and a partial one (older docs) is topped up the same way so every tab has text behind it.
+        const base = contentDefaults ?? BUILT_IN_CONTENT;
+        const d: ContentDefaults = {
+          ...base,
+          legalDocs: { ...BUILT_IN_CONTENT.legalDocs, ...base.legalDocs },
+        };
         setDefaults(d);
         const next = fromSettings(settings, d);
         setSaved(next);
@@ -173,6 +201,14 @@ export default function Content() {
 
   const faqsValid = draft.faqs.every((faq) => faq.question.trim().length > 0);
 
+  /** One click for the Play Console: every policy link is copyable from the card above. */
+  const copyLink = (url: string) => {
+    void navigator.clipboard
+      ?.writeText(url)
+      .then(() => toast('success', 'Link copied'))
+      .catch(() => toast('error', 'Could not copy. Select the text and copy it instead.'));
+  };
+
   async function save() {
     if (!draft) return;
     setSaving(true);
@@ -188,6 +224,9 @@ export default function Content() {
           terms: draft.builtIn.terms ? null : cleanDoc('terms', draft.legalDocs.terms),
           refund: draft.builtIn.refund ? null : cleanDoc('refund', draft.legalDocs.refund),
           privacy: draft.builtIn.privacy ? null : cleanDoc('privacy', draft.legalDocs.privacy),
+          about: draft.builtIn.about ? null : cleanDoc('about', draft.legalDocs.about),
+          contact: draft.builtIn.contact ? null : cleanDoc('contact', draft.legalDocs.contact),
+          disclaimer: draft.builtIn.disclaimer ? null : cleanDoc('disclaimer', draft.legalDocs.disclaimer),
         },
         purchaseTerms: draft.builtIn.purchaseTerms ? [] : cleanLines(draft.purchaseTerms),
       } as Partial<AppSettings>);
@@ -248,6 +287,49 @@ export default function Content() {
 
   return (
     <div className="max-w-3xl space-y-4">
+      {/* ---------- Google Play listing links ---------- */}
+      <Card>
+        <CardHeader
+          title="Google Play policy links"
+          subtitle="Public pages served by your server — they open in any browser without signing in. Paste the privacy link into the Play Console."
+        />
+        <div className="space-y-2 p-5">
+          {DOC_KEYS.map((key) => {
+            const url = `${SERVER_URL}/legal/${key}`;
+            return (
+              <div key={key} className="flex items-center gap-2 rounded-lg border border-line-soft px-3 py-2">
+                <span className="w-32 shrink-0 text-[13px] font-semibold text-ink">{DOC_LABELS[key]}</span>
+                <code className="min-w-0 flex-1 truncate rounded bg-canvas px-1.5 py-0.5 text-[11px] text-ink">
+                  {url}
+                </code>
+                <button
+                  type="button"
+                  title="Copy link"
+                  aria-label={`Copy the ${DOC_LABELS[key]} link`}
+                  onClick={() => copyLink(url)}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-ink/5 hover:text-ink">
+                  <Copy size={13} />
+                </button>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="Open in a new tab"
+                  aria-label={`Open the ${DOC_LABELS[key]} page in a new tab`}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-subtle hover:bg-ink/5 hover:text-ink">
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+            );
+          })}
+          <p className="pt-1 text-[12px] leading-relaxed text-muted">
+            These use this dashboard's server URL (<span className="font-medium text-ink">{SERVER_URL}</span>). The
+            pages are rendered by the API itself — no login and no database needed — and show the same text you save
+            here.
+          </p>
+        </div>
+      </Card>
+
       {/* ---------- Help & FAQ ---------- */}
       <Card>
         <CardHeader
@@ -325,10 +407,13 @@ export default function Content() {
 
       {/* ---------- Policies ---------- */}
       <Card>
-        <CardHeader title="Policies" subtitle="Terms, refund and privacy, shown from Profile → Policies in the app" />
+        <CardHeader
+          title="Policies"
+          subtitle="Terms, refund, privacy, about, contact and disclaimer — from Profile in the app and /legal on the web"
+        />
         <div className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border border-line bg-surface p-1">
+            <div className="inline-flex flex-wrap gap-1 rounded-lg border border-line bg-surface p-1">
               {DOC_KEYS.map((key) => (
                 <button
                   key={key}

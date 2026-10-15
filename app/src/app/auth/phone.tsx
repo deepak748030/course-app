@@ -121,13 +121,22 @@ export default function PhoneScreen() {
             .
           </Text>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("Why we ask for your number")}
-            onPress={() => router.push('/help')}
-            style={({ pressed }) => [styles.helpLink, pressed && { opacity: 0.6 }]}>
-            <Text style={[type.labelStrong, { color: colors.accentText }]}>{t('Why do you need this?')}</Text>
-          </Pressable>
+          <View style={styles.linkRow}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("Why we ask for your number")}
+              onPress={() => router.push('/help')}
+              style={({ pressed }) => [styles.helpLink, pressed && { opacity: 0.6 }]}>
+              <Text style={[type.labelStrong, { color: colors.accentText }]}>{t('Why do you need this?')}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('All policies')}
+              onPress={() => router.push('/policies')}
+              style={({ pressed }) => [styles.helpLink, pressed && { opacity: 0.6 }]}>
+              <Text style={[type.labelStrong, { color: colors.accentText }]}>{t('All policies')}</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </Screen>
     </KeyboardAvoidingView>
@@ -148,4 +157,5 @@ const styles = createStyles(() => StyleSheet.create({
   intro: { gap: spacing.sm, paddingHorizontal: spacing.sm },
   link: { color: colors.accentText, textDecorationLine: 'underline' },
   helpLink: { alignSelf: 'flex-start', paddingHorizontal: spacing.sm, minHeight: layout.touchTarget, justifyContent: 'center' },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
 }));

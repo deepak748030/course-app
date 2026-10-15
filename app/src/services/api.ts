@@ -260,6 +260,9 @@ export type ServerSettings = {
     terms?: ServerLegalDoc | null;
     refund?: ServerLegalDoc | null;
     privacy?: ServerLegalDoc | null;
+    about?: ServerLegalDoc | null;
+    contact?: ServerLegalDoc | null;
+    disclaimer?: ServerLegalDoc | null;
   };
   /** Checkout lines set in the admin; empty = the built-in list. */
   purchaseTerms?: string[];
