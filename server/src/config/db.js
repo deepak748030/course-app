@@ -40,6 +40,8 @@ export async function connectDb({ retries = 10, delayMs = 3000 } = {}) {
       await flattenLegacySections().catch((err) => console.error('[db] section migration failed:', err.message));
       const { removeLegacyDateOfBirth } = await import('../models/User.js');
       await removeLegacyDateOfBirth().catch((err) => console.error('[db] user migration failed:', err.message));
+      const { replaceDemoContactDetails } = await import('../models/Settings.js');
+      await replaceDemoContactDetails().catch((err) => console.error('[db] settings migration failed:', err.message));
       return true;
     } catch (err) {
       console.warn(`[db] connect attempt ${attempt}/${retries} failed: ${err.message}`);

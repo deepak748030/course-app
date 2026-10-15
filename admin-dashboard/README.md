@@ -24,9 +24,10 @@ lucide icons.
   revoked automatically)
 - **Reviews** — moderation: hide/show (rating recomputes) and delete
 - **Coupons** — percent/flat codes with usage caps, expiry and active toggle
-- **Content** — Help FAQ, the six policy documents (terms, refund, privacy, about,
-  contact, disclaimer) and checkout copy, with copyable Google Play policy links —
-  the public, sign-in-free pages the server serves under `/legal`
+- **Content** — Help FAQ, the seven policy documents (terms, refund, privacy, delete
+  account, about, contact, disclaimer) and checkout copy, with copyable Google Play policy
+  links — the public, sign-in-free pages the server serves under `/legal`; the privacy and
+  delete-account links are marked with the Play Console field each one goes in
 - **Settings** — app name/tagline/support, maintenance mode, minimum app version
 
 ## Run it

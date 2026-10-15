@@ -38,7 +38,7 @@ const legalSectionSchema = new Schema(
   { _id: false }
 );
 
-/** A policy document (terms, refund, privacy). Empty = the app shows its built-in text. */
+/** A policy document (terms, refund, privacy, …). Empty = the app shows its built-in text. */
 const legalDocSchema = new Schema(
   {
     title: { type: String, default: '', trim: true, maxlength: 60 },
@@ -49,13 +49,23 @@ const legalDocSchema = new Schema(
   { _id: false }
 );
 
+/**
+ * The academy's real contact details: the defaults for a new database, and what the public /legal
+ * pages show when there is no Settings document. Admin → Settings can still change them.
+ */
+export const DEFAULT_SUPPORT_EMAIL = 'yduacademy@gmail.com';
+export const DEFAULT_SUPPORT_PHONE = '+91 7489301982';
+
+/** The demo values early builds seeded, swapped for the real ones by replaceDemoContactDetails. */
+const DEMO_CONTACT = { supportEmail: 'support@ydu.academy', supportPhone: '+91 98765 43210' };
+
 const settingsSchema = new Schema(
   {
     _id: { type: String, default: 'app' },
     appName: { type: String, default: 'YDU Academy', trim: true },
     tagline: { type: String, default: 'Learn the dairy trade, one batch at a time.', trim: true },
-    supportEmail: { type: String, default: 'support@ydu.academy', trim: true },
-    supportPhone: { type: String, default: '+91 98765 43210', trim: true },
+    supportEmail: { type: String, default: DEFAULT_SUPPORT_EMAIL, trim: true },
+    supportPhone: { type: String, default: DEFAULT_SUPPORT_PHONE, trim: true },
     currency: { type: String, default: 'INR' },
     /** When true the app shows a maintenance screen and blocks new purchases. */
     maintenanceMode: { type: Boolean, default: false },
@@ -74,6 +84,8 @@ const settingsSchema = new Schema(
       terms: { type: legalDocSchema, default: undefined },
       refund: { type: legalDocSchema, default: undefined },
       privacy: { type: legalDocSchema, default: undefined },
+      /** How to delete an account without the app — the Play Console's "Delete account URL". */
+      'delete-account': { type: legalDocSchema, default: undefined },
       about: { type: legalDocSchema, default: undefined },
       contact: { type: legalDocSchema, default: undefined },
       disclaimer: { type: legalDocSchema, default: undefined },
@@ -88,4 +100,17 @@ export const Settings = mongoose.model('Settings', settingsSchema);
 
 export async function getSettings() {
   return Settings.findById('app');
+}
+
+/**
+ * A database seeded by an earlier build still holds the demo contact details, which the policy pages
+ * and the app would keep showing. Swap them for the real ones once, at connect time; a value an admin
+ * typed in is never touched, because only the exact demo value matches.
+ */
+export async function replaceDemoContactDetails() {
+  const real = { supportEmail: DEFAULT_SUPPORT_EMAIL, supportPhone: DEFAULT_SUPPORT_PHONE };
+  for (const [field, demo] of Object.entries(DEMO_CONTACT)) {
+    const result = await Settings.updateOne({ _id: 'app', [field]: demo }, { $set: { [field]: real[field] } });
+    if (result.modifiedCount) console.log(`[db] replaced the demo ${field} with ${real[field]}`);
+  }
 }

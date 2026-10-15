@@ -158,6 +158,7 @@ export interface AppSettings {
     terms?: LegalDocEntry | null;
     refund?: LegalDocEntry | null;
     privacy?: LegalDocEntry | null;
+    'delete-account'?: LegalDocEntry | null;
     about?: LegalDocEntry | null;
     contact?: LegalDocEntry | null;
     disclaimer?: LegalDocEntry | null;
@@ -173,6 +174,7 @@ export interface ContentDefaults {
     terms: LegalDocEntry;
     refund: LegalDocEntry;
     privacy: LegalDocEntry;
+    'delete-account': LegalDocEntry;
     about: LegalDocEntry;
     contact: LegalDocEntry;
     disclaimer: LegalDocEntry;

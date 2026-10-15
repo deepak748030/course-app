@@ -38,10 +38,12 @@ app/ ──────────────► server/ ◄──────
   `server/src/seed/seed.js`) and controls everything the app shows, with a live activity
   feed.
 - **Google Play policy pages**: the server publishes the app's documents as plain,
-  sign-in-free HTML at `/legal` (`privacy`, `terms`, `refund`, `about`, `contact`,
-  `disclaimer`) — paste `https://<your-api-host>/legal/privacy` into the Play Console.
-  The dashboard's **Content** page edits the copy (FAQ, all six documents, checkout
-  terms) and lists these links ready to copy.
+  sign-in-free HTML at `/legal` (`privacy`, `delete-account`, `terms`, `refund`, `about`,
+  `contact`, `disclaimer`) — paste `https://<your-api-host>/legal/privacy` into the Play
+  Console's privacy policy field and `https://<your-api-host>/legal/delete-account` into
+  Data safety → Delete account URL. The dashboard's **Content** page edits the copy (FAQ,
+  all seven documents, checkout terms) and lists these links ready to copy. See
+  [server/README.md](server/README.md#google-play-checklist) for the Play Console checklist.
 - Images (course covers in the dashboard, learner avatars in the app) upload through
   `POST /api/uploads`: Cloudinary when `CLOUDINARY_URL` is configured, with a local
   disk fallback served from `/uploads`.

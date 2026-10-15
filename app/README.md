@@ -251,12 +251,14 @@ The UI follows the project's design rules document and is generated from one tok
   a `Saved ₹…` badge and the amount — over a summary of what was paid in total, fetched from the
   server (`GET /api/orders/my`), with the honest line that payments are simulated. A new purchase
   or a refund changes it immediately, and the empty state offers the catalog.
-  The legal screen (`/legal?doc=…`) serves one document per screen — Terms, Privacy, Refunds, About,
-  Contact and Disclaimer — and the policies hub (`/policies`) lists all six with Profile and the
-  sign-in screen linking to it, so every page opens without an account. The contact document doubles
-  as the place to reach someone: it adds tappable Email us / Call us rows from the server's support
-  details. The same six documents are published as sign-in-free HTML by the server under `/legal`,
-  which is the URL the Google Play listing takes.
+  The legal screen (`/legal?doc=…`) serves one document per screen — Terms, Privacy, Delete account,
+  Refunds, About, Contact and Disclaimer — and the policies hub (`/policies`) lists them all with
+  Profile and the sign-in screen linking to it, so every page opens without an account. The contact
+  document doubles as the place to reach someone: it adds tappable Email us / Call us rows from the
+  server's support details, and the delete-account document leads a signed-in learner to Settings.
+  `{{supportEmail}}` / `{{supportPhone}}` in the copy are filled in from the server settings. The
+  same documents are published as sign-in-free HTML by the server under `/legal`, which is where
+  the Google Play listing's privacy policy and delete-account URLs point.
 - **Settings is only what Settings is for.** Settings now holds notifications, the device data
   controls (reset demo data, log out) and account deletion (`DELETE /api/users/me` — Google Play
   wants the mechanism inside the app), and nothing else: the old Account block with profile details,
@@ -331,9 +333,12 @@ repository.
 - **No support inbox.** Help offers shareable feedback instead of a contact form that pretends to send.
 - **No dark theme.** Both themes are light-first (white surfaces); the only dark area in the app is
   the video itself.
-- **Policy copy needs a lawyer.** The six documents (Terms, Privacy, Refunds, About, Contact,
-  Disclaimer) ship as built-in sample copy; replace them from the admin's Content page with
-  reviewed documents before distributing the app.
+- **Policy copy needs a final legal review.** The seven documents (Terms, Privacy, Delete account,
+  Refunds, About, Contact, Disclaimer) describe what the app and server actually do, follow Google
+  Play's requirements and carry the academy's details (support email and phone, Grievance Officer,
+  address in Khandwa, Madhya Pradesh), but have not had a lawyer's review — edit them from the
+  admin's Content page, or edit `src/data/content.ts` and run `node scripts/export-content.mjs` to
+  update the server's copy.
 
 Demo data lives on the device: logging out clears the learning data stored for the session, while
 onboarding completion and app preferences are kept.

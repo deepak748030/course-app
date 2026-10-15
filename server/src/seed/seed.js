@@ -18,7 +18,7 @@ import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { Order } from '../models/Order.js';
 import { Review } from '../models/Review.js';
-import { Settings } from '../models/Settings.js';
+import { DEFAULT_SUPPORT_EMAIL, DEFAULT_SUPPORT_PHONE, Settings } from '../models/Settings.js';
 import { User } from '../models/User.js';
 import { recomputeCourseRating } from '../controllers/shared.js';
 
@@ -412,8 +412,8 @@ async function run() {
     _id: 'app',
     appName: 'YDU Academy',
     tagline: 'Learn the dairy trade, one batch at a time.',
-    supportEmail: 'support@ydu.academy',
-    supportPhone: '+91 98765 43210',
+    supportEmail: DEFAULT_SUPPORT_EMAIL,
+    supportPhone: DEFAULT_SUPPORT_PHONE,
     currency: 'INR',
     maintenanceMode: false,
     minAppVersion: '',

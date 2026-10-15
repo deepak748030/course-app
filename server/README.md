@@ -30,15 +30,64 @@ working too — they fall back to the built-in copy.
 
 ## Public policy pages (Google Play)
 
-The server publishes the app's policy documents as plain, sign-in-free HTML — this is
-the URL to paste into the Play Console's privacy policy field:
+The server publishes the app's policy documents as plain, sign-in-free HTML — these are
+the URLs the Play Console asks for:
 
-- `GET /legal` — hub listing all six documents
-- `GET /legal/:doc` — one document: `privacy`, `terms`, `refund`, `about`, `contact`, `disclaimer`
+- `GET /legal` — hub listing every document
+- `GET /legal/privacy` — the privacy policy (Play Console → App content → Privacy policy)
+- `GET /legal/delete-account` — how to delete an account with or without the app, and what is
+  deleted or kept (Play Console → App content → Data safety → Delete account URL)
+- `GET /legal/:doc` — the rest: `terms`, `refund`, `about`, `contact`, `disclaimer`
 
 They render the admin's copy from Settings (Content page in the dashboard) when saved, and the
 built-in text otherwise, so the app and the web listing always show the same documents. No login,
-no database required.
+no database required. Long documents open with an "On this page" index, and every clause has a
+stable anchor (for example `/legal/privacy#deleting-your-account`).
+
+`{{supportEmail}}`, `{{supportPhone}}` and `{{appName}}` in the copy are filled in from Settings —
+as tap-to-email / tap-to-call links on the web. The academy's details are the defaults
+(`yduacademy@gmail.com`, `+91 7489301982` — `DEFAULT_SUPPORT_EMAIL` / `DEFAULT_SUPPORT_PHONE` in
+`src/models/Settings.js`), and the dashboard's **Settings** page can change them. A database seeded by
+an earlier build still holding the old demo values (`support@ydu.academy`, `+91 98765 43210`) is
+switched to the real ones automatically when the server connects; values an admin typed are never
+touched.
+
+The built-in text lives in `app/src/data/content.ts`. After editing it, run
+`node scripts/export-content.mjs` from `app/` to regenerate `src/data/defaultContent.js` here and
+the dashboard's fallback copy; the script refuses copy the dashboard could not save.
+
+### Google Play checklist
+
+1. Deploy the API behind **HTTPS** and open `https://<api-host>/legal/privacy` and
+   `https://<api-host>/legal/delete-account` in a private browser window — both must load
+   without signing in.
+2. Check the contact details on both pages: support email `yduacademy@gmail.com`, phone
+   `+91 7489301982`, Grievance Officer Deepak Kushwah, address YDU Academy, Khandwa, Madhya
+   Pradesh, India (dashboard: **Settings** for the email and phone, **Content** for the rest). The
+   business choices in the built-in copy — the 7-day / 25% change-of-mind refund window, deletion
+   requests completed within 7 days — can be changed on the **Content** page too. Have a lawyer
+   review the final text.
+3. Play Console → **App content** → Privacy policy: the `/legal/privacy` URL.
+4. Play Console → **App content** → Data safety, consistent with the privacy policy:
+
+| Data type (Play) | Collected | Why | Notes |
+| --- | --- | --- | --- |
+| Personal info → Name, Phone number, User IDs | Yes (phone required) | Account management, app functionality | Phone signs in with OTP |
+| Personal info → Email address | Optional | Account management | Only if the learner adds one |
+| Photos | Optional | App functionality (profile photo) | Only the photo the learner picks |
+| Financial info → Purchase history | Yes | App functionality (course access, refunds) | Orders |
+| Financial info → User payment info | Only in `sdk` checkout mode | Purchases | Collected by the Razorpay SDK inside the app; `web` mode pays on Razorpay's page |
+| App activity → App interactions, In-app search history | Yes | Analytics | First-party only; ~13-month retention |
+| App activity → Other user-generated content | Optional | App functionality | Ratings and reviews |
+| Device or other IDs | Yes | App functionality (push notifications) | Expo push token |
+
+   Data shared with third parties: **none** (Razorpay, Expo/FCM, Cloudinary, hosting and SMS act as
+   service providers). Encrypted in transit: **yes** (HTTPS). Users can request deletion: **yes** —
+   in the app (Settings → Delete account) and at the `/legal/delete-account` URL.
+5. Account deletion (`DELETE /api/users/me`, and the admin's user delete) removes the profile and
+   profile photo, orders, course access and progress, reviews, push tokens, the user's inbox
+   messages and any live OTP, and de-links analytics events — exactly what `/legal/delete-account`
+   promises. Keep the two in step if either changes.
 
 ## Seeded logins
 
@@ -87,7 +136,7 @@ orders, enrollments and reviews so the dashboard charts have data.
 | --- | --- | --- |
 | `GET` | `/api/health` | liveness + db state |
 | `GET` | `/legal` | public policy hub (plain HTML, no login) |
-| `GET` | `/legal/:doc` | one policy page: `privacy` · `terms` · `refund` · `about` · `contact` · `disclaimer` |
+| `GET` | `/legal/:doc` | one policy page: `privacy` · `delete-account` · `terms` · `refund` · `about` · `contact` · `disclaimer` |
 | `GET` | `/api/categories` | catalog categories |
 | `GET` | `/api/courses` | published courses (`category`, `level`, `q`, `popular`, `beginner`) |
 | `GET` | `/api/courses/:idOrSlug` | course detail |

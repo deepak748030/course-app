@@ -43,7 +43,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "YDU Academy uses your photo library so you can add a picture to your profile."
+          "photosPermission": "YDU Academy uses your photo library so you can add a picture to your profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
         }
       ],
       "expo-system-ui",

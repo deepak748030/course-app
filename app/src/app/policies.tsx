@@ -1,10 +1,11 @@
 /**
- * Every policy page in one place: about, contact, privacy, terms, refund and the disclaimer.
+ * Every policy page in one place: about, contact, privacy, account deletion, terms, refund and the
+ * disclaimer.
  *
  * This is the destination Profile and the sign-in screen link to, so a reader who has not signed in
- * (or does not want to) can still reach what the Google Play listing promises — the same six
- * documents are also published as plain web pages on the academy server under /legal, which is the
- * URL the Play Console takes.
+ * (or does not want to) can still reach what the Google Play listing promises — the same documents
+ * are also published as plain web pages on the academy server under /legal, which is where the Play
+ * Console's privacy policy and delete-account URLs point.
  *
  * The rows are laid out the way Profile's policy group is: a heading, then one row per document,
  * each opening the document screen itself (one document per screen, no tab strip). Labels are the
@@ -13,7 +14,7 @@
  */
 
 import { useRouter } from '@/lib/router';
-import { FileText, Info, Mail, RotateCcw, ShieldCheck, TriangleAlert } from 'lucide-react-native';
+import { FileText, Info, Mail, RotateCcw, ShieldCheck, Trash, TriangleAlert } from 'lucide-react-native';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppBar, DataList, ListRow, Screen, SectionHeader } from '@/components/ui';
@@ -67,6 +68,12 @@ export default function PoliciesScreen() {
               label={t('Privacy policy')}
               subtitle={t('What is stored, and where')}
               onPress={() => open('privacy')}
+            />
+            <ListRow
+              icon={Trash}
+              label={t('Delete account')}
+              subtitle={t('How to delete your account and data')}
+              onPress={() => open('delete-account')}
             />
             <ListRow
               icon={FileText}

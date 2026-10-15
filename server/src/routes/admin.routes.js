@@ -290,6 +290,7 @@ const settingsSchema = z.object({
       terms: legalDocInput.optional(),
       refund: legalDocInput.optional(),
       privacy: legalDocInput.optional(),
+      'delete-account': legalDocInput.optional(),
       about: legalDocInput.optional(),
       contact: legalDocInput.optional(),
       disclaimer: legalDocInput.optional(),

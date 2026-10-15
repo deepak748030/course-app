@@ -7,22 +7,33 @@
  * so the app and the web listing can never drift apart, and the pages keep working while MongoDB
  * is down.
  *
- * The hub (/legal) lists all six documents; /legal/<key> serves one. The Content page in the admin
- * dashboard shows these links for the Play Console.
+ * The hub (/legal) lists every document; /legal/<key> serves one. Two of them are the URLs the Play
+ * Console asks for: /legal/privacy (privacy policy) and /legal/delete-account (account deletion —
+ * a page that explains how to delete an account without installing the app). The Content page in
+ * the admin dashboard shows these links.
+ *
+ * The copy can name the contact details as {{supportEmail}}, {{supportPhone}} and {{appName}}; they
+ * are filled in from Settings here (as mailto:/tel: links inside the documents) and in the app.
  */
 
 import { defaultLegalDocs } from '../data/defaultContent.js';
-import { getSettings } from '../models/Settings.js';
+import { DEFAULT_SUPPORT_EMAIL, DEFAULT_SUPPORT_PHONE, getSettings } from '../models/Settings.js';
 
-/** The documents served, in hub order. Privacy leads — it is the link the Play Console asks for. */
-export const LEGAL_KEYS = ['privacy', 'terms', 'refund', 'about', 'contact', 'disclaimer'];
+/**
+ * The documents served, in hub order. Privacy and account deletion lead — they are the two links
+ * the Play Console asks for.
+ */
+export const LEGAL_KEYS = ['privacy', 'delete-account', 'terms', 'refund', 'about', 'contact', 'disclaimer'];
+
+/** Documents long enough to get an "On this page" index of their clauses. */
+const TOC_MIN_SECTIONS = 6;
 
 /** Used when there is no Settings document yet (fresh database, or MongoDB unreachable). */
 const DEFAULTS = {
   appName: 'YDU Academy',
   tagline: 'Learn the dairy trade, one batch at a time.',
-  supportEmail: 'support@ydu.academy',
-  supportPhone: '+91 98765 43210',
+  supportEmail: DEFAULT_SUPPORT_EMAIL,
+  supportPhone: DEFAULT_SUPPORT_PHONE,
 };
 
 /**
@@ -67,6 +78,48 @@ function telHref(phone) {
   return `tel:${String(phone).replace(/[^\d+]/g, '')}`;
 }
 
+const TOKEN = /\{\{\s*(appName|supportEmail|supportPhone)\s*\}\}/g;
+
+/** Fills the tokens with plain values, for text that page() escapes itself (the title, meta tags). */
+function fillText(text, content) {
+  return String(text ?? '').replace(TOKEN, (_match, name) => content[name]);
+}
+
+/**
+ * Escapes admin text, then fills in the contact tokens. Inside a document they become links; in
+ * the <title>, the meta description and the hub cards they stay plain text. Unknown tokens are left
+ * as written, so a typo shows up on the page instead of vanishing.
+ */
+function fill(text, content, { links = false } = {}) {
+  return esc(text).replace(TOKEN, (_match, name) => {
+    const value = content[name];
+    if (!links || name === 'appName') return esc(value);
+    const href = name === 'supportEmail' ? `mailto:${value}` : telHref(value);
+    return `<a href="${esc(href)}">${esc(value)}</a>`;
+  });
+}
+
+/** A readable anchor for a clause heading — "Deleting your account" → #deleting-your-account. */
+function slugify(text) {
+  return String(text ?? '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[\s_-]+/g, '-');
+}
+
+/** One id per clause, unique within the document; headings with no Latin letters get section-N. */
+function sectionIds(sections) {
+  const used = new Set();
+  return sections.map((section, index) => {
+    let id = slugify(section.heading) || `section-${index + 1}`;
+    if (used.has(id)) id = `${id}-${index + 1}`;
+    used.add(id);
+    return id;
+  });
+}
+
 const STYLE = `
 *, *::before, *::after { box-sizing: border-box; }
 body {
@@ -98,10 +151,10 @@ a { color: #0b5d22; }
 .tabs a:hover { border-color: #0b5d22; }
 .tabs a.active { background: #01500e; border-color: #01500e; color: #ffffff; }
 main { padding-top: 24px; padding-bottom: 8px; }
-.doc, .hub, .missing { background: #ffffff; border: 1px solid #e5eae5; border-radius: 14px; padding: 24px 20px; }
+.doc, .hub, .missing { background: #ffffff; border: 1px solid #e5eae5; border-radius: 14px; padding: 24px 20px; overflow-wrap: break-word; }
 h1 { margin: 0 0 6px; font-size: 23px; line-height: 1.3; }
 .summary { margin: 0; color: #5a675e; font-size: 14px; }
-h2 { margin: 26px 0 8px; font-size: 16px; }
+h2 { margin: 26px 0 8px; font-size: 16px; scroll-margin-top: 70px; }
 p { margin: 8px 0; }
 ul { margin: 8px 0; padding-left: 20px; }
 li { margin: 4px 0; }
@@ -131,6 +184,16 @@ li { margin: 4px 0; }
   padding: 10px 16px;
 }
 .actions a.alt { background: #ffffff; color: #01500e; border: 1px solid #0b5d22; }
+.toc { margin: 20px 0 4px; padding: 14px 18px; background: #f6f9f6; border: 1px solid #e3e8e3; border-radius: 12px; }
+.toc-title { margin: 0 0 6px; color: #5a675e; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.toc ol { margin: 0; padding-left: 22px; columns: 2 240px; column-gap: 28px; font-size: 14px; }
+.toc li { margin: 3px 0; break-inside: avoid; }
+.toc a { text-decoration: none; }
+.toc a:hover { text-decoration: underline; }
+.callout { margin: 20px 0 4px; padding: 16px 18px; background: #eef6ef; border: 1px solid #b9d7bf; border-radius: 12px; }
+.callout p { margin: 4px 0; }
+.callout-title { color: #01500e; font-size: 16px; font-weight: 700; }
+.callout .actions { margin-top: 12px; }
 footer { padding: 18px 0 44px; color: #68766d; font-size: 12.5px; text-align: center; }
 footer a { color: #0b5d22; }
 footer p { margin: 4px 0; }
@@ -181,20 +244,56 @@ ${body}
 `;
 }
 
-/** One document: its own heading, the summary line, then clause by clause. */
+/**
+ * Play asks the account-deletion page to make the way to request deletion prominent, so that page
+ * opens with it: the in-app path, and an email already addressed and worded for the request.
+ */
+function deletionRequest(content) {
+  // The subject the documents tell people to use, so a request written by hand looks the same.
+  const subject = 'Delete my account';
+  const message = [
+    `Please delete my ${content.appName} account and the data linked to it.`,
+    '',
+    'Mobile number registered with the account: ',
+    'Name on the account (optional): ',
+  ].join('\r\n'); // mailto bodies break lines with CRLF (RFC 6068)
+  const mailto = `mailto:${content.supportEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
+  return `<div class="callout">
+  <p class="callout-title">Request account deletion</p>
+  <p>In the app, open <strong>Profile → Settings → Delete account</strong>. No app? Send us a request from any device, with the mobile number registered with your account.</p>
+  <div class="actions">
+    <a href="${esc(mailto)}">Email a deletion request</a>
+    <a class="alt" href="${esc(telHref(content.supportPhone))}">Call ${esc(content.supportPhone)}</a>
+  </div>
+</div>`;
+}
+
+/** One document: its own heading, the summary line, an index for long ones, then clause by clause. */
 export function renderDocPage(content, key) {
   const doc = content.docs[key];
-  const sections = (doc.sections ?? [])
-    .map((section) => {
-      const paragraphs = (section.body ?? []).map((text) => `<p>${esc(text)}</p>`).join('');
+  const clauses = doc.sections ?? [];
+  const ids = sectionIds(clauses);
+  const sections = clauses
+    .map((section, index) => {
+      const paragraphs = (section.body ?? []).map((text) => `<p>${fill(text, content, { links: true })}</p>`).join('');
       const points = (section.points ?? []).length
-        ? `<ul>${section.points.map((point) => `<li>${esc(point)}</li>`).join('')}</ul>`
+        ? `<ul>${section.points.map((point) => `<li>${fill(point, content, { links: true })}</li>`).join('')}</ul>`
         : '';
-      return `<section><h2>${esc(section.heading)}</h2>${paragraphs}${points}</section>`;
+      return `<section><h2 id="${ids[index]}">${fill(section.heading, content)}</h2>${paragraphs}${points}</section>`;
     })
     .join('\n');
 
-  // The contact page is the one document with something to act on: the email and the phone number.
+  const toc =
+    clauses.length >= TOC_MIN_SECTIONS
+      ? `<nav class="toc" aria-label="On this page">
+  <p class="toc-title">On this page</p>
+  <ol>${clauses.map((section, index) => `<li><a href="#${ids[index]}">${fill(section.heading, content)}</a></li>`).join('')}</ol>
+</nav>`
+      : '';
+
+  const lead = key === 'delete-account' ? deletionRequest(content) : '';
+
+  // The contact page closes with the two things to act on: the email and the phone number.
   const actions =
     key === 'contact'
       ? `<div class="actions">
@@ -204,8 +303,10 @@ export function renderDocPage(content, key) {
       : '';
 
   const body = `<article class="doc">
-  <h1>${esc(doc.heading || doc.title)}</h1>
-  <p class="summary">${esc(doc.summary)}</p>
+  <h1>${fill(doc.heading || doc.title, content)}</h1>
+  <p class="summary">${fill(doc.summary, content)}</p>
+  ${lead}
+  ${toc}
   ${sections}
   ${actions}
 </article>`;
@@ -214,7 +315,7 @@ export function renderDocPage(content, key) {
     content,
     activeKey: key,
     title: `${doc.title} · ${content.appName}`,
-    description: doc.summary || `${doc.title} for ${content.appName}.`,
+    description: doc.summary ? fillText(doc.summary, content) : `${doc.title} for ${content.appName}.`,
     body,
   });
 }
@@ -224,13 +325,13 @@ export function renderHubPage(content) {
   const cards = LEGAL_KEYS.map(
     (key) => `<a href="/legal/${key}">
     <strong>${esc(content.docs[key].title)}</strong>
-    <span>${esc(content.docs[key].summary)}</span>
+    <span>${fill(content.docs[key].summary, content)}</span>
   </a>`,
   ).join('\n');
 
   const body = `<section class="hub">
   <h1>Policies and about</h1>
-  <p class="lede">Every page below opens without an account. The Google Play listing links to the privacy policy on this site.</p>
+  <p class="lede">Every page below opens without an account and matches what the app shows. To delete your account and its data, see <a href="/legal/delete-account">${esc(content.docs['delete-account'].title)}</a>.</p>
   <div class="list">
 ${cards}
   </div>
@@ -240,7 +341,7 @@ ${cards}
     content,
     activeKey: null,
     title: `Policies · ${content.appName}`,
-    description: `Privacy policy, terms of use, refund policy, about and contact pages for ${content.appName}.`,
+    description: `Privacy policy, account deletion, terms of use, refund policy, about, contact and disclaimer pages for ${content.appName}.`,
     body,
   });
 }

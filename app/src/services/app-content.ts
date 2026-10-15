@@ -37,6 +37,7 @@ export function resolveAppContent(settings: ServerSettings | null | undefined): 
       terms: pick('terms'),
       refund: pick('refund'),
       privacy: pick('privacy'),
+      'delete-account': pick('delete-account'),
       about: pick('about'),
       contact: pick('contact'),
       disclaimer: pick('disclaimer'),
