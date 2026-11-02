@@ -10,6 +10,12 @@ export const env = {
   nodeEnv: process.env.NODE_ENV || 'development',
   /** Fixed demo code accepted on every phone outside production (see README → Phone sign-in). */
   demoOtp: process.env.DEMO_OTP || '246810',
+  /** NinzaSMS OTP delivery (https://ninzasms.in.net/auth/send_sms.php). Both keys together
+   * enable it; the API key is read server-side only and never reaches the app or the browser. */
+  ninzaSmsApiKey: process.env.NINZA_SMS_API_KEY || '',
+  ninzaSmsSenderId: process.env.NINZA_SMS_SENDER_ID || '',
+  /** Route the OTP travels on: "sms" (default) or "waninza" (WhatsApp). */
+  ninzaSmsRoute: process.env.NINZA_SMS_ROUTE || 'sms',
   /** Razorpay keys from the Razorpay dashboard (test keys start with rzp_test_). */
   razorpayKeyId: process.env.RAZORPAY_KEY_ID || '',
   razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET || '',

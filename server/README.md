@@ -118,8 +118,13 @@ repeated here. Each seeded learner has a unique +91 mobile number (10 digits sta
 - `POST /api/auth/otp/verify` `{ phone, code }` returns `{ token, user }`. Three wrong codes
   expire the current code (`410`). A wrong code returns `401`.
 - Codes are stored as an HMAC (never in plain text) and deleted once used.
-- **SMS delivery:** no provider is wired up yet. `src/services/sms.js` is the single place to add
-  one. Until then, development prints the code to the server console, and production returns
+- **SMS delivery:** `src/services/sms.js` sends the code through NinzaSMS
+  (`POST https://ninzasms.in.net/auth/send_sms.php`, `rout: "sms"`). Set `NINZA_SMS_API_KEY` and
+  `NINZA_SMS_SENDER_ID` in `.env` (optional `NINZA_SMS_ROUTE`: `sms` or `waninza` for WhatsApp OTP)
+  and the same code path serves development and production; the API key is used in the
+  server-side `Authorization` header and never reaches the app or the browser. Provider errors
+  (invalid key, low balance, rate limit, …) become `502`/`429` responses with a readable message.
+  Without the keys, development prints the code to the server console, and production returns
   `503` rather than logging a code.
 - `DEMO_OTP` (default `246810`) is accepted for any number outside `NODE_ENV=production`.
 - After changing the user model, re-run `npm run seed`: the phone and email indexes are now
