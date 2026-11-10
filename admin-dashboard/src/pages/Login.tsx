@@ -1,6 +1,14 @@
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, Globe, Lock, Mail, RotateCcw, Server } from 'lucide-react';
 import { useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import {
+  DEFAULT_SERVER_URL,
+  hasCustomServerUrl,
+  setServerUrl,
+  testServerConnection,
+  useServerUrl,
+  type ConnectionTestResult,
+} from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { Button } from '../components/ui';
 
@@ -9,11 +17,18 @@ export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const activeServer = useServerUrl();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const [serverOpen, setServerOpen] = useState(false);
+  const [serverInput, setServerInput] = useState(activeServer);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
+  const [serverMsg, setServerMsg] = useState('');
 
   if (user) {
     const from = (location.state as { from?: string } | null)?.from || '/';
@@ -32,6 +47,35 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function runServerTest() {
+    setServerMsg('');
+    setTesting(true);
+    const result = await testServerConnection(serverInput);
+    setTestResult(result);
+    setTesting(false);
+  }
+
+  function applyServer() {
+    setServerMsg('');
+    try {
+      const next = setServerUrl(serverInput);
+      setServerInput(next);
+      setTestResult(null);
+      setServerOpen(false);
+      setError('');
+    } catch (err) {
+      setServerMsg(err instanceof Error ? err.message : 'Invalid server URL');
+    }
+  }
+
+  function resetServer() {
+    const next = setServerUrl('');
+    setServerInput(next);
+    setTestResult(null);
+    setServerMsg('');
+    setServerOpen(false);
   }
 
   return (
@@ -135,6 +179,94 @@ export default function Login() {
                 Sign in to dashboard
               </Button>
             </form>
+
+            {/* Quick backend server switcher — lets admins point this dashboard at any server without rebuilding */}
+            <div className="mt-6 border-t border-line-soft pt-4">
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5 text-muted">
+                  <Server size={13} className="shrink-0 text-subtle" />
+                  <span className="truncate font-mono" title={activeServer}>
+                    {activeServer}
+                  </span>
+                  {hasCustomServerUrl() && (
+                    <span className="shrink-0 rounded-full bg-brand-soft px-1.5 py-0.5 text-[10px] font-semibold text-brand-ink">
+                      Custom
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setServerInput(activeServer);
+                    setTestResult(null);
+                    setServerMsg('');
+                    setServerOpen((v) => !v);
+                  }}
+                  className="shrink-0 font-semibold text-brand-ink hover:underline"
+                >
+                  {serverOpen ? 'Close' : 'Change server'}
+                </button>
+              </div>
+
+              {serverOpen && (
+                <div className="mt-3 space-y-2.5 rounded-xl border border-line bg-canvas p-3">
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-semibold text-ink">Backend server URL</span>
+                    <div className="relative">
+                      <Globe size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
+                      <input
+                        type="url"
+                        value={serverInput}
+                        onChange={(e) => {
+                          setServerInput(e.target.value);
+                          setTestResult(null);
+                          setServerMsg('');
+                        }}
+                        placeholder={DEFAULT_SERVER_URL}
+                        className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-xs focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-soft"
+                      />
+                    </div>
+                  </label>
+
+                  {testResult && (
+                    <div
+                      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium ${
+                        testResult.ok ? 'bg-success-soft text-success' : 'bg-error-soft text-error'
+                      }`}
+                    >
+                      {testResult.ok && <CheckCircle2 size={13} className="shrink-0" />}
+                      <span>
+                        {testResult.ok
+                          ? `Connected · DB ${testResult.db} · ${testResult.latencyMs}ms`
+                          : testResult.error}
+                      </span>
+                    </div>
+                  )}
+
+                  {serverMsg && (
+                    <div className="rounded-lg bg-error-soft px-2.5 py-1.5 text-xs font-medium text-error">{serverMsg}</div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button type="button" size="sm" variant="outline" loading={testing} onClick={() => void runServerTest()}>
+                      Test
+                    </Button>
+                    <Button type="button" size="sm" onClick={applyServer}>
+                      Use this server
+                    </Button>
+                    {hasCustomServerUrl() && (
+                      <button
+                        type="button"
+                        onClick={resetServer}
+                        className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
+                      >
+                        <RotateCcw size={12} /> Reset
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <p className="mt-5 text-center text-xs text-subtle">

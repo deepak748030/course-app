@@ -23,10 +23,13 @@ import {
 } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { ServerUrlSheet } from '@/components/server-url-sheet';
 import { CatalogSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui';
 import { createStyles, colors, spacing, type } from '@/constants/theme';
+import { onServerUrlChange } from '@/lib/serverUrl';
 import {
+  clearCatalogCache,
   readCatalogCache,
   refreshCatalog,
   writeCatalogCache,
@@ -114,6 +117,18 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     [refresh],
   );
 
+  // Switching server URL clears the old server's ETag/cache and fetches fresh from the new host.
+  useEffect(
+    () =>
+      onServerUrlChange(() => {
+        etagRef.current = null;
+        clearCatalogCache();
+        setStatus('loading');
+        void refresh();
+      }),
+    [refresh],
+  );
+
   const value = useMemo<CatalogContextValue>(
     () => ({
       status,
@@ -141,6 +156,7 @@ export function useCatalog(): CatalogContextValue {
  */
 export function CatalogGate({ children }: { children: ReactNode }) {
   const { status, error, refresh } = useCatalog();
+  const [serverOpen, setServerOpen] = useState(false);
 
   if (status === 'ready') return <>{children}</>;
 
@@ -158,8 +174,12 @@ export function CatalogGate({ children }: { children: ReactNode }) {
         <WifiOff size={30} color={colors.accentText} />
         <Text style={[type.subheading, styles.title]}>Can’t reach the academy</Text>
         <Text style={[type.body, styles.body]}>{error ?? 'The course server is not responding.'}</Text>
-        <Button label="Try again" onPress={() => void refresh()} fullWidth={false} />
+        <View style={styles.actions}>
+          <Button label="Try again" onPress={() => void refresh()} fullWidth={false} />
+          <Button label="Change server" variant="ghost" onPress={() => setServerOpen(true)} fullWidth={false} />
+        </View>
       </View>
+      <ServerUrlSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
     </View>
   );
 }
@@ -177,5 +197,6 @@ const styles = createStyles(() =>
     },
     title: { marginTop: spacing.sm, textAlign: 'center' },
     body: { color: colors.textMuted, textAlign: 'center', marginBottom: spacing.md },
+    actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   }),
 );

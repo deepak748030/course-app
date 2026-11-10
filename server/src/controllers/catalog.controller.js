@@ -1,8 +1,18 @@
+import fsPromises from 'node:fs/promises';
 import { Category } from '../models/Category.js';
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
-import { PLAYBACK_TTL_SECONDS, createVideoPlaybackUrl, lessonVideos, pickLessonVideo } from '../services/videoStorage.js';
+import {
+  PLAYBACK_TTL_SECONDS,
+  createVideoPlaybackUrl,
+  lessonVideos,
+  pickLessonVideo,
+  resolveVideoFilePath,
+  verifyVideoPlaybackSignature,
+  videoFileExists,
+  videoMimeType,
+} from '../services/videoStorage.js';
 
 /** GET /api/categories */
 export const listCategories = asyncHandler(async (_req, res) => {
@@ -92,13 +102,43 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
 
   // ?quality=720 picks that version (or the closest lower one); without it the best available plays.
   const chosen = pickLessonVideo(lesson, typeof req.query.quality === 'string' ? req.query.quality : '');
-  const url = await createVideoPlaybackUrl(chosen.key);
+  if (!(await videoFileExists(chosen.key))) {
+    throw new HttpError(404, 'Video file is missing from server uploads');
+  }
+  const url = createVideoPlaybackUrl(chosen.key);
   res.json({
     url,
     expiresIn: PLAYBACK_TTL_SECONDS,
     quality: chosen.quality,
     qualities: videos.map((v) => v.quality),
   });
+});
+
+/**
+ * GET /api/videos/stream?key=...&exp=...&sig=...
+ * Serves a course video directly from the server's `uploads/videos/` folder with HTTP Range
+ * (206 Partial Content) support after validating the HMAC signature issued by `lessonVideoUrl`.
+ */
+export const streamLessonVideo = asyncHandler(async (req, res) => {
+  const { key, exp, sig } = req.query;
+  if (typeof key !== 'string' || !verifyVideoPlaybackSignature(key, exp, sig)) {
+    throw new HttpError(403, 'This video playback link is invalid or has expired');
+  }
+  const absPath = resolveVideoFilePath(key);
+  if (!absPath) throw new HttpError(404, 'Video not found');
+
+  let stat;
+  try {
+    stat = await fsPromises.stat(absPath);
+  } catch {
+    throw new HttpError(404, 'Video not found');
+  }
+  if (!stat.isFile()) throw new HttpError(404, 'Video not found');
+
+  res.setHeader('Content-Type', videoMimeType(key));
+  res.setHeader('Cache-Control', 'private, max-age=3600, no-transform');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.sendFile(absPath, { dotfiles: 'deny' });
 });
 
 /**

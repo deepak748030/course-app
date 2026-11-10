@@ -12,6 +12,7 @@ import legalRoutes from './routes/legal.routes.js';
 import { requestCounter } from './services/analytics.js';
 import { razorpayWebhook } from './controllers/payments.controller.js';
 import { uploadDir } from './services/uploads.js';
+import { ensureVideoDirs } from './services/videoStorage.js';
 import { checkRazorpayKeys } from './services/razorpay.js';
 
 const app = express();
@@ -29,9 +30,12 @@ app.use(
   })
 );
 
-// gzip every JSON payload: catalog responses shrink ~70%, which the app feels
-// directly on slow mobile connections.
-app.use(compression());
+// gzip JSON payloads; leave byte-range video streaming untouched.
+app.use(
+  compression({
+    filter: (req, res) => (req.path.startsWith('/api/videos/stream') ? false : compression.filter(req, res)),
+  })
+);
 
 // Razorpay webhooks are signed over the exact raw bytes, so this route must see the body
 // before express.json() parses it.
@@ -43,8 +47,23 @@ if (!isProd) app.use(morgan('dev'));
 // Count every /api hit for the daily request stats (in-memory, flushed to Mongo).
 app.use('/api', requestCounter);
 
-// Local fallback storage for image uploads (Cloudinary is used when configured).
-app.use('/uploads', express.static(uploadDir, { maxAge: '7d', immutable: true }));
+// Local server storage for uploads: public images (/uploads/avatars, /uploads/covers, /uploads/banners).
+// Course videos (/uploads/videos) and staging temp files are never exposed directly — videos stream only
+// through signed `/api/videos/stream` links.
+app.use('/uploads/videos', (_req, res) => {
+  res.status(403).json({ error: 'Direct access to course videos is not allowed' });
+});
+app.use('/uploads/.tmp', (_req, res) => {
+  res.status(403).json({ error: 'Forbidden' });
+});
+app.use(
+  '/uploads',
+  (_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    next();
+  },
+  express.static(uploadDir, { maxAge: '7d', immutable: true, dotfiles: 'deny' })
+);
 
 // Public policy pages (privacy, terms, …): plain HTML for the Play Console, no login, no database
 // required — they fall back to the built-in copy when MongoDB is unreachable.
@@ -68,7 +87,9 @@ initializeRealtime(server);
 server.listen(env.port, () => {
   console.log(`[api] YDU Academy server listening on http://0.0.0.0:${env.port}`);
   console.log(`[api] Health: http://localhost:${env.port}/api/health`);
+  console.log(`[api] Uploads dir: ${uploadDir}`);
   console.log(`[api] Realtime: socket.io on the same port (/socket.io)`);
+  void ensureVideoDirs().catch((err) => console.error('[uploads] could not prepare upload directories:', err));
   void checkRazorpayKeys();
 });
 

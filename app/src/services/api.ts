@@ -7,6 +7,8 @@
  * so screens never build URLs themselves.
  */
 
+import { Platform } from 'react-native';
+
 import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
 
 export class ApiError extends Error {
@@ -154,8 +156,7 @@ export type ServerLesson = {
   _id: string;
   title: string;
   description: string;
-  /** Public https URL of the lesson video on Backblaze B2; empty = bundled demo clip. */
-  /** Object key of the course video in private storage; the app gets a signed link from the server. */
+  /** Object key of the course video in server `uploads/videos/`; the app gets a signed link from the server. */
   videoKey?: string;
   minutes: number;
   durationSec?: number;
@@ -339,11 +340,16 @@ export const api = {
     }),
   /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
   /** `quality` picks one uploaded version (360/480/720/1080); omitted = best available. */
-  lessonVideoUrl: (courseId: string, lessonId: string, quality?: string) =>
-    request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
+  lessonVideoUrl: async (courseId: string, lessonId: string, quality?: string) => {
+    const data = await request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
       `/api/courses/${courseId}/lessons/${lessonId}/video`,
       { query: { quality } },
-    ),
+    );
+    return {
+      ...data,
+      url: data.url.startsWith('/') ? `${apiUrl()}${data.url}` : data.url,
+    };
+  },
   /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */
   createRazorpayPaymentLink: (input: { courseId: string; couponCode?: string }) =>
     request<{ order: ServerOrder; paymentLink: { id: string; url: string } }>('/api/payments/razorpay/link', {
@@ -379,12 +385,15 @@ export const api = {
   // ---- uploads ----
   uploadImage: async (uri: string, fileName: string) => {
     const formData = new FormData();
-    // React Native's FormData accepts { uri, name, type } objects for file parts.
-    formData.append('file', {
-      uri,
-      name: fileName,
-      type: fileName.endsWith('.png') ? 'image/png' : 'image/jpeg',
-    } as unknown as Blob);
+    const mime = fileName.toLowerCase().endsWith('.png') ? 'image/png' : 'image/jpeg';
+    if (Platform.OS === 'web') {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      formData.append('file', blob, fileName);
+    } else {
+      // React Native's FormData accepts { uri, name, type } objects for file parts.
+      formData.append('file', { uri, name: fileName, type: mime } as unknown as Blob);
+    }
     return request<{ url: string; publicId: string; provider: string }>('/api/uploads', {
       method: 'POST',
       formData,

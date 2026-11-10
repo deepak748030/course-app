@@ -1,6 +1,6 @@
 import { Image, type ImageSource } from 'expo-image';
 import { CourseImage } from '@/components/course-image';
-import { mediaSource } from '@/services/catalogService';
+import { mediaSource, resolveMediaUrl } from '@/services/catalogService';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from '@/lib/router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
@@ -152,6 +152,7 @@ export default function HomeScreen() {
               </View>
               <AvatarButton
                 name={session?.profile.name ?? 'Guest'}
+                uri={state.profileAvatarUri || resolveMediaUrl(session?.profile.avatarUrl)}
                 accessibilityLabel={t("Your profile")}
                 onPress={() => router.push('/profile')}
               />

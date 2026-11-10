@@ -45,6 +45,7 @@ import { useCatalog } from '@/services/catalog-context';
 import { LANGUAGES, useT } from '@/i18n';
 import { formatDuration } from '@/lib/format';
 import { pickProfilePhoto } from '@/lib/photo';
+import { resolveMediaUrl } from '@/services/catalogService';
 import { useStore } from '@/store';
 import type { UserProfile } from '@/types';
 
@@ -62,7 +63,7 @@ export default function ProfileScreen() {
   const [photoNotice, setPhotoNotice] = useState<string | null>(null);
 
   const profile = session?.profile ?? null;
-  const avatarUri = state.profileAvatarUri;
+  const avatarUri = state.profileAvatarUri || resolveMediaUrl(profile?.avatarUrl);
 
   const enrolled = useMemo(() => courses.filter((course) => state.enrollments[course.id]), [state.enrollments, courses]);
 

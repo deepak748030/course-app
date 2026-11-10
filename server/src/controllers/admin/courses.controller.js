@@ -3,9 +3,29 @@ import { Enrollment } from '../../models/Enrollment.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
 import { emitToApp } from '../../realtime/socket.js';
+import { collectLessonVideoKeys, deleteVideoFile } from '../../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 
 const catalogChanged = (reason, courseId) => emitToApp('catalog.changed', { reason, courseId });
+
+async function cleanupOrphanedVideos(candidateKeys) {
+  if (!candidateKeys.size) return;
+  const keys = [...candidateKeys];
+  const stillUsed = await Course.find({
+    $or: [{ 'lessons.videoKey': { $in: keys } }, { 'lessons.videos.videoKey': { $in: keys } }],
+  })
+    .select('lessons.videoKey lessons.videos.videoKey')
+    .lean();
+  const activeKeys = new Set();
+  for (const doc of stillUsed) {
+    for (const k of collectLessonVideoKeys(doc.lessons)) activeKeys.add(k);
+  }
+  await Promise.all(
+    keys
+      .filter((k) => !activeKeys.has(k))
+      .map((k) => deleteVideoFile(k).catch((err) => console.warn('[uploads] could not delete video:', err.message)))
+  );
+}
 
 /** GET /api/admin/courses — includes enrollment counts for the table. */
 export const listCourses = asyncHandler(async (req, res) => {
@@ -60,11 +80,18 @@ export const createCourse = asyncHandler(async (req, res) => {
 
 /** PUT /api/admin/courses/:id */
 export const updateCourse = asyncHandler(async (req, res) => {
+  const existing = req.body.lessons ? await Course.findById(req.params.id).select('lessons').lean() : null;
   const course = await Course.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
     runValidators: true,
   });
   if (!course) throw new HttpError(404, 'Course not found');
+  if (existing) {
+    const prevKeys = collectLessonVideoKeys(existing.lessons);
+    const nextKeys = collectLessonVideoKeys(course.lessons);
+    const removed = new Set([...prevKeys].filter((k) => !nextKeys.has(k)));
+    void cleanupOrphanedVideos(removed);
+  }
   catalogChanged('updated', String(course._id));
   res.json({ course });
 });
@@ -85,11 +112,13 @@ export const setPublished = asyncHandler(async (req, res) => {
 export const deleteCourse = asyncHandler(async (req, res) => {
   const course = await Course.findByIdAndDelete(req.params.id);
   if (!course) throw new HttpError(404, 'Course not found');
+  const videoKeys = collectLessonVideoKeys(course.lessons);
   await Promise.all([
     Review.deleteMany({ course: course._id }),
     Enrollment.deleteMany({ course: course._id }),
     Order.updateMany({ course: course._id }, { $set: { course: null } }),
   ]);
+  void cleanupOrphanedVideos(videoKeys);
   catalogChanged('deleted', String(course._id));
   res.json({ ok: true, deleted: course.title });
 });

@@ -81,7 +81,7 @@ the dashboard's fallback copy; the script refuses copy the dashboard could not s
 | App activity → Other user-generated content | Optional | App functionality | Ratings and reviews |
 | Device or other IDs | Yes | App functionality (push notifications) | Expo push token |
 
-   Data shared with third parties: **none** (Razorpay, Expo/FCM, Cloudinary, hosting and SMS act as
+   Data shared with third parties: **none** (Razorpay, Expo/FCM, hosting and SMS act as
    service providers). Encrypted in transit: **yes** (HTTPS). Users can request deletion: **yes** —
    in the app (Settings → Delete account) and at the `/legal/delete-account` URL.
 5. Account deletion (`DELETE /api/users/me`, and the admin's user delete) removes the profile and
@@ -118,8 +118,13 @@ repeated here. Each seeded learner has a unique +91 mobile number (10 digits sta
 - `POST /api/auth/otp/verify` `{ phone, code }` returns `{ token, user }`. Three wrong codes
   expire the current code (`410`). A wrong code returns `401`.
 - Codes are stored as an HMAC (never in plain text) and deleted once used.
-- **SMS delivery:** no provider is wired up yet. `src/services/sms.js` is the single place to add
-  one. Until then, development prints the code to the server console, and production returns
+- **SMS delivery:** `src/services/sms.js` sends the code through NinzaSMS
+  (`POST https://ninzasms.in.net/auth/send_sms.php`, `rout: "sms"`). Set `NINZA_SMS_API_KEY` and
+  `NINZA_SMS_SENDER_ID` in `.env` (optional `NINZA_SMS_ROUTE`: `sms` or `waninza` for WhatsApp OTP)
+  and the same code path serves development and production; the API key is used in the
+  server-side `Authorization` header and never reaches the app or the browser. Provider errors
+  (invalid key, low balance, rate limit, …) become `502`/`429` responses with a readable message.
+  Without the keys, development prints the code to the server console, and production returns
   `503` rather than logging a code.
 - `DEMO_OTP` (default `246810`) is accepted for any number outside `NODE_ENV=production`.
 - After changing the user model, re-run `npm run seed`: the phone and email indexes are now
@@ -191,13 +196,21 @@ and `admins` (role: admin). Events pushed today:
 | `user:<id>` | `enrollment.granted` | an order is marked paid or access is granted |
 | `admins` | `order.created`, `user.registered`, `review.created`, `catalog.changed`, `settings.updated` | live dashboard feed |
 
-## Image uploads
+## Image & video uploads (local server `uploads/` folder)
 
-`POST /api/uploads` (multipart, field `file`, ≤ 8 MB, images only) stores through
-**Cloudinary** when `CLOUDINARY_URL` (or `CLOUDINARY_CLOUD_NAME` + key + secret) is
-set — the returned URL is the CDN delivery URL. Without Cloudinary the server falls
-back to local storage in `server/uploads`, served from `GET /uploads/*`, so the flow
-works in plain development too. `GET /api/uploads/policy` reports which backend is live.
+All uploaded media — course covers, home banners, learner profile photos, and lesson videos — is
+stored directly on the server inside `uploads/` (defaults to `server/uploads`, or set `UPLOAD_DIR`
+in `server/.env` to a persistent disk path in production).
+
+- **Images** (`POST /api/uploads`, multipart field `file`, ≤ 8 MB): validated by MIME type and file
+  magic bytes, saved under `uploads/<folder>/`, and returned as a relative `/uploads/...` path so
+  changing the server domain or port never breaks stored images. Served from `GET /uploads/*`.
+- **Course videos** (`POST /api/admin/uploads/video`, multipart field `file`, ≤ 4 GB): staged in
+  `uploads/.tmp` and moved to `uploads/videos/courses/<courseId>/...`. Direct requests to
+  `/uploads/videos/*` are blocked (`403`); enrolled learners (or free-preview lessons) obtain a
+  signed playback link pointing to `GET /api/videos/stream?key=...&exp=...&sig=...` with full
+  HTTP Range (`206 Partial Content`) seeking support. When lessons or courses are updated/deleted,
+  unreferenced video files are cleaned up automatically.
 
 ## Analytics & recommendations
 
@@ -230,54 +243,19 @@ src/
 ├── controllers/         # app-facing + admin/ handlers
 ├── routes/              # route tables with zod schemas
 ├── realtime/socket.js   # socket.io rooms + typed emitters
-├── services/uploads.js  # Cloudinary (preferred) or local-disk image storage
+├── services/uploads.js  # local server image storage (`uploads/`)
+├── services/videoStorage.js # local server video storage (`uploads/videos/`) & signed Range streaming
 ├── seed/seed.js         # deterministic dev seed
 └── utils/               # HttpError, asyncHandler, token signing
 ```
 
-## Course videos on Backblaze B2 (private bucket, free tier)
+## Video storage environment options
 
-Lesson videos are uploaded from the admin dashboard (Courses → lesson → **Upload video**). The
-admin dashboard sends the file to this server, which streams it into the bucket. The bucket stays **private**: when a learner opens
-a lesson, the app asks the server for a short-lived link. The server gives that link only to
-enrolled learners (or for free-preview lessons). Free tier: 10 GB storage.
+No external bucket credentials are required. You can optionally set:
 
-### Step 1: Backblaze B2 console
+- `UPLOAD_DIR` in `server/.env` (defaults to `server/uploads`; in production point it to a mounted
+  persistent disk so uploaded images and videos survive redeploys).
+- `MAX_VIDEO_BYTES` in `server/.env` (defaults to `4294967296`, 4 GB per video).
 
-1. **Buckets → Create a Bucket.** Name it, for example `ydu-course-videos`. Bucket Type: **Private**.
-2. Open the bucket. On the details page, copy the **Endpoint**, for example
-   `s3.us-west-004.backblazeb2.com`.
-3. No CORS setup is needed. The admin dashboard sends videos to this server, which uploads them to the bucket.
-3. **App Keys → Add a New Application Key**:
-   - Name: `ydu-server`
-   - Allow access to Bucket(s): only `ydu-course-videos`
-   - Type of access: Read and Write
-   - Capabilities: `listFiles`, `readFiles`, `writeFiles`
-   - Click create. Copy the **keyID** and the **applicationKey** now. The key is shown only once.
-
-### Step 2: Where each value goes
-
-| Value | Where you get it | Where you put it |
-| --- | --- | --- |
-| `B2_S3_ENDPOINT` | Bucket details → Endpoint, add `https://` | `server/.env` |
-| `B2_KEY_ID` | App Keys → keyID of the new key | `server/.env` |
-| `B2_APPLICATION_KEY` | App Keys → applicationKey (copied once) | `server/.env` |
-| `B2_BUCKET` | The bucket name you created | `server/.env` |
-
-Example `server/.env` lines (these are placeholders, use your own values):
-
-```
-B2_S3_ENDPOINT=https://s3.us-west-004.backblazeb2.com
-B2_KEY_ID=<your keyID>
-B2_APPLICATION_KEY=<your applicationKey>
-B2_BUCKET=ydu-course-videos
-```
-
-- `server/.env` is git-ignored. Never commit it, and never paste these values in chat or in GitHub.
-- The **app** (`app/.env`) and the **admin dashboard** need no Backblaze values. The app only needs
-  `EXPO_PUBLIC_API_URL`, and the dashboard only talks to the server.
-- Restart the server after editing `.env`. Check `GET /api/admin/uploads/video/status` in the
-  admin session. It returns `"configured": true` when all four values are set.
-
-Videos up to 4 GB each. Replacing or removing a video in the dashboard does not delete the old file
-from the bucket.
+Check `GET /api/admin/uploads/video/status` in an admin session to verify the active limits and
+supported formats (`"configured": true, "storage": "local"`).

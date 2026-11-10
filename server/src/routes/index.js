@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { dbState } from '../config/db.js';
+import { streamLessonVideo } from '../controllers/catalog.controller.js';
 import { dbGuard } from '../middleware/dbGuard.js';
 import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
@@ -26,6 +27,9 @@ router.get('/health', (_req, res) => {
     uptimeSeconds: Math.round(process.uptime()),
   });
 });
+
+/** Signed local video streaming (supports HTTP Range 206 seeking; reads from uploads/videos/). */
+router.get('/videos/stream', streamLessonVideo);
 
 // Everything below needs the database.
 router.use(dbGuard);

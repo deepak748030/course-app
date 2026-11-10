@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ServerUrlSheet } from '@/components/server-url-sheet';
 import { AppBar, Button, ErrorState, FormField, Screen, scrollClip } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
@@ -20,6 +21,7 @@ export default function PhoneScreen() {
   const [error, setError] = useState<string | null>(null);
   const [networkError, setNetworkError] = useState(false);
   const [sending, setSending] = useState(false);
+  const [serverOpen, setServerOpen] = useState(false);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -98,12 +100,15 @@ export default function PhoneScreen() {
           />
 
           {networkError ? (
-            <ErrorState
-              offline
-              title={t("We could not reach the server")}
-              body="Check your connection and try again. Your number has not been saved."
-              onRetry={submit}
-            />
+            <View style={{ gap: spacing.xs }}>
+              <ErrorState
+                offline
+                title={t("We could not reach the server")}
+                body="Check your connection and try again. Your number has not been saved."
+                onRetry={submit}
+              />
+              <Button label={t("Change server")} variant="ghost" onPress={() => setServerOpen(true)} />
+            </View>
           ) : null}
 
 
@@ -139,6 +144,11 @@ export default function PhoneScreen() {
           </View>
         </ScrollView>
       </Screen>
+      <ServerUrlSheet
+        visible={serverOpen}
+        onClose={() => setServerOpen(false)}
+        onApplied={() => setNetworkError(false)}
+      />
     </KeyboardAvoidingView>
   );
 }

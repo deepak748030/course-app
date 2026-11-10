@@ -471,9 +471,7 @@ export const legalDocs: Record<
         ],
         points: [
           'Razorpay: to process payments, refunds and payment disputes.',
-          'Cloud hosting and database providers: to run our servers and store account, order and progress data.',
-          'Cloudinary: to store and deliver profile photos and course images.',
-          'Video storage providers (such as Backblaze): to stream lesson videos. They receive your IP address when you play a lesson, but not your account details.',
+          'Cloud hosting and database providers: to run our servers and store account, order, progress, profile photo, course image and lesson video data.',
           'Expo, Google Firebase Cloud Messaging and Apple Push Notification service: to deliver push notifications to your phone.',
           'An SMS service provider: to send sign-in codes to your mobile number.',
           'Everyone who views a course page: your profile name, star rating and review text, if you review that course.',
@@ -484,7 +482,7 @@ export const legalDocs: Record<
       {
         heading: 'Where your data is stored',
         body: [
-          'Your data is stored on secure servers run by our hosting providers. Some providers, such as Expo, Cloudinary and our cloud hosting providers, may store or process data outside India. Any transfer outside India is made only as Indian law permits, including any restrictions notified by the Government of India under the Digital Personal Data Protection Act, 2023, and only to providers that protect data with appropriate safeguards.',
+          'Your data — including profile photos, course covers and lesson videos inside our server uploads storage — is stored on secure servers run by our hosting providers. Some providers, such as Expo and our cloud hosting providers, may store or process data outside India. Any transfer outside India is made only as Indian law permits, including any restrictions notified by the Government of India under the Digital Personal Data Protection Act, 2023, and only to providers that protect data with appropriate safeguards.',
         ],
       },
       {
