@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { deleteMe, updateMe } from '../controllers/users.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
+import { normalizeUploadUrl } from '../services/uploads.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -10,7 +11,7 @@ router.use(requireAuth);
 const mePatchSchema = z.object({
   name: z.string().trim().min(2).max(80).optional(),
   phone: z.string().trim().max(20).optional(),
-  avatarUrl: z.string().trim().max(500).optional(),
+  avatarUrl: z.string().trim().max(500).transform(normalizeUploadUrl).optional(),
   city: z.string().trim().max(80).optional(),
   goal: z.string().trim().max(120).optional(),
   interests: z.array(z.string().trim().max(40)).max(20).optional(),

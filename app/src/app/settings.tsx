@@ -1,13 +1,15 @@
 import Constants from 'expo-constants';
 import { useRouter } from '@/lib/router';
-import { LogOut, RefreshCcw, Trash } from 'lucide-react-native';
-import { useState } from 'react';
+import { LogOut, RefreshCcw, Server, Trash } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { ConfirmSheet } from '@/components/bottom-sheet';
+import { ServerUrlSheet } from '@/components/server-url-sheet';
 import { AppBar, DataList, ListRow, Screen, SectionHeader, Toggle } from '@/components/ui';
 import { createStyles, colors, layout, spacing, type } from '@/constants/theme';
 import { useT } from '@/i18n';
+import { apiUrl, isManualServerUrl, onServerUrlChange } from '@/lib/serverUrl';
 import { api } from '@/services/api';
 import { useStore } from '@/store';
 
@@ -20,6 +22,10 @@ export default function SettingsScreen() {
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteError, setDeleteError] = useState(false);
+  const [serverOpen, setServerOpen] = useState(false);
+  const [currentServer, setCurrentServer] = useState(() => apiUrl());
+
+  useEffect(() => onServerUrlChange(() => setCurrentServer(apiUrl())), []);
 
   return (
     <View style={styles.root}>
@@ -47,6 +53,18 @@ export default function SettingsScreen() {
             />
           </DataList>
           <Text style={[type.label, styles.note, { color: colors.textSubtle }]}>{t("Push delivery is not connected yet. These switches save your choice for when it is.")}</Text>
+        </View>
+
+        <View style={styles.section}>
+          <SectionHeader title={t("Server connection")} subtitle={currentServer} />
+          <DataList>
+            <ListRow
+              icon={Server}
+              label={t("Server URL for this device")}
+              subtitle={isManualServerUrl() ? t("Custom server active — tap to change or reset") : currentServer}
+              onPress={() => setServerOpen(true)}
+            />
+          </DataList>
         </View>
 
         <View style={styles.section}>
@@ -122,6 +140,8 @@ export default function SettingsScreen() {
         }}
         onCancel={() => setLogoutOpen(false)}
       />
+
+      <ServerUrlSheet visible={serverOpen} onClose={() => setServerOpen(false)} />
 
       {/* Account deletion: server first (the account and its data go), then the local session. */}
       <ConfirmSheet

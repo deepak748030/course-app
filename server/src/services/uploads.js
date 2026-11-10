@@ -1,119 +1,134 @@
 /**
- * Image uploads.
+ * Server-side local image uploads.
  *
- * Preferred: Cloudinary — set CLOUDINARY_URL (or CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET)
- * and every upload lands on the CDN with a responsive delivery URL.
+ * All uploaded images (course covers, home banners, learner profile photos) are stored on the
+ * server inside the `uploads/` directory (`UPLOAD_DIR`, defaulting to `server/uploads`) and
+ * served from `/uploads/...`.
  *
- * Fallback (no Cloudinary configured): files are stored in server/uploads and served
- * from /uploads, so the whole flow still works in plain development. Each folder gets its own
- * directory (uploads/avatars, uploads/covers, …), the way Cloudinary keeps them apart.
+ * Returned URLs are always server-relative (`/uploads/covers/...`, `/uploads/avatars/...`), so
+ * changing the server domain or port never breaks previously uploaded media.
  *
- * Learners' profile photos are personal data: deleteAvatarImage removes one when its account is
- * deleted or the photo is replaced, which the privacy policy and /legal/delete-account promise.
+ * Learners' profile photos are personal data: `deleteAvatarImage` removes one when its account is
+ * deleted or the photo is replaced.
  */
 import { randomUUID } from 'node:crypto';
 import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { v2 as cloudinary } from 'cloudinary';
 
-const UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'uploads');
+const DEFAULT_UPLOAD_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR?.trim()
+  ? path.resolve(process.env.UPLOAD_DIR.trim())
+  : DEFAULT_UPLOAD_DIR;
 
-const configured = Boolean(process.env.CLOUDINARY_URL || process.env.CLOUDINARY_CLOUD_NAME);
-if (configured) {
-  cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-    secure: true,
-  });
-}
-
-export const uploadsProvider = configured ? 'cloudinary' : 'local';
+export const uploadsProvider = 'local';
+export const uploadDir = UPLOAD_DIR;
 
 /** Where learners' profile photos go (see routes/uploads.routes.js). */
-export const AVATAR_FOLDER = 'ydu-academy/avatars';
+export const AVATAR_FOLDER = 'avatars';
 
-/** The local sub-directory for a folder: its last segment, e.g. ydu-academy/avatars → avatars. */
-function localSubdir(folder) {
-  if (!folder.includes('/')) return '';
-  return folder.split('/').pop().replace(/[^\w-]/g, '');
+export const IMAGE_MIME_TYPES = {
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/png': '.png',
+  'image/webp': '.webp',
+  'image/gif': '.gif',
+  'image/avif': '.avif',
+};
+
+/** Checks basic image file headers so spoofed non-image files (e.g. HTML) cannot be saved. */
+export function isValidImageBuffer(buffer, mimetype) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  switch (mimetype) {
+    case 'image/jpeg':
+    case 'image/jpg':
+      return buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    case 'image/png':
+      return (
+        buffer[0] === 0x89 &&
+        buffer[1] === 0x50 &&
+        buffer[2] === 0x4e &&
+        buffer[3] === 0x47 &&
+        buffer[4] === 0x0d &&
+        buffer[5] === 0x0a &&
+        buffer[6] === 0x1a &&
+        buffer[7] === 0x0a
+      );
+    case 'image/gif':
+      return buffer.subarray(0, 6).toString('ascii') === 'GIF87a' || buffer.subarray(0, 6).toString('ascii') === 'GIF89a';
+    case 'image/webp':
+      return buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
+    case 'image/avif':
+      return buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+    default:
+      return false;
+  }
 }
 
-export async function storeImage(buffer, { folder = 'ydu-academy', originalName = '' } = {}) {
-  if (configured) {
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder,
-          resource_type: 'image',
-          transformation: [{ quality: 'auto', fetch_format: 'auto' }],
-        },
-        (err, res) => (err ? reject(err) : resolve(res))
-      );
-      stream.end(buffer);
-    });
-    return { url: result.secure_url, publicId: result.public_id, provider: 'cloudinary' };
-  }
+/** Sanitizes the target folder into a single safe subdirectory name (never 'videos' or dotfiles). */
+export function safeImageFolder(folder) {
+  const segment = String(folder || 'covers').split('/').pop() || 'covers';
+  if (segment.startsWith('.')) return 'covers';
+  const cleaned = segment.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  if (!cleaned || cleaned === 'videos' || cleaned === 'tmp') return 'covers';
+  return cleaned;
+}
 
-  // Local fallback: keep an extension from the original name when possible.
-  const subdir = localSubdir(folder);
-  await mkdir(path.join(UPLOAD_DIR, subdir), { recursive: true });
-  const ext = (path.extname(originalName).toLowerCase().match(/^\.[a-z0-9]{1,5}$/) || ['.jpg'])[0];
+/**
+ * Strips the origin from an absolute `/uploads/...` URL pointing at our image folders so DB records
+ * stay server-URL-independent (e.g. `https://old.host/uploads/covers/a.jpg` → `/uploads/covers/a.jpg`).
+ */
+export function normalizeUploadUrl(url) {
+  if (typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('/uploads/')) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (/^\/uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(parsed.pathname)) {
+        return parsed.pathname;
+      }
+    } catch {
+      /* leave invalid URLs untouched */
+    }
+  }
+  return trimmed;
+}
+
+export async function storeImage(buffer, { folder = 'covers', mimetype = 'image/jpeg' } = {}) {
+  const subdir = safeImageFolder(folder);
+  const ext = IMAGE_MIME_TYPES[mimetype] || '.jpg';
+  const dir = path.join(UPLOAD_DIR, subdir);
+  await mkdir(dir, { recursive: true });
   const name = `${Date.now()}-${randomUUID().slice(0, 8)}${ext}`;
-  await writeFile(path.join(UPLOAD_DIR, subdir, name), buffer);
-  const key = subdir ? `${subdir}/${name}` : name;
+  await writeFile(path.join(dir, name), buffer);
+  const key = `${subdir}/${name}`;
   return { url: `/uploads/${key}`, publicId: key, provider: 'local' };
 }
 
 /**
- * Where a profile-photo URL points in our storage, or null when it is not a learner's avatar.
- * Only the avatar folder qualifies — a Cloudinary public id under ydu-academy/avatars/ on this
- * account's cloud, or a file under /uploads/avatars/ — so a crafted avatarUrl can never reach a
- * course cover, a banner or someone else's site.
+ * Resolves a stored avatar URL pointing to `/uploads/avatars/...` to its local file path, or null
+ * when it is not a local avatar file (prevents deleting course covers, banners, or external URLs).
  */
 export function avatarTarget(url) {
   if (typeof url !== 'string' || !url) return null;
   let pathname = url;
-  let host = '';
   if (/^https?:\/\//i.test(url)) {
     try {
-      ({ pathname, hostname: host } = new URL(url));
+      pathname = new URL(url).pathname;
     } catch {
       return null;
     }
   }
-
-  if (host === 'res.cloudinary.com') {
-    // /<cloud>/image/upload/[v<version>/]<public id>.<ext> — the secure_url storeImage returns.
-    const match = pathname.match(/^\/([^/]+)\/image\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?$/i);
-    if (!match) return null;
-    const [, cloud, rawId] = match;
-    const expectedCloud = configured ? cloudinary.config().cloud_name : null;
-    if (expectedCloud && cloud !== expectedCloud) return null;
-    let publicId;
-    try {
-      publicId = decodeURIComponent(rawId);
-    } catch {
-      return null;
-    }
-    if (!publicId.startsWith(`${AVATAR_FOLDER}/`) || publicId.includes('..')) return null;
-    return { provider: 'cloudinary', publicId };
-  }
-
   const local = pathname.match(/^\/uploads\/avatars\/([\w-]+\.[a-z0-9]{1,5})$/i);
   return local ? { provider: 'local', file: path.join(UPLOAD_DIR, 'avatars', local[1]) } : null;
 }
 
-/** Deletes a learner's profile photo from storage. Returns true when a file was removed. */
+/** Deletes a learner's profile photo from server disk. Returns true when a file was removed. */
 export async function deleteAvatarImage(url) {
   const target = avatarTarget(url);
   if (!target) return false;
-  if (target.provider === 'cloudinary') {
-    if (!configured) return false;
-    const result = await cloudinary.uploader.destroy(target.publicId, { resource_type: 'image', invalidate: true });
-    return result?.result === 'ok';
-  }
   try {
     await unlink(target.file);
     return true;
@@ -122,5 +137,3 @@ export async function deleteAvatarImage(url) {
     throw err;
   }
 }
-
-export const uploadDir = UPLOAD_DIR;

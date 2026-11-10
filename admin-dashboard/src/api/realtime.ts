@@ -15,7 +15,7 @@
  */
 import { io, type Socket } from 'socket.io-client';
 import { useEffect, useState } from 'react';
-import { getToken, SERVER_URL } from './client';
+import { getServerUrl, getToken, onServerUrlChange } from './client';
 
 export type RealtimeEvent =
   | 'order.created'
@@ -56,6 +56,7 @@ export function onPresence(cb: (p: Presence | null) => void) {
 
 const statusListeners = new Set<(on: boolean) => void>();
 const handlers = new Map<RealtimeEvent, Set<Handler>>();
+const wiredEvents = new WeakMap<Socket, Set<RealtimeEvent>>();
 
 function setConnected(next: boolean) {
   if (connected !== next) {
@@ -72,11 +73,25 @@ export function onRealtimeStatus(cb: (connected: boolean) => void) {
   };
 }
 
+function attachEvent(socketInstance: Socket, event: RealtimeEvent) {
+  let set = wiredEvents.get(socketInstance);
+  if (!set) {
+    set = new Set();
+    wiredEvents.set(socketInstance, set);
+  }
+  if (set.has(event)) return;
+  set.add(event);
+  socketInstance.on(event, (payload: Record<string, unknown>) => {
+    handlers.get(event)?.forEach((handler) => handler(payload ?? {}));
+  });
+}
+
 export function onRealtimeEvent(event: RealtimeEvent, handler: Handler) {
   if (!handlers.has(event)) {
     handlers.set(event, new Set());
   }
   handlers.get(event)?.add(handler);
+  if (socket) attachEvent(socket, event);
   return () => {
     handlers.get(event)?.delete(handler);
   };
@@ -84,11 +99,16 @@ export function onRealtimeEvent(event: RealtimeEvent, handler: Handler) {
 
 function wire(socketInstance: Socket) {
   for (const event of handlers.keys()) {
-    socketInstance.on(event, (payload: Record<string, unknown>) => {
-      handlers.get(event as RealtimeEvent)?.forEach((handler) => handler(payload ?? {}));
-    });
+    attachEvent(socketInstance, event);
   }
 }
+
+// Reconnect immediately if the admin switches backend servers from Settings.
+onServerUrlChange(() => {
+  if (!socket) return;
+  disconnectRealtime();
+  connectRealtime();
+});
 
 /** Called once the admin is signed in and the dashboard talks to a real server. */
 export function connectRealtime() {
@@ -96,8 +116,7 @@ export function connectRealtime() {
   const token = getToken();
   if (!token) return;
 
-  // Straight to the backend server named by VITE_API_URL in .env.
-  socket = io(SERVER_URL, {
+  socket = io(getServerUrl(), {
     path: '/socket.io',
     auth: { token },
     transports: ['websocket', 'polling'],

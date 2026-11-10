@@ -1,8 +1,16 @@
-import { CreditCard, KeyRound, Save, Smartphone, Wrench } from 'lucide-react';
+import { CheckCircle2, CreditCard, KeyRound, RotateCcw, Save, Server, Smartphone, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api } from '../api/client';
+import {
+  DEFAULT_SERVER_URL,
+  api,
+  hasCustomServerUrl,
+  setServerUrl,
+  testServerConnection,
+  useServerUrl,
+  type ConnectionTestResult,
+} from '../api/client';
 import { onRealtimeEvent } from '../api/realtime';
 import type { AppSettings } from '../api/types';
 import { ADMIN_THEMES, useAdminTheme, type AdminThemeId } from '../theme/adminTheme';
@@ -143,11 +151,114 @@ function AdminAccountCard() {
   );
 }
 
+/** Lets the admin quickly switch which backend server this dashboard talks to (saved in browser). */
+function ConsoleServerCard({ onSwitched }: { onSwitched: () => void }) {
+  const toast = useToast();
+  const activeServer = useServerUrl();
+  const [input, setInput] = useState(activeServer);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<ConnectionTestResult | null>(null);
+
+  useEffect(() => {
+    setInput(activeServer);
+  }, [activeServer]);
+
+  async function runTest() {
+    setTesting(true);
+    const result = await testServerConnection(input);
+    setTestResult(result);
+    setTesting(false);
+  }
+
+  async function apply() {
+    try {
+      const next = setServerUrl(input);
+      setTestResult(null);
+      toast('success', `Dashboard switched to ${next}`);
+      try {
+        await api.me();
+        onSwitched();
+      } catch {
+        /* 401 handler or network error notifies automatically */
+      }
+    } catch (e) {
+      toast('error', e instanceof Error ? e.message : 'Invalid server URL');
+    }
+  }
+
+  async function reset() {
+    const next = setServerUrl('');
+    setInput(next);
+    setTestResult(null);
+    toast('success', `Reset to default server (${next})`);
+    onSwitched();
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title="Admin console server"
+        subtitle="Switch which backend server this admin browser connects to — instant, no rebuild needed"
+      />
+      <div className="space-y-3 p-5">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Server size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-subtle" />
+            <Input
+              value={input}
+              onChange={(e) => {
+                setInput(e.target.value);
+                setTestResult(null);
+              }}
+              placeholder={DEFAULT_SERVER_URL}
+              aria-label="Admin console server URL"
+              className="pl-9"
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" loading={testing} onClick={() => void runTest()}>
+              Test
+            </Button>
+            <Button onClick={() => void apply()} disabled={input.trim().replace(/\/+$/, '').replace(/\/api$/i, '') === activeServer}>
+              Switch server
+            </Button>
+            {hasCustomServerUrl() && (
+              <Button variant="ghost" icon={RotateCcw} onClick={() => void reset()}>
+                Default
+              </Button>
+            )}
+          </div>
+        </div>
+        {testResult && (
+          <div
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
+              testResult.ok ? 'bg-success-soft text-success' : 'bg-error-soft text-error'
+            }`}
+          >
+            {testResult.ok && <CheckCircle2 size={14} className="shrink-0" />}
+            <span>
+              {testResult.ok
+                ? `Reachable · DB ${testResult.db} · ${testResult.latencyMs}ms`
+                : testResult.error}
+            </span>
+          </div>
+        )}
+        <p className="text-xs text-subtle">
+          Build default (VITE_API_URL): <span className="font-mono text-muted">{DEFAULT_SERVER_URL}</span>
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 export default function Settings() {
   const toast = useToast();
+  const activeServer = useServerUrl();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [form, setForm] = useState<AppSettings | null>(null);
   const [saving, setSaving] = useState(false);
+  const [appUrlTesting, setAppUrlTesting] = useState(false);
+  const [appUrlTest, setAppUrlTest] = useState<ConnectionTestResult | null>(null);
 
   const load = useCallback(() => {
     api
@@ -179,15 +290,29 @@ export default function Settings() {
 
   if (!settings || !form) return <FormSkeleton sections={3} fieldsPerSection={3} className="max-w-3xl" />;
 
+  async function testAppServerUrl() {
+    const candidate = (form?.apiBaseUrl ?? '').trim();
+    if (!candidate) {
+      setAppUrlTest(null);
+      return;
+    }
+    setAppUrlTesting(true);
+    const result = await testServerConnection(candidate);
+    setAppUrlTest(result);
+    setAppUrlTesting(false);
+  }
+
   async function save() {
     if (!form) return;
     setSaving(true);
     try {
       // Banners, help, policies and checkout copy have their own pages; this form never sends them.
       const { faqs: _faqs, legalDocs: _legal, purchaseTerms: _terms, homeBanners: _banners, ...fields } = form;
-      const updated = await api.updateSettings(fields);
+      const cleanedApiBaseUrl = (fields.apiBaseUrl ?? '').trim().replace(/\/+$/, '').replace(/\/api$/i, '');
+      const updated = await api.updateSettings({ ...fields, apiBaseUrl: cleanedApiBaseUrl });
       setSettings(updated);
       setForm(updated);
+      setAppUrlTest(null);
       toast('success', form.maintenanceMode ? 'Saved — maintenance mode is ON for the app' : 'Settings saved');
     } catch (e) {
       toast('error', e instanceof Error ? e.message : 'Save failed');
@@ -284,28 +409,85 @@ export default function Settings() {
             </div>
             <Input value={form.minAppVersion} onChange={(e) => set('minAppVersion', e.target.value)} placeholder="1.0.0" className="w-32" />
           </div>
-          <div className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft">
-                <Smartphone size={16} className="text-brand-ink" />
+          <div className="space-y-3 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-soft">
+                  <Smartphone size={16} className="text-brand-ink" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Server URL for the mobile app</p>
+                  <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
+                    Where the mobile app sends requests. Leave empty to use its built-in URL (EXPO_PUBLIC_API_URL). Save it and open apps switch live.
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Server URL for the app</p>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
-                  The address the app sends its requests to. Leave empty to use the URL the app was built with (EXPO_PUBLIC_API_URL). Save it once and the app switches on its next refresh.
-                </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Input
+                  value={form.apiBaseUrl ?? ''}
+                  onChange={(e) => {
+                    set('apiBaseUrl', e.target.value);
+                    setAppUrlTest(null);
+                  }}
+                  placeholder="https://api.example.com"
+                  aria-label="Server URL for the app"
+                  className="sm:w-64"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  loading={appUrlTesting}
+                  disabled={!form.apiBaseUrl?.trim()}
+                  onClick={() => void testAppServerUrl()}
+                >
+                  Test
+                </Button>
               </div>
             </div>
-            <Input
-              value={form.apiBaseUrl ?? ''}
-              onChange={(e) => set('apiBaseUrl', e.target.value)}
-              placeholder="https://api.example.com"
-              aria-label="Server URL for the app"
-              className="sm:w-72"
-            />
+            <div className="flex flex-wrap items-center gap-3 pl-12 text-xs">
+              <button
+                type="button"
+                onClick={() => {
+                  set('apiBaseUrl', activeServer);
+                  setAppUrlTest(null);
+                }}
+                className="font-semibold text-brand-ink hover:underline"
+              >
+                Use this console’s server ({activeServer})
+              </button>
+              {form.apiBaseUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    set('apiBaseUrl', '');
+                    setAppUrlTest(null);
+                  }}
+                  className="font-semibold text-muted hover:text-ink hover:underline"
+                >
+                  Reset to app built-in default
+                </button>
+              ) : null}
+            </div>
+            {appUrlTest && (
+              <div
+                className={`ml-12 flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium ${
+                  appUrlTest.ok ? 'bg-success-soft text-success' : 'bg-error-soft text-error'
+                }`}
+              >
+                {appUrlTest.ok && <CheckCircle2 size={14} className="shrink-0" />}
+                <span>
+                  {appUrlTest.ok
+                    ? `Reachable · DB ${appUrlTest.db} · ${appUrlTest.latencyMs}ms`
+                    : appUrlTest.error}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </Card>
+
+      <ConsoleServerCard onSwitched={load} />
 
       <AdminAccountCard />
 

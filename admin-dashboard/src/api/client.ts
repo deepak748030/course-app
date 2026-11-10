@@ -1,12 +1,12 @@
 /**
  * API client for the YDU Academy server.
  *
- * Every request goes straight to the backend whose URL is set in .env as
- * VITE_API_URL (e.g. VITE_API_URL=http://localhost:5000 or
- * https://api.example.com — without a trailing /api). Nothing is routed through
- * the dev server: change the URL in .env and restart to point elsewhere.
+ * Default server URL comes from `.env` (`VITE_API_URL`, falling back to
+ * `http://localhost:5000`), and can also be switched instantly at runtime from
+ * the Login screen or Settings (saved in `localStorage` under `ydu.admin.serverUrl`).
  */
 
+import { useSyncExternalStore } from 'react';
 import type {
   AdminUser,
   AnalyticsOverview,
@@ -23,26 +23,151 @@ import type {
   NotificationKind,
 } from './types';
 
-/**
- * Base URL of the backend server, from .env (VITE_API_URL). A trailing slash or
- * a trailing /api in the value is tolerated. Falls back to the local dev server
- * so a fresh checkout still works without a .env file.
- */
-export const SERVER_URL = ((import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'http://localhost:5000')
+const SERVER_URL_KEY = 'ydu.admin.serverUrl';
+
+export const DEFAULT_SERVER_URL = (
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'http://localhost:5000'
+)
   .replace(/\/+$/, '')
-  .replace(/\/api$/, '');
+  .replace(/\/api$/i, '');
+
+/** Cleans a user-typed server URL, or returns null when invalid. */
+export function normalizeServerUrl(raw?: string | null): string | null {
+  const cleaned = (raw ?? '').trim().replace(/\/+$/, '').replace(/\/api$/i, '');
+  if (!cleaned) return null;
+  return /^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(cleaned) ? cleaned : null;
+}
+
+function readStoredServerUrl(): string {
+  try {
+    const saved = localStorage.getItem(SERVER_URL_KEY);
+    return normalizeServerUrl(saved) ?? DEFAULT_SERVER_URL;
+  } catch {
+    return DEFAULT_SERVER_URL;
+  }
+}
+
+let activeServerUrl = readStoredServerUrl();
+const serverUrlListeners = new Set<() => void>();
+
+/** Active backend base URL (synchronous). */
+export const getServerUrl = () => activeServerUrl;
+
+/** True when the browser has a saved override differing from VITE_API_URL. */
+export const hasCustomServerUrl = () => {
+  try {
+    const saved = normalizeServerUrl(localStorage.getItem(SERVER_URL_KEY));
+    return Boolean(saved && saved !== DEFAULT_SERVER_URL);
+  } catch {
+    return false;
+  }
+};
+
+export function onServerUrlChange(cb: () => void) {
+  serverUrlListeners.add(cb);
+  return () => {
+    serverUrlListeners.delete(cb);
+  };
+}
+
+/** React hook returning the active backend URL and re-rendering when switched. */
+export function useServerUrl(): string {
+  return useSyncExternalStore(onServerUrlChange, getServerUrl, getServerUrl);
+}
+
+/**
+ * Switches the backend URL immediately in this browser (empty string resets to `DEFAULT_SERVER_URL`).
+ * Throws if a non-empty URL is malformed.
+ */
+export function setServerUrl(raw: string): string {
+  const trimmed = raw.trim();
+  const next = trimmed ? normalizeServerUrl(trimmed) : DEFAULT_SERVER_URL;
+  if (!next) {
+    throw new Error('Enter a valid URL starting with http:// or https://');
+  }
+  try {
+    if (!trimmed || next === DEFAULT_SERVER_URL) localStorage.removeItem(SERVER_URL_KEY);
+    else localStorage.setItem(SERVER_URL_KEY, next);
+  } catch {
+    /* storage unavailable */
+  }
+  if (next !== activeServerUrl) {
+    activeServerUrl = next;
+    serverUrlListeners.forEach((cb) => cb());
+  }
+  return activeServerUrl;
+}
+
+export interface ConnectionTestResult {
+  ok: boolean;
+  url: string;
+  db?: string;
+  latencyMs?: number;
+  error?: string;
+}
+
+/** Checks `/api/health` on any candidate server URL before switching to it. */
+export async function testServerConnection(raw: string): Promise<ConnectionTestResult> {
+  const normalized = normalizeServerUrl(raw);
+  if (!normalized) {
+    return { ok: false, url: raw.trim(), error: 'Enter a full URL starting with http:// or https://' };
+  }
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), 6000);
+  const started = performance.now();
+  try {
+    const res = await fetch(`${normalized}/api/health`, { signal: controller.signal });
+    const latencyMs = Math.round(performance.now() - started);
+    let body: { ok?: boolean; db?: string; error?: string } = {};
+    try {
+      body = (await res.json()) as typeof body;
+    } catch {
+      /* non-json */
+    }
+    if (!res.ok || body.ok === false) {
+      return {
+        ok: false,
+        url: normalized,
+        db: body.db,
+        latencyMs,
+        error: body.db && body.db !== 'connected' ? `Server reachable, database status: ${body.db}` : `Server answered ${res.status}`,
+      };
+    }
+    return { ok: true, url: normalized, db: body.db ?? 'connected', latencyMs };
+  } catch (err) {
+    return {
+      ok: false,
+      url: normalized,
+      error: err instanceof DOMException && err.name === 'AbortError' ? 'Connection timed out after 6s' : 'Could not reach this server URL',
+    };
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
 
 /** Absolute URL for an API path such as '/admin/courses'. */
-export const apiUrl = (path: string) => `${SERVER_URL}/api${path}`;
+export const apiUrl = (path: string) => `${activeServerUrl}/api${path}`;
 
 /**
- * The server returns paths like /uploads/<file> for locally stored images.
- * Those live on the server, not on this dashboard's host, so resolve them
- * against SERVER_URL. Absolute http(s)/data/blob URLs pass through untouched.
+ * Resolves stored media URLs against the active server URL:
+ * - Relative `/uploads/...` paths prepend `getServerUrl()`.
+ * - Legacy absolute `http(s)://<old-host>/uploads/(avatars|covers|banners|images)/...` URLs are also
+ *   remapped onto the active server so switching server URLs never breaks previously uploaded files.
  */
 export function resolveAssetUrl(url?: string | null): string {
   if (!url) return '';
-  return url.startsWith('/') ? `${SERVER_URL}${url}` : url;
+  if (url.startsWith('/')) return `${activeServerUrl}${url}`;
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsed = new URL(url);
+      if (/^\/uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(parsed.pathname)) {
+        return `${activeServerUrl}${parsed.pathname}`;
+      }
+    } catch {
+      /* return raw */
+    }
+  }
+  return url;
 }
 
 const TOKEN_KEY = 'ydu.admin.token';
@@ -130,22 +255,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return res.json() as Promise<T>;
 }
 
-/** Video storage status: whether Backblaze B2 is set up on the server, and the upload limits. */
+/** Video storage status: stored locally on the server under `uploads/videos/`. */
 export const videoStorageStatus = () =>
-  request<{ configured: boolean; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
+  request<{ configured: boolean; storage?: string; maxBytes: number; types: string[] }>('/admin/uploads/video/status');
 
 /**
- * Uploads one lesson video to the server, which streams it into the private Backblaze B2 bucket.
- * Resolves with the object key, which the lesson stores (the app gets a signed playback link).
- * `onProgress` reports the browser → server upload; the server's own B2 step follows it.
- */
-/**
- * Two real stages, each with its own exact percentage:
- *  - 'sending': the file's bytes leaving this browser for the server (XHR upload progress).
- *  - 'storing': the server copying the file to Backblaze B2, read back from its progress endpoint.
+ * Two real stages, each with its own percentage:
+ *  - 'sending': the video leaving this browser for the server (XHR upload progress).
+ *  - 'storing': the server moving/saving the file into `uploads/videos/`.
  */
 export type VideoUploadProgress = { stage: 'sending' | 'storing'; percent: number };
 
+/**
+ * Uploads one lesson video to the server (`POST /api/admin/uploads/video`), which saves it in
+ * `uploads/videos/courses/...` and resolves with the relative key the lesson stores.
+ */
 export async function uploadCourseVideo(
   file: File,
   courseId: string | undefined,
@@ -174,7 +298,6 @@ export async function uploadCourseVideo(
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress({ stage: 'sending', percent: Math.round((event.loaded / event.total) * 100) });
     };
-    // The whole file is in the server's hands now; the B2 copy is the slow part, so ask for its progress.
     xhr.upload.onload = () => {
       onProgress({ stage: 'storing', percent: 0 });
       poll = setInterval(async () => {
@@ -186,6 +309,8 @@ export async function uploadCourseVideo(
           const entry = (await res.json()) as { stage: string; sent?: number; total?: number };
           if (entry.stage === 'storing' && entry.total) {
             onProgress({ stage: 'storing', percent: Math.min(100, Math.round(((entry.sent ?? 0) / entry.total) * 100)) });
+          } else if (entry.stage === 'done') {
+            onProgress({ stage: 'storing', percent: 100 });
           }
         } catch {
           /* a missed poll is retried on the next tick */
@@ -212,8 +337,8 @@ export async function uploadCourseVideo(
 }
 
 /**
- * Multipart image upload (cover art, anything the dashboard needs hosted).
- * Goes straight to the server's /api/uploads (on SERVER_URL); returns the stored URL.
+ * Multipart image upload (cover art, banners, etc.).
+ * Goes straight to the server's `/api/uploads` (stored in `uploads/`), returning a relative `/uploads/...` URL.
  */
 export async function uploadImage(file: File, folder = 'covers'): Promise<{ url: string; provider: string }> {
   const body = new FormData();

@@ -15,7 +15,7 @@ import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/consta
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
 import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
-import { applyServerUrl } from '@/lib/serverUrl';
+import { applyServerUrl, onServerUrlChange } from '@/lib/serverUrl';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import { forgetPushToken, syncPushToken, watchPushTokenChanges } from '@/services/push';
@@ -263,7 +263,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /** Loads app settings once and keeps them fresh through the realtime channel. */
+  /** Loads app settings once and keeps them fresh through the realtime channel or server URL switches. */
   useEffect(() => {
     api
       .settings()
@@ -272,13 +272,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         applyServerUrl(next.apiBaseUrl);
       })
       .catch(() => {});
-    return onSettingsUpdated((payload) => {
+    const offRealtime = onSettingsUpdated((payload) => {
       if (!payload.settings) return;
       const next = payload.settings as ServerSettings;
       setSettings(next);
       applyServerUrl(next.apiBaseUrl);
     });
-  }, []);
+    const offServerSwitch = onServerUrlChange(() => {
+      api
+        .settings()
+        .then(({ settings: next }) => setSettings(next))
+        .catch(() => {});
+      if (sessionRef.current) {
+        void hydrateLearning();
+      }
+    });
+    return () => {
+      offRealtime();
+      offServerSwitch();
+    };
+  }, [hydrateLearning]);
 
   useEffect(() => {
     let cancelled = false;
@@ -489,12 +502,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfileAvatar: (uri) => {
         setState((prev) => ({ ...prev, profileAvatarUri: uri }));
         const current = sessionRef.current;
-        if (uri && current) {
-          // Upload → store the CDN URL on the account; failure only loses the sync, not the photo.
+        if (!current) return;
+        if (uri) {
+          // Upload to server `uploads/avatars/` → save relative `/uploads/avatars/...` path on account + session.
           api
             .uploadImage(uri, `avatar-${Date.now()}.jpg`)
             .then(({ url }) => api.updateMe({ avatarUrl: url }))
+            .then(({ user }) => {
+              const latest = sessionRef.current;
+              if (!latest) return;
+              const updated: Session = {
+                ...latest,
+                profile: { ...latest.profile, avatarUrl: user.avatarUrl || undefined },
+              };
+              setSession(updated);
+              void authService.saveSession(updated);
+            })
             .catch(() => {});
+        } else {
+          // Removing the avatar clears both the local URI and the server copy.
+          const updated: Session = {
+            ...current,
+            profile: { ...current.profile, avatarUrl: undefined },
+          };
+          setSession(updated);
+          void authService.saveSession(updated);
+          api.updateMe({ avatarUrl: '' }).catch(() => {});
         }
       },
 
