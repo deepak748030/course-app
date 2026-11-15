@@ -2,7 +2,7 @@
  * API client for the YDU Academy server.
  *
  * Default server URL comes from `.env` (`VITE_API_URL`, falling back to
- * `http://localhost:5000`), and can also be switched instantly at runtime from
+ * `https://api-ydu-server.duckdns.org`), and can also be switched instantly at runtime from
  * the Login screen or Settings (saved in `localStorage` under `ydu.admin.serverUrl`).
  */
 
@@ -24,9 +24,10 @@ import type {
 } from './types';
 
 const SERVER_URL_KEY = 'ydu.admin.serverUrl';
+const LEGACY_RENDER_URL = 'https://course-app-na94.onrender.com';
 
 export const DEFAULT_SERVER_URL = (
-  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'http://localhost:5000'
+  (import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'https://api-ydu-server.duckdns.org'
 )
   .replace(/\/+$/, '')
   .replace(/\/api$/i, '');
@@ -40,8 +41,12 @@ export function normalizeServerUrl(raw?: string | null): string | null {
 
 function readStoredServerUrl(): string {
   try {
-    const saved = localStorage.getItem(SERVER_URL_KEY);
-    return normalizeServerUrl(saved) ?? DEFAULT_SERVER_URL;
+    const saved = normalizeServerUrl(localStorage.getItem(SERVER_URL_KEY));
+    if (saved && saved.toLowerCase() === LEGACY_RENDER_URL) {
+      localStorage.removeItem(SERVER_URL_KEY);
+      return DEFAULT_SERVER_URL;
+    }
+    return saved ?? DEFAULT_SERVER_URL;
   } catch {
     return DEFAULT_SERVER_URL;
   }
