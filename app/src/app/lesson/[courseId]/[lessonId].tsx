@@ -51,6 +51,7 @@ import { AnimatedCheck } from '@/components/animated-icons';
 import { AppStatusBar } from '@/components/app-status-bar';
 import { BottomSheet } from '@/components/bottom-sheet';
 import { LessonRow, type LessonRowState } from '@/components/course-cards';
+import { CourseImage } from '@/components/course-image';
 import {
   AppBar,
   Badge,
@@ -69,7 +70,7 @@ import { freePreviewSec, nextLesson } from '@/lib/catalog';
 import { onServerUrlChange } from '@/lib/serverUrl';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
-import { api } from '@/services/api';
+import { api, ApiError } from '@/services/api';
 import { useT } from '@/i18n';
 import { useStore } from '@/store';
 import { formatClock, lessonLength } from '@/lib/format';
@@ -151,9 +152,13 @@ export default function LessonPlayerScreen() {
   /** Course videos are private: the server signs a short-lived link for this learner only. */
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [noVideoAvailable, setNoVideoAvailable] = useState(false);
   /** Why the server refused the link (e.g. an expired session), shown instead of the generic line. */
   const [playbackReason, setPlaybackReason] = useState<string | null>(null);
   const [playbackAttempt, setPlaybackAttempt] = useState(0);
+  /** True once the learner taps Play and wants playback running (including while chunks buffer). */
+  const [playRequested, setPlayRequested] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   /** Quality the learner picked; null = best available. */
   const [quality, setQuality] = useState<string | null>(null);
   /** Versions the server carries for this lesson, and the one actually streaming. */
@@ -161,9 +166,11 @@ export default function LessonPlayerScreen() {
   const [playingQuality, setPlayingQuality] = useState<string | null>(null);
   /** Playhead to restore once a different quality has loaded. */
   const resumeAtRef = useRef<number | null>(null);
-  const needsPlaybackUrl = Boolean(unlocked && lesson?.hasCourseVideo);
+  const lastFrameAdvanceAtRef = useRef<number>(0);
+  const lastFramePositionRef = useRef<number>(storedPosition.positionSec);
   const courseRemoteId = course?.remoteId;
   const lessonRemoteId = lesson?.id;
+  const needsPlaybackUrl = Boolean(unlocked && courseRemoteId && lessonRemoteId);
   /* A new lesson or a retry starts without a link. A quality change does not: the current picture
      stays on screen until the new link is ready, because detaching the player from its view mid-play
      is what crashes the native video view. */
@@ -175,11 +182,15 @@ export default function LessonPlayerScreen() {
 
   useEffect(() => {
     setPlaybackUrl(null);
+    setNoVideoAvailable(false);
+    setPlayRequested(false);
+    setIsBuffering(false);
   }, [lessonRemoteId, playbackAttempt]);
 
   useEffect(() => {
     setPlaybackFailed(false);
     setPlaybackReason(null);
+    setNoVideoAvailable(false);
     if (!needsPlaybackUrl || !courseRemoteId || !lessonRemoteId) return;
     let cancelled = false;
     api
@@ -191,10 +202,17 @@ export default function LessonPlayerScreen() {
         setQualities(res.qualities);
       })
       .catch((err: unknown) => {
-        if (!cancelled) {
-          setPlaybackFailed(true);
-          setPlaybackReason(err instanceof Error ? err.message : null);
+        if (cancelled) return;
+        if (err instanceof ApiError && err.status === 404 && /no course video/i.test(err.message)) {
+          setNoVideoAvailable(true);
+          setPlayRequested(false);
+          setIsBuffering(false);
+          return;
         }
+        setPlaybackFailed(true);
+        setPlayRequested(false);
+        setIsBuffering(false);
+        setPlaybackReason(err instanceof Error ? err.message : null);
       });
     return () => {
       cancelled = true;
@@ -205,23 +223,26 @@ export default function LessonPlayerScreen() {
   const chooseQuality = (next: string | null) => {
     if (next === quality) return;
     resumeAtRef.current = player.currentTime;
+    setIsBuffering(true);
     setQuality(next);
   };
 
   /** The lesson's own video once its link is ready. A lesson without one has nothing to play. */
   // Memoised on primitives: a new source object on every render makes the player reload constantly.
   const hasLesson = Boolean(lesson);
-  const lessonHasCourseVideo = Boolean(lesson?.hasCourseVideo);
   const videoSource = useMemo(() => {
-    if (!unlocked || !hasLesson) return null;
-    if (!lessonHasCourseVideo) return null;
+    if (!unlocked || !hasLesson || noVideoAvailable) return null;
     return playbackUrl ? { uri: playbackUrl } : null;
-  }, [unlocked, hasLesson, lessonHasCourseVideo, playbackUrl]);
+  }, [unlocked, hasLesson, noVideoAvailable, playbackUrl]);
 
   const player = useVideoPlayer(videoSource, (instance) => {
-    instance.timeUpdateEventInterval = 1;
-    // Keep ~10 seconds buffered ahead of the playhead; start as soon as a little is ready.
-    instance.bufferOptions = { preferredForwardBufferDuration: 10, minBufferForPlayback: 2, waitsToMinimizeStalling: true };
+    instance.timeUpdateEventInterval = 0.25;
+    // Start playback after 1s of chunk buffer and keep ~6s ahead so video streams in small chunks.
+    instance.bufferOptions = {
+      preferredForwardBufferDuration: 6,
+      minBufferForPlayback: 1,
+      waitsToMinimizeStalling: true,
+    };
     if (storedPosition.positionSec > 0) instance.currentTime = storedPosition.positionSec;
   });
 
@@ -258,11 +279,21 @@ export default function LessonPlayerScreen() {
   const renditionLabel = playingQuality ? qualityLabel(playingQuality) : rendition ? `${rendition.size.height}p` : 'Auto';
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
-  const isVideoLoading = status === 'loading' || (needsPlaybackUrl && !playbackUrl && !playbackFailed);
-  const error = statusEvent?.error || playbackFailed;
+  const isUrlLoading = Boolean(needsPlaybackUrl && !playbackUrl && !playbackFailed && !noVideoAvailable);
+  const isVideoLoading = isUrlLoading || status === 'loading' || isBuffering;
+  const error = Boolean((statusEvent?.error && playbackUrl) || playbackFailed);
   const [position, setPosition] = useState(storedPosition.positionSec);
   const previewEnded = Number.isFinite(previewCap) && position >= previewCap;
   const [duration, setDuration] = useState(player.duration || 0);
+
+  // If the learner tapped Play before the signed link or native player finished preparing,
+  // start playback automatically the moment the source is ready.
+  useEffect(() => {
+    if (!playRequested || !playbackUrl || error || noVideoAvailable) return;
+    if (status === 'readyToPlay' && !isPlaying) {
+      player.play();
+    }
+  }, [playRequested, playbackUrl, status, isPlaying, error, noVideoAvailable, player]);
 
   useEventListener(player, 'sourceLoad', ({ duration: loaded }) => {
     if (loaded > 0) setDuration(loaded);
@@ -270,12 +301,25 @@ export default function LessonPlayerScreen() {
       player.currentTime = resumeAtRef.current;
       resumeAtRef.current = null;
     }
+    if (playRequested) {
+      player.play();
+    } else {
+      setIsBuffering(false);
+    }
   });
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     setPosition(currentTime);
+    if (Math.abs(currentTime - lastFramePositionRef.current) > 0.03 || isPlaying) {
+      lastFramePositionRef.current = currentTime;
+      lastFrameAdvanceAtRef.current = Date.now();
+      setIsBuffering(false);
+      if (isPlaying || playRequested) setHasStarted(true);
+    }
     // The free part ends here: stop at the limit, whatever the learner does with the scrubber.
     if (Number.isFinite(previewCap) && currentTime >= previewCap) {
+      setPlayRequested(false);
+      setIsBuffering(false);
       player.pause();
       player.currentTime = previewCap;
     }
@@ -286,11 +330,29 @@ export default function LessonPlayerScreen() {
     }
   });
 
+  // Detect mid-playback network stalls so the spinner appears whenever chunks are buffering.
+  useEffect(() => {
+    if (!playRequested && !isPlaying) return;
+    const id = setInterval(() => {
+      if (error || noVideoAvailable || previewEnded) return;
+      if (status === 'loading' || (playRequested && !isPlaying)) {
+        setIsBuffering(true);
+        return;
+      }
+      if (isPlaying && lastFrameAdvanceAtRef.current > 0 && Date.now() - lastFrameAdvanceAtRef.current > 1800) {
+        setIsBuffering(true);
+      }
+    }, 350);
+    return () => clearInterval(id);
+  }, [playRequested, isPlaying, status, error, noVideoAvailable, previewEnded]);
+
   // timeUpdate is the normal stop; this poll is the guarantee. It runs only while a capped preview plays.
   useEffect(() => {
     if (!Number.isFinite(previewCap) || !isPlaying) return;
     const id = setInterval(() => {
       if (player.currentTime >= previewCap) {
+        setPlayRequested(false);
+        setIsBuffering(false);
         player.pause();
         player.currentTime = previewCap;
       }
@@ -305,6 +367,8 @@ export default function LessonPlayerScreen() {
     track('lesson_started', { courseId: course.remoteId, meta: { lessonId: lesson.id } });
     const target = lessonProgress(course.id, lesson.id).positionSec;
     lastSavedRef.current = target;
+    lastFramePositionRef.current = target;
+    lastFrameAdvanceAtRef.current = 0;
     setPosition(target);
     // A lesson the learner has not played yet is back to the short transport.
     setHasStarted(player.playing);
@@ -330,21 +394,19 @@ export default function LessonPlayerScreen() {
   // Playback is what unlocks the extras, so the flag latches on the first play and stays for the
   // rest of the visit — pausing afterwards must not take the speed and fullscreen buttons away.
   useEffect(() => {
-    if (isPlaying) setHasStarted(true);
+    if (isPlaying) {
+      setHasStarted(true);
+      setPlayRequested(true);
+    }
   }, [isPlaying]);
 
   /**
-   * The peek only runs while the lesson is playing — that is the whole point of it: the picture gets
-   * out of the way once there is motion to watch. Before the first play, and whenever the video is
-   * paused, the transport stays up for as long as the learner needs it, so the very first tap is not
-   * something they have to aim at a picture that keeps going blank. Only a deliberate action (the
-   * tap layer, play/pause, a seek, another lesson) restarts the three-second window; the
-   * once-a-second time updates deliberately do not, or the timer would reset itself forever and the
-   * controls would never leave.
+   * The peek only runs while the lesson is actively playing and not buffering — that is the whole point
+   * of it: the picture gets out of the way once there is motion to watch.
    */
   useEffect(() => {
     if (hideTimer.current) clearTimeout(hideTimer.current);
-    if (!isPlaying) {
+    if (!isPlaying || isVideoLoading) {
       setControlsVisible(true);
       return;
     }
@@ -352,9 +414,11 @@ export default function LessonPlayerScreen() {
     return () => {
       if (hideTimer.current) clearTimeout(hideTimer.current);
     };
-  }, [isPlaying, showTick, lesson?.id]);
+  }, [isPlaying, isVideoLoading, showTick, lesson?.id]);
 
   useEventListener(player, 'playToEnd', () => {
+    setPlayRequested(false);
+    setIsBuffering(false);
     showControls();
     if (course && lesson) setLessonPosition(course, lesson.id, 0);
   });
@@ -404,6 +468,7 @@ export default function LessonPlayerScreen() {
 
   const seekTo = (seconds: number) => {
     const clamped = Math.max(0, Math.min(seconds, duration || seconds));
+    if (isPlaying || playRequested) setIsBuffering(true);
     player.currentTime = clamped;
     setPosition(clamped);
     showControls();
@@ -411,9 +476,21 @@ export default function LessonPlayerScreen() {
 
   const togglePlay = () => {
     feedback.tap();
-    if (isPlaying) player.pause();
-    else player.play();
     showControls();
+    if (isPlaying || playRequested) {
+      setPlayRequested(false);
+      setIsBuffering(false);
+      player.pause();
+      return;
+    }
+    setPlayRequested(true);
+    setIsBuffering(true);
+    lastFrameAdvanceAtRef.current = Date.now();
+    if (!playbackUrl) {
+      if (playbackFailed) setPlaybackAttempt((n) => n + 1);
+      return;
+    }
+    player.play();
   };
 
   const goToLesson = (lessonId: string) => {
@@ -488,7 +565,7 @@ export default function LessonPlayerScreen() {
     const sideBottom = fullscreen
       ? { paddingLeft: layout.section + insets.left, paddingRight: layout.section + insets.right }
       : null;
-    const chromeVisible = controlsVisible && !error && !isVideoLoading && lesson.hasCourseVideo;
+    const chromeVisible = (controlsVisible || isVideoLoading) && !error && !noVideoAvailable && !previewEnded;
     const hit = { top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs };
     const FullscreenIcon = fullscreen ? Minimize2 : Maximize2;
     const leave = () => {
@@ -510,6 +587,13 @@ export default function LessonPlayerScreen() {
           surfaceType="textureView"
         />
 
+        {!hasStarted && !noVideoAvailable ? (
+          <View style={StyleSheet.absoluteFill} pointerEvents="none">
+            <CourseImage source={course.cover} style={StyleSheet.absoluteFill} transition={160} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.scrim }]} />
+          </View>
+        ) : null}
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("Show player controls")}
@@ -518,14 +602,7 @@ export default function LessonPlayerScreen() {
           style={StyleSheet.absoluteFill}
         />
 
-        {isVideoLoading ? (
-          <View style={[styles.centerOverlay, styles.noTouch]}>
-            <ActivityIndicator color={colors.onPlayer} />
-            <Text style={[type.label, { color: colors.onPlayerMuted }]}>{t("Loading lesson\u2026")}</Text>
-          </View>
-        ) : null}
-
-        {!lesson.hasCourseVideo && !isVideoLoading && !error ? (
+        {noVideoAvailable && !isVideoLoading && !error ? (
           <View style={styles.centerOverlay}>
             <Clapperboard size={26} color={colors.onPlayer} strokeWidth={1.9} />
             <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
@@ -545,7 +622,9 @@ export default function LessonPlayerScreen() {
               variant="secondary"
               fullWidth={false}
               onPress={() => {
-                if (lesson.hasCourseVideo && !playbackUrl) {
+                setPlayRequested(true);
+                setIsBuffering(true);
+                if (!playbackUrl) {
                   setPlaybackAttempt((n) => n + 1);
                   return;
                 }
@@ -622,35 +701,46 @@ export default function LessonPlayerScreen() {
               style={[
                 styles.playerCenter,
                 styles.boxNone,
-                { top: topBlockHeight, bottom: bottomBlockHeight, gap: Math.round(spacing.xl * playerScale) },
+                { top: topBlockHeight, bottom: bottomBlockHeight },
               ]}>
-              <IconButton
-                icon={SkipBack}
-                variant="onImage"
-                size={skipSize}
-                iconSize={largeGlyph ? 24 : 20}
-                accessibilityLabel={t("Go back 15 seconds")}
-                onPress={() => seekTo(position - 15)}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={isPlaying ? 'Pause lesson' : 'Play lesson'}
-                onPress={togglePlay}
-                style={[styles.playButton, { width: playSize, height: playSize }]}>
-                {isPlaying ? (
-                  <Pause size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
-                ) : (
-                  <Play size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
-                )}
-              </Pressable>
-              <IconButton
-                icon={SkipForward}
-                variant="onImage"
-                size={skipSize}
-                iconSize={largeGlyph ? 24 : 20}
-                accessibilityLabel={t("Go forward 15 seconds")}
-                onPress={() => seekTo(position + 15)}
-              />
+              <View style={[styles.playerCenterRow, { gap: Math.round(spacing.xl * playerScale) }]}>
+                <IconButton
+                  icon={SkipBack}
+                  variant="onImage"
+                  size={skipSize}
+                  iconSize={largeGlyph ? 24 : 20}
+                  accessibilityLabel={t("Go back 15 seconds")}
+                  onPress={() => seekTo(position - 15)}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={isPlaying || playRequested ? 'Pause lesson' : 'Play lesson'}
+                  onPress={togglePlay}
+                  style={[styles.playButton, { width: playSize, height: playSize }]}>
+                  {isVideoLoading ? (
+                    <ActivityIndicator size={largeGlyph ? 'large' : 'small'} color={colors.onPlayer} />
+                  ) : isPlaying ? (
+                    <Pause size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                  ) : (
+                    <Play size={largeGlyph ? 30 : 24} color={colors.onPlayer} strokeWidth={1.8} fill={colors.onPlayer} />
+                  )}
+                </Pressable>
+                <IconButton
+                  icon={SkipForward}
+                  variant="onImage"
+                  size={skipSize}
+                  iconSize={largeGlyph ? 24 : 20}
+                  accessibilityLabel={t("Go forward 15 seconds")}
+                  onPress={() => seekTo(position + 15)}
+                />
+              </View>
+              {isVideoLoading ? (
+                <View style={[styles.bufferPill, styles.noTouch]}>
+                  <Text style={[type.label, { color: colors.onPlayer }]}>
+                    {isUrlLoading ? t("Loading lesson\u2026") : t("Buffering video\u2026")}
+                  </Text>
+                </View>
+              ) : null}
             </View>
 
             <View
@@ -1108,9 +1198,21 @@ const styles = createStyles(() => StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+  },
+  playerCenterRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  bufferPill: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+    backgroundColor: colors.scrim,
   },
   playButton: {
     borderRadius: radius.pill,

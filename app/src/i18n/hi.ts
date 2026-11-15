@@ -158,6 +158,7 @@ export const hi: Record<string, string> = {
   'Show player controls': 'प्लेयर कंट्रोल दिखाएँ',
   'They hide again a few seconds after the lesson starts playing': 'लेसन चलने के कुछ सेकंड बाद ये फिर छिप जाते हैं',
   'Loading lesson\u2026': 'लेसन लोड हो रहा है…',
+  'Buffering video\u2026': 'वीडियो बफ़र हो रहा है…',
   'This lesson video could not be played.': 'यह लेसन वीडियो चल नहीं सका।',
   'This lesson video is not available yet.': 'यह लेसन वीडियो अभी उपलब्ध नहीं है।',
   'Best available': 'सबसे अच्छी उपलब्ध',

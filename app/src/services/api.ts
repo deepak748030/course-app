@@ -189,6 +189,8 @@ export type ServerLesson = {
   description: string;
   /** Object key of the course video in server `uploads/videos/`; the app gets a signed link from the server. */
   videoKey?: string;
+  /** Quality-keyed video variants when returned directly by the server. */
+  videos?: { quality?: string; videoKey?: string; durationSec?: number }[];
   minutes: number;
   durationSec?: number;
   isPreview: boolean;

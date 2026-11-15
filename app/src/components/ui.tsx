@@ -1011,21 +1011,47 @@ export function Scrim({ from = 'transparent', to = colors.scrim, style }: { from
  * Tab screens: identity + headers
  * ------------------------------------------------------------------ */
 
-/** Initials avatar: one yellow tint, hairline ring, no photo needed for sample content. */
+/** Initials avatar: one yellow tint, hairline ring, with loading spinner/skeleton when a photo URI loads. */
 export function Avatar({ name, size = 40, uri }: { name: string; size?: number; uri?: string | null }) {
   const initial = (name.trim().charAt(0) || 'R').toUpperCase();
+  const [loading, setLoading] = useState(Boolean(uri));
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+    setLoading(Boolean(uri));
+  }, [uri]);
+
+  const showImage = Boolean(uri) && !failed;
+
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.avatar, { width: size, height: size }]}>
-      {uri ? (
-        <Image
-          source={uri}
-          style={{ width: size, height: size, borderRadius: radius.pill }}
-          contentFit="cover"
-          transition={160}
-        />
+      style={[styles.avatar, { width: size, height: size, overflow: 'hidden' }]}>
+      {showImage ? (
+        <>
+          <Image
+            source={uri!}
+            onLoadStart={() => setLoading(true)}
+            onLoad={() => setLoading(false)}
+            onLoadEnd={() => setLoading(false)}
+            onError={() => {
+              setFailed(true);
+              setLoading(false);
+            }}
+            cachePolicy="memory-disk"
+            style={{ width: size, height: size, borderRadius: radius.pill }}
+            contentFit="cover"
+            transition={160}
+          />
+          {loading ? (
+            <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+              <Skeleton width={size} height={size} borderRadius={radius.pill} style={StyleSheet.absoluteFill} />
+              <ActivityIndicator size="small" color={colors.accentText} />
+            </View>
+          ) : null}
+        </>
       ) : (
         <Text style={{ fontFamily: font.semibold, fontSize: Math.round(size * 0.42), color: colors.accentText }}>{initial}</Text>
       )}
@@ -1060,7 +1086,7 @@ export function AvatarButton({
         onPressIn={press.onPressIn}
         onPressOut={press.onPressOut}
         style={({ pressed }) => (pressed ? styles.pressed : null)}>
-        <Avatar name={name} size={size} />
+        <Avatar name={name} size={size} uri={uri} />
       </Pressable>
     </Animated.View>
   );

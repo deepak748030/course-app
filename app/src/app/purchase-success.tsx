@@ -22,6 +22,7 @@ import { createStyles, colors, layout, radius, spacing, tabularNums, type } from
 import { useT } from '@/i18n';
 import { firstPlayableLesson } from '@/lib/catalog';
 import { formatDuration, formatInr } from '@/lib/format';
+import { api } from '@/services/api';
 import { useCatalog } from '@/services/catalog-context';
 import { useStore } from '@/store';
 
@@ -76,6 +77,13 @@ export default function PurchaseSuccessScreen() {
   }));
 
   const enrollment = course ? state.enrollments[course.id] : undefined;
+  const firstLesson = useMemo(() => (course ? firstPlayableLesson(course) : null), [course]);
+
+  // Warm the signed playback link for Lesson 1 while the learner views the confirmation screen.
+  useEffect(() => {
+    if (!course?.remoteId || !firstLesson?.id) return;
+    void api.lessonVideoUrl(course.remoteId, firstLesson.id).catch(() => {});
+  }, [course?.remoteId, firstLesson?.id]);
 
   if (!course) {
     return (
@@ -95,7 +103,6 @@ export default function PurchaseSuccessScreen() {
     );
   }
 
-  const firstLesson = firstPlayableLesson(course);
   const enrolled = isEnrolled(course.id);
   const lessonMinutes = course.lessons.reduce((sum, lesson) => sum + lesson.minutes, 0);
 

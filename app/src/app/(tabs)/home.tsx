@@ -6,6 +6,7 @@ import { useRouter } from '@/lib/router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
@@ -30,6 +31,7 @@ import {
   Scrim,
   Screen,
   SectionHeader,
+  Skeleton,
   TabHeader,
   usePressScale,
 } from '@/components/ui';
@@ -301,6 +303,15 @@ function HeroCarousel({ slides }: { slides: HeroItem[] }) {
     indexRef.current = next;
     setIndex(next);
   };
+
+  if (slides.length === 0) {
+    return (
+      <View style={[styles.carousel, { alignItems: 'center', justifyContent: 'center' }]}>
+        <Skeleton width="100%" height={220} borderRadius={0} style={StyleSheet.absoluteFill} />
+        <ActivityIndicator size="small" color={colors.accentText} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.carousel}>

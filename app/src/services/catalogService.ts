@@ -64,18 +64,22 @@ function mapRecipe(server: ServerCourse['lessons'][number]['recipe']): Recipe | 
 export function mapCourse(server: ServerCourse): Course {
   const categorySlug = typeof server.category === 'string' ? '' : server.category.slug;
 
-  const lessons: Lesson[] = server.lessons.map((lesson) => ({
-    id: lesson._id,
-    courseId: server.slug,
-    title: lesson.title,
-    description: lesson.description,
-    minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
-    seconds: lesson.durationSec || undefined,
-    isPreview: lesson.isPreview,
-    previewSec: lesson.previewSec || undefined,
-    hasCourseVideo: Boolean(lesson.videoKey),
-    recipe: mapRecipe(lesson.recipe),
-  }));
+  const lessons: Lesson[] = server.lessons.map((lesson) => {
+    const hasVariantVideo =
+      Array.isArray(lesson.videos) && lesson.videos.some((variant) => Boolean(variant?.videoKey));
+    return {
+      id: lesson._id,
+      courseId: server.slug,
+      title: lesson.title,
+      description: lesson.description,
+      minutes: lesson.durationSec ? lesson.durationSec / 60 : lesson.minutes,
+      seconds: lesson.durationSec || undefined,
+      isPreview: lesson.isPreview,
+      previewSec: lesson.previewSec || undefined,
+      hasCourseVideo: Boolean(lesson.videoKey || hasVariantVideo),
+      recipe: mapRecipe(lesson.recipe),
+    };
+  });
 
   return {
     id: server.slug,
@@ -132,7 +136,8 @@ export async function fetchCatalog(): Promise<CatalogData> {
 
 import { storage } from '@/lib/storage';
 
-const CACHE_KEY = 'ydu.catalog.v1';
+const CACHE_KEY = 'ydu.catalog.v2';
+const OLD_CACHE_KEY = 'ydu.catalog.v1';
 /** A cache older than this is still shown, but never trusted for a 304-only refresh. */
 const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -144,6 +149,7 @@ export interface CatalogCache {
 
 export async function readCatalogCache(): Promise<CatalogCache | null> {
   try {
+    void storage.remove(OLD_CACHE_KEY).catch(() => {});
     const raw = await storage.get(CACHE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CatalogCache;
