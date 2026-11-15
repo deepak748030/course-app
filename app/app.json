@@ -2,7 +2,7 @@
   "expo": {
     "name": "YDU Academy",
     "slug": "courses-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./assets/images/logo.png",
     "scheme": "yduacademy",
@@ -16,7 +16,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.yduacademy.app"
+      "package": "com.yduacademy.app",
+      "versionCode": 2
     },
     "web": {
       "output": "static",
@@ -76,7 +77,8 @@
           "paytmmp"
         ]
       },
-      "bundleIdentifier": "com.yduacademy.app"
+      "bundleIdentifier": "com.yduacademy.app",
+      "buildNumber": "2"
     },
     "extra": {
       "router": {},
