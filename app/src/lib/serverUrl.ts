@@ -12,9 +12,9 @@
  */
 import { storage } from '@/lib/storage';
 
-const STORAGE_KEY = 'ydu.serverUrl';
-const MANUAL_KEY = 'ydu.serverUrl.manual';
-const LEGACY_RENDER_URL = 'https://course-app-na94.onrender.com';
+const STORAGE_KEY = 'ydu.serverUrl.v2';
+const MANUAL_KEY = 'ydu.serverUrl.manual.v2';
+const OLD_STORAGE_KEYS = ['ydu.serverUrl', 'ydu.serverUrl.manual'] as const;
 
 export const BUILT_IN_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://api-ydu-server.duckdns.org')
   .trim()
@@ -50,12 +50,10 @@ export function isServerUrlLoaded(): boolean {
 /** Resolves once the saved URL and override flag are loaded. Never rejects. */
 export const serverUrlReady: Promise<void> = Promise.all([storage.get(STORAGE_KEY), storage.get(MANUAL_KEY)])
   .then(([saved, manual]) => {
-    const url = normalizeServerUrl(saved);
-    if (url && url.toLowerCase() === LEGACY_RENDER_URL) {
-      void storage.remove(STORAGE_KEY);
-      void storage.remove(MANUAL_KEY);
-      return;
+    for (const key of OLD_STORAGE_KEYS) {
+      void storage.remove(key);
     }
+    const url = normalizeServerUrl(saved);
     if (url) {
       active = url;
       manualOverride = manual === '1';
@@ -76,8 +74,7 @@ function notifyListeners() {
  * manual override stays active instead of snapping back to `BUILT_IN_API_URL`.
  */
 export function applyServerUrl(value: string | null | undefined): void {
-  const rawNormalized = normalizeServerUrl(value);
-  const normalized = rawNormalized && rawNormalized.toLowerCase() === LEGACY_RENDER_URL ? null : rawNormalized;
+  const normalized = normalizeServerUrl(value);
   if (!normalized && manualOverride) return;
   const next = normalized ?? BUILT_IN_API_URL;
   if (next === active) return;

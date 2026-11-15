@@ -23,8 +23,8 @@ import type {
   NotificationKind,
 } from './types';
 
-const SERVER_URL_KEY = 'ydu.admin.serverUrl';
-const LEGACY_RENDER_URL = 'https://course-app-na94.onrender.com';
+const SERVER_URL_KEY = 'ydu.admin.serverUrl.v2';
+const OLD_SERVER_URL_KEY = 'ydu.admin.serverUrl';
 
 export const DEFAULT_SERVER_URL = (
   (import.meta.env.VITE_API_URL as string | undefined)?.trim() || 'https://api-ydu-server.duckdns.org'
@@ -41,11 +41,8 @@ export function normalizeServerUrl(raw?: string | null): string | null {
 
 function readStoredServerUrl(): string {
   try {
+    localStorage.removeItem(OLD_SERVER_URL_KEY);
     const saved = normalizeServerUrl(localStorage.getItem(SERVER_URL_KEY));
-    if (saved && saved.toLowerCase() === LEGACY_RENDER_URL) {
-      localStorage.removeItem(SERVER_URL_KEY);
-      return DEFAULT_SERVER_URL;
-    }
     return saved ?? DEFAULT_SERVER_URL;
   } catch {
     return DEFAULT_SERVER_URL;

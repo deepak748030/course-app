@@ -1,8 +1,9 @@
+import fs from 'node:fs';
 import fsPromises from 'node:fs/promises';
 import { Category } from '../models/Category.js';
 import { Course } from '../models/Course.js';
 import { Enrollment } from '../models/Enrollment.js';
-import { cacheRemember } from '../services/cache.js';
+import { cacheRemember, invalidateCache } from '../services/cache.js';
 import { asyncHandler, HttpError } from '../utils/http.js';
 import {
   PLAYBACK_TTL_SECONDS,
@@ -116,10 +117,17 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
   if (!videos.length) throw new HttpError(404, 'This lesson has no course video');
 
   if (!lesson.isPreview) {
-    const owned = await cacheRemember(`enrollment:owns:${req.user._id}:${course._id}`, 2 * 60_000, async () =>
+    const ownershipKey = `enrollment:owns:${req.user._id}:${course._id}`;
+    let owned = await cacheRemember(ownershipKey, 2 * 60_000, async () =>
       Boolean(await Enrollment.exists({ user: req.user._id, course: course._id }))
     );
-    if (!owned) throw new HttpError(403, 'Buy this course to watch this lesson');
+    if (!owned) {
+      owned = Boolean(await Enrollment.exists({ user: req.user._id, course: course._id }));
+      if (!owned) {
+        invalidateCache(ownershipKey);
+        throw new HttpError(403, 'Buy this course to watch this lesson');
+      }
+    }
   }
 
   // ?quality=720 picks that version (or the closest lower one); without it the best available plays.
@@ -137,9 +145,21 @@ export const lessonVideoUrl = asyncHandler(async (req, res) => {
 });
 
 /**
+ * Chunk sizing for HTTP 206 byte-range video streaming:
+ * - Initial byte-0 window is 1 MB so the first keyframes arrive quickly and playback starts right away.
+ * - Subsequent chunks are capped at 2 MB (configurable via VIDEO_STREAM_CHUNK_BYTES) so the server
+ *   never pushes the entire video file in one response.
+ */
+const INITIAL_VIDEO_CHUNK_BYTES = 1 * 1024 * 1024;
+const STREAM_VIDEO_CHUNK_BYTES = Math.max(
+  256 * 1024,
+  Number.parseInt(process.env.VIDEO_STREAM_CHUNK_BYTES || '', 10) || 2 * 1024 * 1024
+);
+
+/**
  * GET /api/videos/stream?key=...&exp=...&sig=...
- * Serves a course video directly from the server's `uploads/videos/` folder with HTTP Range
- * (206 Partial Content) support after validating the HMAC signature issued by `lessonVideoUrl`.
+ * Serves a course video from `uploads/videos/` in bounded HTTP Range chunks (206 Partial Content)
+ * after validating the HMAC signature issued by `lessonVideoUrl`.
  */
 export const streamLessonVideo = asyncHandler(async (req, res) => {
   const { key, exp, sig } = req.query;
@@ -157,11 +177,93 @@ export const streamLessonVideo = asyncHandler(async (req, res) => {
   }
   if (!stat.isFile()) throw new HttpError(404, 'Video not found');
 
+  const totalSize = stat.size;
   res.setHeader('Content-Type', videoMimeType(key));
   res.setHeader('Accept-Ranges', 'bytes');
   res.setHeader('Cache-Control', 'private, max-age=3600, no-transform');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.sendFile(absPath, { dotfiles: 'deny' });
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  const rangeHeader = typeof req.headers.range === 'string' ? req.headers.range.trim() : '';
+
+  if (rangeHeader && totalSize > 0) {
+    const match = /^bytes=(\d*)-(\d*)$/i.exec(rangeHeader);
+    if (!match || (match[1] === '' && match[2] === '')) {
+      res.status(416).setHeader('Content-Range', `bytes */${totalSize}`).end();
+      return;
+    }
+
+    let start;
+    let end;
+    if (match[1] === '') {
+      const suffixLength = Number.parseInt(match[2], 10);
+      if (!Number.isFinite(suffixLength) || suffixLength <= 0) {
+        res.status(416).setHeader('Content-Range', `bytes */${totalSize}`).end();
+        return;
+      }
+      start = Math.max(0, totalSize - Math.min(suffixLength, STREAM_VIDEO_CHUNK_BYTES));
+      end = totalSize - 1;
+    } else {
+      start = Number.parseInt(match[1], 10);
+      const maxWindow = start === 0 ? INITIAL_VIDEO_CHUNK_BYTES : STREAM_VIDEO_CHUNK_BYTES;
+      if (match[2] !== '') {
+        const requestedEnd = Number.parseInt(match[2], 10);
+        const capWindow = start === 0 && requestedEnd < INITIAL_VIDEO_CHUNK_BYTES ? requestedEnd - start + 1 : maxWindow;
+        end = Math.min(requestedEnd, start + capWindow - 1, totalSize - 1);
+      } else {
+        end = Math.min(start + maxWindow - 1, totalSize - 1);
+      }
+    }
+
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || start >= totalSize || end < start) {
+      res.status(416).setHeader('Content-Range', `bytes */${totalSize}`).end();
+      return;
+    }
+
+    const chunkLength = end - start + 1;
+    res.status(206);
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${totalSize}`);
+    res.setHeader('Content-Length', String(chunkLength));
+
+    if (req.method === 'HEAD') {
+      res.end();
+      return;
+    }
+
+    const stream = fs.createReadStream(absPath, { start, end, highWaterMark: 64 * 1024 });
+    const cleanup = () => {
+      if (!stream.destroyed) stream.destroy();
+    };
+    req.on('close', cleanup);
+    res.on('close', cleanup);
+    stream.on('error', () => {
+      cleanup();
+      if (!res.headersSent) res.status(500).end();
+      else res.end();
+    });
+    stream.pipe(res);
+    return;
+  }
+
+  res.status(200);
+  res.setHeader('Content-Length', String(totalSize));
+  if (req.method === 'HEAD' || totalSize === 0) {
+    res.end();
+    return;
+  }
+
+  const stream = fs.createReadStream(absPath, { highWaterMark: 64 * 1024 });
+  const cleanup = () => {
+    if (!stream.destroyed) stream.destroy();
+  };
+  req.on('close', cleanup);
+  res.on('close', cleanup);
+  stream.on('error', () => {
+    cleanup();
+    if (!res.headersSent) res.status(500).end();
+    else res.end();
+  });
+  stream.pipe(res);
 });
 
 /**
