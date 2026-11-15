@@ -113,4 +113,8 @@ export async function replaceDemoContactDetails() {
     const result = await Settings.updateOne({ _id: 'app', [field]: demo }, { $set: { [field]: real[field] } });
     if (result.modifiedCount) console.log(`[db] replaced the demo ${field} with ${real[field]}`);
   }
+  await Settings.updateOne(
+    { _id: 'app', apiBaseUrl: /^https?:\/\/course-app-na94\.onrender\.com\/?$/i },
+    { $set: { apiBaseUrl: '' } }
+  );
 }
