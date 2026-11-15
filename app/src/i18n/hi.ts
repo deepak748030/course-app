@@ -159,6 +159,7 @@ export const hi: Record<string, string> = {
   'They hide again a few seconds after the lesson starts playing': 'लेसन चलने के कुछ सेकंड बाद ये फिर छिप जाते हैं',
   'Loading lesson\u2026': 'लेसन लोड हो रहा है…',
   'This lesson video could not be played.': 'यह लेसन वीडियो चल नहीं सका।',
+  'This lesson video is not available yet.': 'यह लेसन वीडियो अभी उपलब्ध नहीं है।',
   'Best available': 'सबसे अच्छी उपलब्ध',
   'Chosen automatically': 'अपने-आप चुनी गई',
   'Try again': 'दोबारा कोशिश करें',
@@ -419,4 +420,5 @@ export const hi: Record<string, string> = {
   'Server URL for this device': 'इस डिवाइस के लिए सर्वर URL',
   'Custom server active — tap to change or reset': 'कस्टम सर्वर सक्रिय है — बदलने या रीसेट करने के लिए टैप करें',
   'Change server': 'सर्वर बदलें',
+  'Too many requests. Wait a moment and try again.': 'बहुत अधिक अनुरोध। कृपया एक क्षण प्रतीक्षा करें और फिर से प्रयास करें।',
 };

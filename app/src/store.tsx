@@ -285,6 +285,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .catch(() => {});
       if (sessionRef.current) {
         void hydrateLearning();
+        void syncPushToken(sessionRef.current.profile.id, true);
       }
     });
     return () => {
@@ -363,13 +364,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [endAccountSession]);
 
-  // Coming back to the app re-checks the account, so a block made while it was in the background
-  // takes effect without waiting for the next screen to load data.
+  // Coming back to the app re-checks the account (throttled to once every 2 minutes), so a block
+  // made while in the background takes effect without firing redundant requests on every focus event.
+  const lastForegroundCheckRef = useRef(0);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
       if (status === 'active' && sessionRef.current) {
+        const now = Date.now();
+        if (now - lastForegroundCheckRef.current < 120_000) return;
+        lastForegroundCheckRef.current = now;
         void api.me().catch(() => {});
-        void syncPushToken();
       }
     });
     return () => subscription.remove();
@@ -394,12 +398,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session?.token, hydrateLearning]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push: this phone is registered for the signed-in learner, and kept current when the OS rotates its token.
+  // Push: registered once per signed-in account (persisted like `onboardingDone`), and updated only
+  // if the operating system rotates the device token.
   useEffect(() => {
-    if (!session) return;
-    void syncPushToken();
-    return watchPushTokenChanges(() => void syncPushToken());
-  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+    const userId = session?.profile.id;
+    if (!userId) return;
+    void syncPushToken(userId, false);
+    return watchPushTokenChanges(() => void syncPushToken(userId, true));
+  }, [session?.profile.id]);
 
   // An enrollment granted somewhere else (e.g. admin marks an order paid) refreshes access here.
   useEffect(

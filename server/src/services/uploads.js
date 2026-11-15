@@ -59,7 +59,10 @@ export function isValidImageBuffer(buffer, mimetype) {
     case 'image/webp':
       return buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP';
     case 'image/avif':
-      return buffer.subarray(4, 8).toString('ascii') === 'ftyp';
+      return (
+        buffer.subarray(4, 8).toString('ascii') === 'ftyp' &&
+        ['avif', 'avis'].includes(buffer.subarray(8, 12).toString('ascii'))
+      );
     default:
       return false;
   }

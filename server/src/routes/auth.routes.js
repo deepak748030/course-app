@@ -7,9 +7,9 @@ import { validateBody } from '../middleware/validate.js';
 import { isIndianMobile, normalizeIndianPhone } from '../utils/phone.js';
 
 const router = Router();
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 const otpRequestLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
-const otpVerifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 });
+const otpVerifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30 });
 
 /** Accepts "98765 43210", "+91 98765 43210", "919876543210" or "09876543210". */
 const indianMobile = z
@@ -26,8 +26,7 @@ const otpVerifySchema = z.object({
 const registerSchema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(6).max(128),
-  phone: z.string().trim().max(20).optional(),
+  password: z.string().min(8).max(128),
 });
 
 const loginSchema = z.object({

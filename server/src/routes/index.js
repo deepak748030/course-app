@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { getClusterRuntimeState } from '../cluster.js';
 import { dbState } from '../config/db.js';
 import { streamLessonVideo } from '../controllers/catalog.controller.js';
 import { dbGuard } from '../middleware/dbGuard.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { cacheStats } from '../services/cache.js';
+import { cpuPoolStats } from '../services/cpuPool.js';
 import adminRoutes from './admin.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import authRoutes from './auth.routes.js';
@@ -17,19 +21,30 @@ import uploadsRoutes from './uploads.routes.js';
 import usersRoutes from './users.routes.js';
 
 const router = Router();
+const streamLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 600 });
 
 /** Health probe — works even while MongoDB is down. */
 router.get('/health', (_req, res) => {
   const state = dbState();
+  const clusterState = getClusterRuntimeState();
+  const cpuPool = cpuPoolStats();
+  const cache = cacheStats();
   res.status(state === 'connected' ? 200 : 503).json({
     ok: state === 'connected',
     db: state,
+    redis: cache.redis,
     uptimeSeconds: Math.round(process.uptime()),
+    runtime: {
+      ...clusterState,
+      cpuPoolActiveThreads: cpuPool.activeThreads,
+      cpuPoolMaxThreads: cpuPool.maxThreads,
+      cacheEntries: cache.l1Entries,
+    },
   });
 });
 
 /** Signed local video streaming (supports HTTP Range 206 seeking; reads from uploads/videos/). */
-router.get('/videos/stream', streamLessonVideo);
+router.get('/videos/stream', streamLimiter, streamLessonVideo);
 
 // Everything below needs the database.
 router.use(dbGuard);

@@ -42,7 +42,11 @@ export default function PhoneScreen() {
     setSending(false);
 
     if (!result.ok) {
-      setNetworkError(true);
+      if (result.error === 'rate_limit') {
+        setError(result.message || t('Too many requests. Wait a moment and try again.'));
+      } else {
+        setNetworkError(true);
+      }
       feedback.error();
       return;
     }

@@ -1,10 +1,12 @@
 import { isConnected } from '../config/db.js';
 import { Coupon } from '../models/Coupon.js';
 import { Course } from '../models/Course.js';
+import { Enrollment } from '../models/Enrollment.js';
 import { Settings } from '../models/Settings.js';
 import { Order } from '../models/Order.js';
 import { emitToAdmins, emitToUser } from '../realtime/socket.js';
 import { trackEvent } from '../services/analytics.js';
+import { cacheRemember, invalidateCache } from '../services/cache.js';
 import {
   checkoutContact,
   paymentsConfigured,
@@ -24,6 +26,17 @@ import { grantEnrollment } from './shared.js';
  * the first caller grants access and counts the coupon.
  */
 async function markOrderPaid(order, { paymentId, method }) {
+  if (paymentId) {
+    const duplicate = await Order.exists({
+      paymentReference: paymentId,
+      status: 'paid',
+      _id: { $ne: order._id },
+    });
+    if (duplicate) {
+      throw new HttpError(409, 'This payment reference has already been used for another order.');
+    }
+  }
+
   const paid = await Order.findOneAndUpdate(
     { _id: order._id, status: { $ne: 'paid' } },
     { status: 'paid', paymentReference: paymentId, paymentMethod: method || 'razorpay' },
@@ -32,7 +45,10 @@ async function markOrderPaid(order, { paymentId, method }) {
   if (!paid) return order.status === 'paid' ? order : Order.findById(order._id);
 
   await grantEnrollment(paid.user, paid.course);
-  if (paid.couponCode) await Coupon.updateOne({ code: paid.couponCode }, { $inc: { usedCount: 1 } });
+  if (paid.couponCode) {
+    await Coupon.updateOne({ code: paid.couponCode }, { $inc: { usedCount: 1 } });
+    invalidateCache('coupons:');
+  }
   emitToUser(String(paid.user), 'enrollment.granted', { courseId: String(paid.course), title: paid.courseTitle });
   // Server-emitted: revenue-trusted conversion events the client cannot fake.
   trackEvent({ userId: paid.user, event: 'order_paid', courseId: paid.course, meta: { amountInr: paid.amountInr } });
@@ -50,8 +66,11 @@ async function createPendingOrder(user, courseId, couponCode) {
   const course = await Course.findById(courseId);
   if (!course || !course.published) throw new HttpError(404, 'Course not found');
 
-  const already = await Order.findOne({ user: user._id, course: course._id, status: 'paid' });
-  if (already) throw new HttpError(409, 'You already own this course');
+  const [alreadyPaid, alreadyEnrolled] = await Promise.all([
+    Order.exists({ user: user._id, course: course._id, status: 'paid' }),
+    Enrollment.exists({ user: user._id, course: course._id }),
+  ]);
+  if (alreadyPaid || alreadyEnrolled) throw new HttpError(409, 'You already own this course');
 
   let discountInr = 0;
   let coupon = null;
@@ -83,7 +102,9 @@ async function createPendingOrder(user, courseId, couponCode) {
 /** POST /api/payments/razorpay/order — prices the course on the server and opens a Razorpay order. */
 /** Maintenance mode pauses new purchases on the server too, not just in the app. */
 async function assertNotInMaintenance() {
-  const settings = await Settings.findById('app').select('maintenanceMode').lean();
+  const settings = await cacheRemember('settings:app', 5 * 60_000, () =>
+    Settings.findById('app').lean()
+  );
   if (settings?.maintenanceMode) throw new HttpError(503, 'The academy is under maintenance. Purchases resume shortly.');
 }
 
@@ -149,7 +170,11 @@ export const verifyRazorpayPayment = asyncHandler(async (req, res) => {
   } catch (err) {
     throw razorpayFailure(err);
   }
-  if (payment.order_id !== orderId || Number(payment.amount) !== toPaise(order.amountInr)) {
+  if (
+    payment.order_id !== orderId ||
+    payment.currency !== 'INR' ||
+    Number(payment.amount) !== toPaise(order.amountInr)
+  ) {
     throw new HttpError(400, 'Payment does not match this order.');
   }
   if (payment.status !== 'captured') {
@@ -209,7 +234,13 @@ async function findLinkPayment(link, order) {
   }
   // Entries inside a payment link use `payment_id`; the payments API uses `id`.
   return payment
-    ? { id: payment.payment_id || payment.id, amount: payment.amount, status: payment.status, method: payment.method }
+    ? {
+        id: payment.payment_id || payment.id,
+        amount: payment.amount,
+        currency: payment.currency || link.currency,
+        status: payment.status,
+        method: payment.method,
+      }
     : null;
 }
 
@@ -233,7 +264,7 @@ export const paymentLinkStatus = asyncHandler(async (req, res) => {
 
   if (link.status === 'paid') {
     const payment = await findLinkPayment(link, order);
-    if (payment && Number(payment.amount) === toPaise(order.amountInr)) {
+    if (payment && payment.currency === 'INR' && Number(payment.amount) === toPaise(order.amountInr)) {
       const paid = await markOrderPaid(order, { paymentId: payment.id, method: payment.method });
       return res.json({ status: 'paid', order: paid });
     }
@@ -254,12 +285,22 @@ export const razorpayWebhook = asyncHandler(async (req, res) => {
   }
   if (!isConnected()) return res.status(503).json({ error: 'Database not connected' });
 
-  const event = JSON.parse(rawBody.toString('utf8'));
-  if (event.event === 'payment.captured') {
+  let event;
+  try {
+    event = JSON.parse(rawBody.toString('utf8'));
+  } catch {
+    return res.status(400).json({ error: 'Invalid webhook JSON payload' });
+  }
+  if (event?.event === 'payment.captured') {
     const payment = event.payload?.payment?.entity;
-    const order = payment && (await Order.findOne({ razorpayOrderId: payment.order_id }));
-    if (order && Number(payment.amount) === toPaise(order.amountInr)) {
-      await markOrderPaid(order, { paymentId: payment.id, method: payment.method });
+    if (payment && payment.status === 'captured' && payment.currency === 'INR') {
+      let order = payment.order_id ? await Order.findOne({ razorpayOrderId: payment.order_id }) : null;
+      if (!order && /^[a-f\d]{24}$/i.test(String(payment.notes?.orderId || ''))) {
+        order = await Order.findById(payment.notes.orderId);
+      }
+      if (order && Number(payment.amount) === toPaise(order.amountInr)) {
+        await markOrderPaid(order, { paymentId: payment.id, method: payment.method });
+      }
     }
   }
   res.json({ ok: true });

@@ -7,10 +7,17 @@ import {
   verifyRazorpayPayment,
 } from '../controllers/payments.controller.js';
 import { requireAuth } from '../middleware/auth.js';
-import { validateBody } from '../middleware/validate.js';
+import { rateLimit } from '../middleware/rateLimit.js';
+import { validateBody, validateParams } from '../middleware/validate.js';
 
 const router = Router();
 router.use(requireAuth);
+const paymentLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40 });
+const pollLimiter = rateLimit({ windowMs: 60 * 1000, max: 60 });
+
+const orderIdParam = z.object({
+  orderId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid order id'),
+});
 
 const createSchema = z.object({
   courseId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid course id'),
@@ -23,9 +30,9 @@ const verifySchema = z.object({
   razorpay_signature: z.string().regex(/^[a-f\d]{64}$/i),
 });
 
-router.post('/razorpay/order', validateBody(createSchema), createRazorpayOrder);
-router.post('/razorpay/verify', validateBody(verifySchema), verifyRazorpayPayment);
-router.post('/razorpay/link', validateBody(createSchema), createRazorpayPaymentLink);
-router.get('/razorpay/link/:orderId', paymentLinkStatus);
+router.post('/razorpay/order', paymentLimiter, validateBody(createSchema), createRazorpayOrder);
+router.post('/razorpay/verify', paymentLimiter, validateBody(verifySchema), verifyRazorpayPayment);
+router.post('/razorpay/link', paymentLimiter, validateBody(createSchema), createRazorpayPaymentLink);
+router.get('/razorpay/link/:orderId', pollLimiter, validateParams(orderIdParam), paymentLinkStatus);
 
 export default router;

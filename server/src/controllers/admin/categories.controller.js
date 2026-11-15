@@ -1,13 +1,14 @@
 import { Category } from '../../models/Category.js';
 import { Course } from '../../models/Course.js';
 import { emitToApp } from '../../realtime/socket.js';
+import { invalidateCache } from '../../services/cache.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 
 /** GET /api/admin/categories — with per-category course counts. */
 export const listCategories = asyncHandler(async (_req, res) => {
-  const categories = await Category.find().sort({ sortOrder: 1, label: 1 }).lean();
-  const counts = await Course.aggregate([
-    { $group: { _id: '$category', count: { $sum: 1 } } },
+  const [categories, counts] = await Promise.all([
+    Category.find().sort({ sortOrder: 1, label: 1 }).lean(),
+    Course.aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }]),
   ]);
   const countById = new Map(counts.map((c) => [String(c._id), c.count]));
   res.json({
@@ -28,6 +29,7 @@ export const createCategory = asyncHandler(async (req, res) => {
       .replace(/(^-|-$)/g, '');
   }
   const category = await Category.create(body);
+  invalidateCache('catalog:');
   emitToApp('catalog.changed', { reason: 'category-created' });
   res.status(201).json({ category });
 });
@@ -39,6 +41,7 @@ export const updateCategory = asyncHandler(async (req, res) => {
     runValidators: true,
   });
   if (!category) throw new HttpError(404, 'Category not found');
+  invalidateCache('catalog:');
   emitToApp('catalog.changed', { reason: 'category-updated' });
   res.json({ category });
 });
@@ -51,6 +54,7 @@ export const deleteCategory = asyncHandler(async (req, res) => {
   }
   const category = await Category.findByIdAndDelete(req.params.id);
   if (!category) throw new HttpError(404, 'Category not found');
+  invalidateCache('catalog:');
   emitToApp('catalog.changed', { reason: 'category-deleted' });
   res.json({ ok: true, deleted: category.label });
 });

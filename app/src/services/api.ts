@@ -9,7 +9,7 @@
 
 import { Platform } from 'react-native';
 
-import { apiUrl, serverUrlReady } from '@/lib/serverUrl';
+import { apiUrl, onServerUrlChange, serverUrlReady } from '@/lib/serverUrl';
 
 export class ApiError extends Error {
   constructor(
@@ -26,9 +26,23 @@ export class ApiError extends Error {
 }
 
 let authToken: string | null = null;
+const inFlightGets = new Map<string, Promise<unknown>>();
+const videoUrlCache = new Map<
+  string,
+  { url: string; expiresIn: number; quality: string; qualities: string[]; expiresAt: number }
+>();
+
+onServerUrlChange(() => {
+  inFlightGets.clear();
+  videoUrlCache.clear();
+});
 
 /** The auth service injects the session token here after restoring it. */
 export function setApiToken(token: string | null) {
+  if (authToken !== token) {
+    inFlightGets.clear();
+    videoUrlCache.clear();
+  }
   authToken = token;
 }
 
@@ -76,42 +90,59 @@ async function request<T>(path: string, options: Options = {}): Promise<T> {
   const { method = 'GET', body, query, formData } = options;
 
   await serverUrlReady;
-  let response: Response;
-  try {
-    response = await fetch(`${apiUrl()}${path}${queryString(query)}`, {
-      method,
-      headers: {
-        ...(formData ? {} : { 'Content-Type': 'application/json' }),
-        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-      },
-      body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
-    });
-  } catch {
-    throw new ApiError(0, 'The academy server is unreachable. Check your connection and try again.');
+  const fullPath = `${apiUrl()}${path}${queryString(query)}`;
+  const dedupeKey = method === 'GET' ? `${authToken ?? 'anon'}:${fullPath}` : null;
+  if (dedupeKey) {
+    const existing = inFlightGets.get(dedupeKey);
+    if (existing) return existing as Promise<T>;
   }
 
-  if (!response.ok) {
-    let message = `Something went wrong (${response.status})`;
-    let details: unknown;
+  const run = (async (): Promise<T> => {
+    let response: Response;
     try {
-      const data = await response.json();
-      message = data.error || message;
-      details = data.details;
+      response = await fetch(fullPath, {
+        method,
+        headers: {
+          ...(formData ? {} : { 'Content-Type': 'application/json' }),
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: formData ?? (body === undefined ? undefined : JSON.stringify(body)),
+      });
     } catch {
-      /* non-JSON error body */
+      throw new ApiError(0, 'The academy server is unreachable. Check your connection and try again.');
     }
-    if (response.status === 401 && authToken && !path.includes('/otp/')) {
-      onSessionExpired?.();
-      message = 'Your session has expired. Please sign in again.';
-    }
-    if (response.status === 403 && authToken && message === 'This account is blocked') {
-      onAccountBlocked?.();
-      message = 'Your account has been blocked. Contact the academy for help.';
-    }
-    throw new ApiError(response.status, message, details);
-  }
 
-  return (await response.json()) as T;
+    if (!response.ok) {
+      let message = `Something went wrong (${response.status})`;
+      let details: unknown;
+      try {
+        const data = await response.json();
+        message = data.error || message;
+        details = data.details;
+      } catch {
+        /* non-JSON error body */
+      }
+      if (response.status === 401 && authToken && !path.includes('/otp/')) {
+        onSessionExpired?.();
+        message = 'Your session has expired. Please sign in again.';
+      }
+      if (response.status === 403 && authToken && message === 'This account is blocked') {
+        onAccountBlocked?.();
+        message = 'Your account has been blocked. Contact the academy for help.';
+      }
+      throw new ApiError(response.status, message, details);
+    }
+
+    return (await response.json()) as T;
+  })();
+
+  if (!dedupeKey) return run;
+  inFlightGets.set(dedupeKey, run);
+  try {
+    return await run;
+  } finally {
+    inFlightGets.delete(dedupeKey);
+  }
 }
 
 export type InboxItem = {
@@ -300,7 +331,7 @@ export const api = {
   /** The learner's inbox, newest first. `before` pages back; `since` counts what arrived after it. */
   inbox: (params: { limit?: number; before?: string; since?: string }) =>
     request<InboxPage>('/api/notifications', { query: params }),
-  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'phone' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
+  updateMe: (patch: Partial<Pick<ServerUser, 'name' | 'avatarUrl' | 'city' | 'goal' | 'interests'>>) =>
     request<{ user: ServerUser }>('/api/users/me', { method: 'PATCH', body: patch }),
   /**
    * Deletes the signed-in account and everything tied to it (orders, enrollments, reviews,
@@ -341,13 +372,33 @@ export const api = {
   /** Short-lived, signed playback link for a lesson video. Enrolled learners, or any learner for a free preview. */
   /** `quality` picks one uploaded version (360/480/720/1080); omitted = best available. */
   lessonVideoUrl: async (courseId: string, lessonId: string, quality?: string) => {
+    await serverUrlReady;
+    const cacheKey = `${apiUrl()}:${courseId}:${lessonId}:${quality ?? 'best'}`;
+    const cached = videoUrlCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return {
+        url: cached.url,
+        expiresIn: cached.expiresIn,
+        quality: cached.quality,
+        qualities: cached.qualities,
+      };
+    }
     const data = await request<{ url: string; expiresIn: number; quality: string; qualities: string[] }>(
       `/api/courses/${courseId}/lessons/${lessonId}/video`,
       { query: { quality } },
     );
+    const resolvedUrl = data.url.startsWith('/') ? `${apiUrl()}${data.url}` : data.url;
+    const ttlMs = Math.max(60_000, ((data.expiresIn || 3600) - 300) * 1000);
+    videoUrlCache.set(cacheKey, {
+      url: resolvedUrl,
+      expiresIn: data.expiresIn,
+      quality: data.quality,
+      qualities: data.qualities,
+      expiresAt: Date.now() + ttlMs,
+    });
     return {
       ...data,
-      url: data.url.startsWith('/') ? `${apiUrl()}${data.url}` : data.url,
+      url: resolvedUrl,
     };
   },
   /** Prices the course and creates a Razorpay Payment Link; the app opens `paymentLink.url` in the browser. */

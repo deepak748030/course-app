@@ -1,11 +1,13 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { requireAuth } from '../middleware/auth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { IMAGE_MIME_TYPES, isValidImageBuffer, safeImageFolder, storeImage, uploadsProvider } from '../services/uploads.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const uploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 60 });
 
 // Kept in memory briefly while validating magic bytes, then written straight to server/uploads/<folder>.
 const upload = multer({
@@ -39,6 +41,7 @@ router.get('/policy', (_req, res) => {
  */
 router.post(
   '/',
+  uploadLimiter,
   requireAuth,
   handleImageUpload,
   asyncHandler(async (req, res) => {

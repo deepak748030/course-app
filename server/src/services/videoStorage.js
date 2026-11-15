@@ -92,6 +92,29 @@ export function videoMimeType(key) {
   return EXT_TO_MIME[ext] || 'video/mp4';
 }
 
+/** Verifies container magic bytes so disguised executables/HTML cannot be saved as videos. */
+export async function isValidVideoFile(filePath, contentType) {
+  let handle;
+  try {
+    handle = await fsPromises.open(filePath, 'r');
+    const buf = Buffer.alloc(16);
+    const { bytesRead } = await handle.read(buf, 0, 16, 0);
+    if (bytesRead < 12) return false;
+    if (contentType === 'video/webm') {
+      return buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3;
+    }
+    if (contentType === 'video/mp4' || contentType === 'video/quicktime') {
+      const box = buf.subarray(4, 8).toString('ascii');
+      return ['ftyp', 'moov', 'mdat', 'wide', 'free'].includes(box);
+    }
+    return false;
+  } catch {
+    return false;
+  } finally {
+    await handle?.close().catch(() => {});
+  }
+}
+
 export async function videoFileExists(key) {
   const abs = resolveVideoFilePath(key);
   if (!abs) return false;

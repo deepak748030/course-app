@@ -79,13 +79,14 @@ export default function OtpScreen() {
         incorrect: t('That code is not correct. Check the last message and try again.'),
         expired: t('This code has expired after three attempts. Request a new one.'),
         blocked: t('This account has been blocked by the academy, so it cannot be used to sign in. Contact support for help.'),
+        rate_limit: result.message || t('Too many requests. Wait a moment and try again.'),
         network: t('We could not verify the code because the connection dropped. Try again.'),
       };
       setError({ kind: result.error, message: messages[result.error] });
       announce(messages[result.error]);
-      if (result.error !== 'network' && result.error !== 'blocked') setCode('');
+      if (result.error !== 'network' && result.error !== 'blocked' && result.error !== 'rate_limit') setCode('');
     },
-    [announce, phone, restoreInterests, router, signIn, verifying],
+    [announce, phone, restoreInterests, router, signIn, t, verifying],
   );
 
   // Auto-verify once a complete code is entered — expected on OTP screens, still reversible.
@@ -104,8 +105,12 @@ export default function OtpScreen() {
     setResending(false);
 
     if (!result.ok) {
-      setError({ kind: 'network', message: 'We could not send a new code. Check your connection and try again.' });
-      announce('We could not send a new code.');
+      const msg =
+        result.error === 'rate_limit'
+          ? result.message || t('Too many requests. Wait a moment and try again.')
+          : 'We could not send a new code. Check your connection and try again.';
+      setError({ kind: result.error === 'rate_limit' ? 'rate_limit' : 'network', message: msg });
+      announce(msg);
       return;
     }
     setCode('');
@@ -183,13 +188,21 @@ export default function OtpScreen() {
                     ? 'Code expired'
                     : error.kind === 'blocked'
                       ? 'Account blocked'
-                      : error.kind === 'network'
-                        ? 'Connection problem'
-                        : 'Incorrect code'
+                      : error.kind === 'rate_limit'
+                        ? 'Please wait'
+                        : error.kind === 'network'
+                          ? 'Connection problem'
+                          : 'Incorrect code'
                 }
                 body={error.message}
                 offline={error.kind === 'network'}
-                onRetry={error.kind === 'expired' ? resend : error.kind === 'blocked' ? undefined : () => verify(code)}
+                onRetry={
+                  error.kind === 'expired'
+                    ? resend
+                    : error.kind === 'blocked' || error.kind === 'rate_limit'
+                      ? undefined
+                      : () => verify(code)
+                }
               />
             </View>
           ) : null}

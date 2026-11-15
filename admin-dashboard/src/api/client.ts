@@ -156,18 +156,24 @@ export const apiUrl = (path: string) => `${activeServerUrl}/api${path}`;
  */
 export function resolveAssetUrl(url?: string | null): string {
   if (!url) return '';
-  if (url.startsWith('/')) return `${activeServerUrl}${url}`;
-  if (/^https?:\/\//i.test(url)) {
+  const trimmed = url.trim();
+  if (!trimmed || /^(?:javascript|data|vbscript|file):/i.test(trimmed)) return '';
+  if (trimmed.startsWith('/')) return `${activeServerUrl}${trimmed}`;
+  if (/^uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(trimmed)) {
+    return `${activeServerUrl}/${trimmed}`;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(trimmed);
       if (/^\/uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(parsed.pathname)) {
         return `${activeServerUrl}${parsed.pathname}`;
       }
     } catch {
       /* return raw */
     }
+    return trimmed;
   }
-  return url;
+  return '';
 }
 
 const TOKEN_KEY = 'ydu.admin.token';
@@ -319,6 +325,9 @@ export async function uploadCourseVideo(
     };
     xhr.onload = () => {
       stopPolling();
+      if (xhr.status === 401) {
+        unauthorizedListeners.forEach((cb) => cb());
+      }
       let data: { key?: string; error?: string } = {};
       try {
         data = JSON.parse(xhr.responseText || '{}');
@@ -353,6 +362,9 @@ export async function uploadImage(file: File, folder = 'covers'): Promise<{ url:
     });
   } catch {
     throw new ApiError(0, 'Could not reach the server for the upload.');
+  }
+  if (res.status === 401) {
+    unauthorizedListeners.forEach((cb) => cb());
   }
   if (!res.ok) {
     let message = `Upload failed (${res.status})`;

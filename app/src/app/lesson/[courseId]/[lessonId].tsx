@@ -66,6 +66,7 @@ import {
 } from '@/components/ui';
 import { createStyles, colors, layout, radius, spacing, tabularNums, type } from '@/constants/theme';
 import { freePreviewSec, nextLesson } from '@/lib/catalog';
+import { onServerUrlChange } from '@/lib/serverUrl';
 import { track } from '@/services/analytics';
 import { useCatalog } from '@/services/catalog-context';
 import { api } from '@/services/api';
@@ -167,6 +168,12 @@ export default function LessonPlayerScreen() {
      stays on screen until the new link is ready, because detaching the player from its view mid-play
      is what crashes the native video view. */
   useEffect(() => {
+    return onServerUrlChange(() => {
+      setPlaybackAttempt((n) => n + 1);
+    });
+  }, []);
+
+  useEffect(() => {
     setPlaybackUrl(null);
   }, [lessonRemoteId, playbackAttempt]);
 
@@ -208,7 +215,7 @@ export default function LessonPlayerScreen() {
   const videoSource = useMemo(() => {
     if (!unlocked || !hasLesson) return null;
     if (!lessonHasCourseVideo) return null;
-    return playbackUrl ? { uri: playbackUrl, useCaching: true } : null;
+    return playbackUrl ? { uri: playbackUrl } : null;
   }, [unlocked, hasLesson, lessonHasCourseVideo, playbackUrl]);
 
   const player = useVideoPlayer(videoSource, (instance) => {
@@ -251,6 +258,7 @@ export default function LessonPlayerScreen() {
   const renditionLabel = playingQuality ? qualityLabel(playingQuality) : rendition ? `${rendition.size.height}p` : 'Auto';
   const statusEvent = useEvent(player, 'statusChange', { status: player.status });
   const status = statusEvent?.status ?? player.status;
+  const isVideoLoading = status === 'loading' || (needsPlaybackUrl && !playbackUrl && !playbackFailed);
   const error = statusEvent?.error || playbackFailed;
   const [position, setPosition] = useState(storedPosition.positionSec);
   const previewEnded = Number.isFinite(previewCap) && position >= previewCap;
@@ -480,7 +488,7 @@ export default function LessonPlayerScreen() {
     const sideBottom = fullscreen
       ? { paddingLeft: layout.section + insets.left, paddingRight: layout.section + insets.right }
       : null;
-    const chromeVisible = controlsVisible && !error && status !== 'loading';
+    const chromeVisible = controlsVisible && !error && !isVideoLoading && lesson.hasCourseVideo;
     const hit = { top: 0, bottom: Math.max(0, layout.touchTarget - actionHeight), left: spacing.xs, right: spacing.xs };
     const FullscreenIcon = fullscreen ? Minimize2 : Maximize2;
     const leave = () => {
@@ -510,10 +518,19 @@ export default function LessonPlayerScreen() {
           style={StyleSheet.absoluteFill}
         />
 
-        {status === 'loading' ? (
+        {isVideoLoading ? (
           <View style={[styles.centerOverlay, styles.noTouch]}>
             <ActivityIndicator color={colors.onPlayer} />
             <Text style={[type.label, { color: colors.onPlayerMuted }]}>{t("Loading lesson\u2026")}</Text>
+          </View>
+        ) : null}
+
+        {!lesson.hasCourseVideo && !isVideoLoading && !error ? (
+          <View style={styles.centerOverlay}>
+            <Clapperboard size={26} color={colors.onPlayer} strokeWidth={1.9} />
+            <Text style={[type.body, { color: colors.onPlayer, textAlign: 'center' }]}>
+              {t("This lesson video is not available yet.")}
+            </Text>
           </View>
         ) : null}
 

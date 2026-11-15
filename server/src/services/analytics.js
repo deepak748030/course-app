@@ -53,6 +53,8 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => void flush());
 }
 
+export { flush as flushAnalytics };
+
 // ---------------------------------------------------------------- event tracking
 /**
  * Record one behaviour event. Fire-and-forget: analytics must never break a

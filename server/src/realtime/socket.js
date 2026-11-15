@@ -9,10 +9,11 @@
  * The socket handshake accepts an optional Bearer token: anonymous clients (the app
  * before sign-in, public viewers) still get the `app` broadcast room.
  */
+import cluster from 'node:cluster';
 import { Server } from 'socket.io';
 import { isConnected } from '../config/db.js';
 import { env } from '../config/env.js';
-import { User } from '../models/User.js';
+import { loadAuthUser } from '../middleware/auth.js';
 import { verifyToken } from '../utils/token.js';
 
 /** @type {Server | null} */
@@ -20,9 +21,14 @@ let io = null;
 
 /** socket id -> { userId, role } for every live connection (anonymous ones have no userId). */
 const live = new Map();
+/** Cluster-wide merged presence pushed by Primary when multiple workers are active. */
+let clusterPresence = null;
 
-/** Live presence counts. Distinct accounts, plus anonymous visitors. */
-export function presenceSnapshot() {
+export function getLiveSocketCount() {
+  return live.size;
+}
+
+function localPresenceSnapshot() {
   const signedIn = new Set();
   const learners = new Set();
   const admins = new Set();
@@ -46,7 +52,26 @@ export function presenceSnapshot() {
   };
 }
 
+/** Live presence counts. Distinct accounts, plus anonymous visitors. */
+export function presenceSnapshot() {
+  if (cluster.isWorker && clusterPresence) {
+    return clusterPresence;
+  }
+  return localPresenceSnapshot();
+}
+
 function broadcastPresence() {
+  if (cluster.isWorker && process.connected) {
+    try {
+      process.send?.({
+        type: 'realtime:presence',
+        entries: Array.from(live.values()),
+      });
+      return;
+    } catch {
+      /* fallback to local broadcast */
+    }
+  }
   if (io) io.to('admins').emit('presence.updated', presenceSnapshot());
 }
 
@@ -62,8 +87,8 @@ export function initializeRealtime(httpServer) {
     if (token) {
       try {
         const payload = verifyToken(token);
-        const user = isConnected() ? await User.findById(payload.sub) : null;
-        if (user && !user.blocked) {
+        const user = isConnected() ? await loadAuthUser(payload.sub) : null;
+        if (user && !user.blocked && (user.tokenVersion ?? 0) === (payload.tv ?? 0)) {
           socket.data.user = { id: String(user._id), role: user.role, name: user.name };
         }
       } catch {
@@ -98,8 +123,43 @@ export function initializeRealtime(httpServer) {
   return io;
 }
 
+function emitLocal(room, event, payload) {
+  if (io) io.to(room).emit(event, payload);
+}
+
+function revokeLocalSockets(userId) {
+  emitLocal(`user:${userId}`, 'account.blocked', { at: new Date().toISOString() });
+  setTimeout(() => io?.in(`user:${userId}`).disconnectSockets(true), 1500).unref?.();
+}
+
+if (cluster.isWorker) {
+  process.on('message', (msg) => {
+    if (!msg || typeof msg !== 'object') return;
+    if (msg.type === 'realtime:emit' && msg.room && msg.event) {
+      emitLocal(msg.room, msg.event, msg.payload);
+      return;
+    }
+    if (msg.type === 'realtime:revoke' && msg.userId) {
+      revokeLocalSockets(msg.userId);
+      return;
+    }
+    if (msg.type === 'realtime:presence-snapshot' && msg.snapshot) {
+      clusterPresence = msg.snapshot;
+      if (io) io.to('admins').emit('presence.updated', clusterPresence);
+    }
+  });
+}
+
 const emit = (room, event, payload) => {
-  if (io) io.to(room).emit(event, { ...payload, at: new Date().toISOString() });
+  const enriched = { ...payload, at: new Date().toISOString() };
+  emitLocal(room, event, enriched);
+  if (cluster.isWorker && process.connected) {
+    try {
+      process.send?.({ type: 'realtime:emit', room, event, payload: enriched });
+    } catch {
+      /* ignore IPC disconnect race */
+    }
+  }
 };
 
 /** Live feed for the admin dashboard. */
@@ -115,6 +175,22 @@ export const emitToUser = (userId, event, payload) => emit(`user:${userId}`, eve
  * check in the socket middleware). The disconnect waits a moment so the event is delivered first.
  */
 export function revokeUserSockets(userId) {
-  emitToUser(userId, 'account.blocked', {});
-  setTimeout(() => io?.in(`user:${userId}`).disconnectSockets(true), 1500);
+  revokeLocalSockets(userId);
+  if (cluster.isWorker && process.connected) {
+    try {
+      process.send?.({ type: 'realtime:revoke', userId: String(userId) });
+    } catch {
+      /* ignore IPC disconnect race */
+    }
+  }
+}
+
+/** Close Socket.IO cleanly when a worker scales down. */
+export async function closeRealtime() {
+  if (!io) return;
+  await new Promise((resolve) => {
+    io.close(() => resolve());
+  });
+  io = null;
+  live.clear();
 }

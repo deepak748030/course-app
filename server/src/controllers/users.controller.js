@@ -1,15 +1,18 @@
 import { User } from '../models/User.js';
 import { revokeUserSockets } from '../realtime/socket.js';
+import { invalidateCache } from '../services/cache.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 import { purgeUserData, releaseAvatar } from './shared.js';
 
 /** PATCH /api/users/me — the learner edits their own profile (app Profile → Edit). */
 export const updateMe = asyncHandler(async (req, res) => {
-  const allowed = ['name', 'phone', 'avatarUrl', 'city', 'goal', 'interests'];
+  // Mobile number is the OTP identity and cannot be altered through profile edits.
+  const allowed = ['name', 'avatarUrl', 'city', 'goal', 'interests'];
   const patch = Object.fromEntries(Object.entries(req.body).filter(([key]) => allowed.includes(key)));
 
   const previousAvatar = req.user.avatarUrl;
   const user = await User.findByIdAndUpdate(req.user._id, patch, { new: true, runValidators: true });
+  invalidateCache(`auth:user:${req.user._id}`);
   // A replaced photo leaves storage, so only the current one is ever kept (and deleted with the account).
   if ('avatarUrl' in patch && previousAvatar && previousAvatar !== user.avatarUrl) {
     void releaseAvatar(previousAvatar, user._id);
@@ -27,6 +30,7 @@ export const deleteMe = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndDelete(req.user._id);
   if (!user) throw new HttpError(404, 'User not found');
 
+  invalidateCache([`auth:user:${user._id}`, `enrollment:owns:${user._id}:`, `push:token:${user._id}:`]);
   await purgeUserData(user);
   revokeUserSockets(String(user._id));
   res.json({ ok: true });

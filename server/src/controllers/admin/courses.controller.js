@@ -3,10 +3,14 @@ import { Enrollment } from '../../models/Enrollment.js';
 import { Order } from '../../models/Order.js';
 import { Review } from '../../models/Review.js';
 import { emitToApp } from '../../realtime/socket.js';
+import { invalidateCache } from '../../services/cache.js';
 import { collectLessonVideoKeys, deleteVideoFile } from '../../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 
-const catalogChanged = (reason, courseId) => emitToApp('catalog.changed', { reason, courseId });
+const catalogChanged = (reason, courseId) => {
+  invalidateCache('catalog:');
+  emitToApp('catalog.changed', { reason, courseId });
+};
 
 async function cleanupOrphanedVideos(candidateKeys) {
   if (!candidateKeys.size) return;
@@ -46,10 +50,12 @@ export const listCourses = asyncHandler(async (req, res) => {
     .lean();
 
   const ids = courses.map((c) => c._id);
-  const counts = await Enrollment.aggregate([
-    { $match: { course: { $in: ids } } },
-    { $group: { _id: '$course', count: { $sum: 1 } } },
-  ]);
+  const counts = ids.length
+    ? await Enrollment.aggregate([
+        { $match: { course: { $in: ids } } },
+        { $group: { _id: '$course', count: { $sum: 1 } } },
+      ])
+    : [];
   const countById = new Map(counts.map((c) => [String(c._id), c.count]));
 
   res.json({

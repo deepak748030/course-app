@@ -1,3 +1,4 @@
+import './runtime.js';
 import 'dotenv/config';
 
 /** Centralised environment access with safe dev defaults. */

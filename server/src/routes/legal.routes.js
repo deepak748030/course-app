@@ -5,6 +5,15 @@ const router = Router();
 
 /** Short cache: these pages change when the admin saves the Content page, not per request. */
 const CACHE = 'public, max-age=300';
+const LEGAL_CSP = "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+function applyLegalHeaders(res) {
+  res.set({
+    'Cache-Control': CACHE,
+    'Content-Security-Policy': LEGAL_CSP,
+    'X-Frame-Options': 'DENY',
+  });
+}
 
 /**
  * Public policy pages — no auth, no session, plain HTML for the URLs the Play Console asks for.
@@ -14,16 +23,18 @@ const CACHE = 'public, max-age=300';
  */
 router.get('/', async (_req, res) => {
   const content = await loadLegalContent();
-  res.set('Cache-Control', CACHE).type('html').send(renderHubPage(content));
+  applyLegalHeaders(res);
+  res.type('html').send(renderHubPage(content));
 });
 
 router.get('/:doc', async (req, res) => {
   const content = await loadLegalContent();
+  applyLegalHeaders(res);
   if (!LEGAL_KEYS.includes(req.params.doc)) {
-    res.status(404).set('Cache-Control', CACHE).type('html').send(renderNotFoundPage(content));
+    res.status(404).type('html').send(renderNotFoundPage(content));
     return;
   }
-  res.set('Cache-Control', CACHE).type('html').send(renderDocPage(content, req.params.doc));
+  res.type('html').send(renderDocPage(content, req.params.doc));
 });
 
 export default router;

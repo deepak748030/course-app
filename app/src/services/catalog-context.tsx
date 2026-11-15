@@ -27,7 +27,7 @@ import { ServerUrlSheet } from '@/components/server-url-sheet';
 import { CatalogSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui';
 import { createStyles, colors, spacing, type } from '@/constants/theme';
-import { onServerUrlChange } from '@/lib/serverUrl';
+import { onServerUrlChange, serverUrlReady } from '@/lib/serverUrl';
 import {
   clearCatalogCache,
   readCatalogCache,
@@ -93,6 +93,7 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
+      await serverUrlReady;
       const cache = await readCatalogCache();
       if (!cancelled && cache && cache.data.courses.length > 0) {
         etagRef.current = cache.etag;

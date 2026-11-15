@@ -18,18 +18,24 @@ import type { Category, Course, Lesson, Recipe } from '@/types';
  */
 export function resolveMediaUrl(rawUrl?: string | null): string | null {
   if (!rawUrl) return null;
-  if (rawUrl.startsWith('/')) return `${apiUrl()}${rawUrl}`;
-  if (/^https?:\/\//i.test(rawUrl)) {
+  const trimmed = rawUrl.trim();
+  if (!trimmed || /^(?:javascript|data|vbscript|file):/i.test(trimmed)) return null;
+  if (trimmed.startsWith('/')) return `${apiUrl()}${trimmed}`;
+  if (/^uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(trimmed)) {
+    return `${apiUrl()}/${trimmed}`;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
-      const parsed = new URL(rawUrl);
+      const parsed = new URL(trimmed);
       if (/^\/uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(parsed.pathname)) {
         return `${apiUrl()}${parsed.pathname}`;
       }
     } catch {
       /* leave raw URL */
     }
+    return trimmed;
   }
-  return rawUrl;
+  return null;
 }
 
 /** expo-image accepts { uri } sources; uses the shared cover fallback when empty. */
