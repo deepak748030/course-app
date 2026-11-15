@@ -10,12 +10,38 @@ import { api, type ServerCourse } from '@/services/api';
 
 import type { Category, Course, Lesson, Recipe } from '@/types';
 
-/** expo-image accepts { uri } sources; the web needs a plain string in some cases. */
+/**
+ * Resolves any stored media URL against the current server URL:
+ * - Relative `/uploads/...` paths prepend `apiUrl()`.
+ * - Legacy absolute `http(s)://<old-host>/uploads/(avatars|covers|banners|images)/<file>` URLs
+ *   also rebase onto `apiUrl()`, so changing server URLs never breaks stored images.
+ */
+export function resolveMediaUrl(rawUrl?: string | null): string | null {
+  if (!rawUrl) return null;
+  const trimmed = rawUrl.trim();
+  if (!trimmed || /^(?:javascript|data|vbscript|file):/i.test(trimmed)) return null;
+  if (trimmed.startsWith('/')) return `${apiUrl()}${trimmed}`;
+  if (/^uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(trimmed)) {
+    return `${apiUrl()}/${trimmed}`;
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const parsed = new URL(trimmed);
+      if (/^\/uploads\/(?:avatars|covers|banners|images)\/[\w.-]+$/i.test(parsed.pathname)) {
+        return `${apiUrl()}${parsed.pathname}`;
+      }
+    } catch {
+      /* leave raw URL */
+    }
+    return trimmed;
+  }
+  return null;
+}
+
+/** expo-image accepts { uri } sources; uses the shared cover fallback when empty. */
 export function coverSource(coverUrl: string) {
-  if (!coverUrl) return COVER_PLACEHOLDER;
-  // The local upload provider (no Cloudinary configured) answers /uploads/... paths.
-  const url = coverUrl.startsWith('/') ? `${apiUrl()}${coverUrl}` : coverUrl;
-  return { uri: url };
+  const url = resolveMediaUrl(coverUrl);
+  return url ? { uri: url } : COVER_PLACEHOLDER;
 }
 
 /** Any media URL (banner image, cover) as an expo-image source, with the shared fallback. */
@@ -133,6 +159,10 @@ export function writeCatalogCache(cache: CatalogCache) {
   void storage.set(CACHE_KEY, JSON.stringify(cache)).catch(() => {});
 }
 
+export function clearCatalogCache() {
+  void storage.remove(CACHE_KEY).catch(() => {});
+}
+
 export type CatalogRefreshResult =
   | { notModified: true; categories: Category[] }
   | { notModified: false; data: CatalogData; etag: string };
@@ -182,9 +212,7 @@ export async function refreshCatalog(etag: string | null): Promise<CatalogRefres
 export const cacheIsFresh = (cache: CatalogCache) => Date.now() - cache.savedAt < CACHE_MAX_AGE_MS;
 
 /** True when a native device points at localhost — it needs the machine's LAN IP instead. */
-export const usingLocalhostOnDevice =
-  typeof document === 'undefined' && /localhost|127\.0\.0\.1/.test(api_base());
+export const isUsingLocalhostOnDevice = () =>
+  typeof document === 'undefined' && /localhost|127\.0\.0\.1/.test(apiUrl());
 
-function api_base() {
-  return process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:5000';
-}
+export const usingLocalhostOnDevice = isUsingLocalhostOnDevice();

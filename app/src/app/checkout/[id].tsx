@@ -385,6 +385,8 @@ export default function CheckoutScreen() {
               javaScriptEnabled
               domStorageEnabled
               thirdPartyCookiesEnabled
+              allowFileAccess={false}
+              allowUniversalAccessFromFileURLs={false}
               onMessage={(event) => {
                 try {
                   finishCheckout(JSON.parse(event.nativeEvent.data) as CheckoutOutcome);
@@ -393,10 +395,13 @@ export default function CheckoutScreen() {
                 }
               }}
               // Razorpay opens UPI apps through their own schemes (upi://, intent://, phonepe://).
-              // The WebView cannot load those, so they are handed to the phone instead.
+              // Restrict external handoffs strictly to known payment schemes so rogue redirects cannot
+              // trigger tel:/sms:/file: handlers.
               onShouldStartLoadWithRequest={(request) => {
                 if (/^(https?:|about:|data:|blob:)/i.test(request.url)) return true;
-                Linking.openURL(request.url).catch(() => {});
+                if (/^(upi|tez|gpay|phonepe|paytmmp|paytm|credpay|bhim|amazonpay|intent):/i.test(request.url)) {
+                  Linking.openURL(request.url).catch(() => {});
+                }
                 return false;
               }}
               style={styles.flex}

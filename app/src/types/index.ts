@@ -138,7 +138,7 @@ export interface UserProfile {
   city?: string;
   /** Short cooking goal picked from a fixed list — see profile editor. */
   goal?: string;
-  /** Avatar stored on the server (Cloudinary/local upload). */
+  /** Avatar stored on the server (`/uploads/avatars/...`). */
   avatarUrl?: string;
   /** Category slugs picked on the interests step — synced to the server. */
   interests?: string[];

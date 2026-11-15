@@ -15,7 +15,7 @@ import { DEFAULT_THEME, isThemeId, setActiveTheme, type ThemeId } from '@/consta
 import { DEFAULT_LANGUAGE, isLanguage, setActiveLanguage, type Language } from '@/i18n';
 import { storage } from '@/lib/storage';
 import { api, setAccountBlockedHandler, setSessionExpiredHandler, type ServerSettings } from '@/services/api';
-import { applyServerUrl } from '@/lib/serverUrl';
+import { applyServerUrl, onServerUrlChange } from '@/lib/serverUrl';
 import { authService } from '@/services/auth';
 import { connectRealtime, disconnectRealtime, onAccountBlocked, onEnrollmentGranted, onSettingsUpdated } from '@/services/realtime';
 import { forgetPushToken, syncPushToken, watchPushTokenChanges } from '@/services/push';
@@ -263,7 +263,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  /** Loads app settings once and keeps them fresh through the realtime channel. */
+  /** Loads app settings once and keeps them fresh through the realtime channel or server URL switches. */
   useEffect(() => {
     api
       .settings()
@@ -272,13 +272,27 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         applyServerUrl(next.apiBaseUrl);
       })
       .catch(() => {});
-    return onSettingsUpdated((payload) => {
+    const offRealtime = onSettingsUpdated((payload) => {
       if (!payload.settings) return;
       const next = payload.settings as ServerSettings;
       setSettings(next);
       applyServerUrl(next.apiBaseUrl);
     });
-  }, []);
+    const offServerSwitch = onServerUrlChange(() => {
+      api
+        .settings()
+        .then(({ settings: next }) => setSettings(next))
+        .catch(() => {});
+      if (sessionRef.current) {
+        void hydrateLearning();
+        void syncPushToken(sessionRef.current.profile.id, true);
+      }
+    });
+    return () => {
+      offRealtime();
+      offServerSwitch();
+    };
+  }, [hydrateLearning]);
 
   useEffect(() => {
     let cancelled = false;
@@ -350,13 +364,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [endAccountSession]);
 
-  // Coming back to the app re-checks the account, so a block made while it was in the background
-  // takes effect without waiting for the next screen to load data.
+  // Coming back to the app re-checks the account (throttled to once every 2 minutes), so a block
+  // made while in the background takes effect without firing redundant requests on every focus event.
+  const lastForegroundCheckRef = useRef(0);
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (status) => {
       if (status === 'active' && sessionRef.current) {
+        const now = Date.now();
+        if (now - lastForegroundCheckRef.current < 120_000) return;
+        lastForegroundCheckRef.current = now;
         void api.me().catch(() => {});
-        void syncPushToken();
       }
     });
     return () => subscription.remove();
@@ -381,12 +398,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [session?.token, hydrateLearning]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Push: this phone is registered for the signed-in learner, and kept current when the OS rotates its token.
+  // Push: registered once per signed-in account (persisted like `onboardingDone`), and updated only
+  // if the operating system rotates the device token.
   useEffect(() => {
-    if (!session) return;
-    void syncPushToken();
-    return watchPushTokenChanges(() => void syncPushToken());
-  }, [session?.token]); // eslint-disable-line react-hooks/exhaustive-deps
+    const userId = session?.profile.id;
+    if (!userId) return;
+    void syncPushToken(userId, false);
+    return watchPushTokenChanges(() => void syncPushToken(userId, true));
+  }, [session?.profile.id]);
 
   // An enrollment granted somewhere else (e.g. admin marks an order paid) refreshes access here.
   useEffect(
@@ -489,12 +508,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setProfileAvatar: (uri) => {
         setState((prev) => ({ ...prev, profileAvatarUri: uri }));
         const current = sessionRef.current;
-        if (uri && current) {
-          // Upload → store the CDN URL on the account; failure only loses the sync, not the photo.
+        if (!current) return;
+        if (uri) {
+          // Upload to server `uploads/avatars/` → save relative `/uploads/avatars/...` path on account + session.
           api
             .uploadImage(uri, `avatar-${Date.now()}.jpg`)
             .then(({ url }) => api.updateMe({ avatarUrl: url }))
+            .then(({ user }) => {
+              const latest = sessionRef.current;
+              if (!latest) return;
+              const updated: Session = {
+                ...latest,
+                profile: { ...latest.profile, avatarUrl: user.avatarUrl || undefined },
+              };
+              setSession(updated);
+              void authService.saveSession(updated);
+            })
             .catch(() => {});
+        } else {
+          // Removing the avatar clears both the local URI and the server copy.
+          const updated: Session = {
+            ...current,
+            profile: { ...current.profile, avatarUrl: undefined },
+          };
+          setSession(updated);
+          void authService.saveSession(updated);
+          api.updateMe({ avatarUrl: '' }).catch(() => {});
         }
       },
 

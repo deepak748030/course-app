@@ -19,16 +19,16 @@ import type { Session } from '@/types';
 const SESSION_KEY = 'ydu.session';
 
 /** Why a code could not be checked. The OTP screen words each one differently. */
-export type OtpFailure = 'incorrect' | 'expired' | 'blocked' | 'network';
+export type OtpFailure = 'incorrect' | 'expired' | 'blocked' | 'rate_limit' | 'network';
 
 export interface AuthService {
-  requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure }>;
+  requestOtp(phone: string): Promise<{ ok: true } | { ok: false; error: OtpFailure; message?: string }>;
   verifyOtp(
     phone: string,
     code: string,
   ): Promise<
     | { ok: true; session: Session; interests: string[]; isNewUser: boolean }
-    | { ok: false; error: OtpFailure }
+    | { ok: false; error: OtpFailure; message?: string }
   >;
   getSession(): Promise<Session | null>;
   /** Persists profile edits made in the app. Same storage as the session token. */
@@ -85,6 +85,7 @@ function otpFailureFrom(err: unknown): OtpFailure {
     if (err.status === 401) return 'incorrect';
     if (err.status === 410) return 'expired';
     if (err.status === 403) return 'blocked';
+    if (err.status === 429) return 'rate_limit';
   }
   return 'network';
 }
@@ -95,7 +96,7 @@ export const authService: AuthService = {
       await api.requestOtp(phone);
       return { ok: true };
     } catch (err) {
-      return { ok: false, error: otpFailureFrom(err) };
+      return { ok: false, error: otpFailureFrom(err), message: err instanceof ApiError ? err.message : undefined };
     }
   },
 
@@ -106,7 +107,7 @@ export const authService: AuthService = {
       await writeStored(SESSION_KEY, JSON.stringify(session));
       return { ok: true, session, interests: user.interests ?? [], isNewUser: Boolean(isNewUser) };
     } catch (err) {
-      return { ok: false, error: otpFailureFrom(err) };
+      return { ok: false, error: otpFailureFrom(err), message: err instanceof ApiError ? err.message : undefined };
     }
   },
 

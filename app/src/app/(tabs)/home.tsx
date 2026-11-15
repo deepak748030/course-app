@@ -1,6 +1,6 @@
 import { Image, type ImageSource } from 'expo-image';
 import { CourseImage } from '@/components/course-image';
-import { mediaSource } from '@/services/catalogService';
+import { mediaSource, resolveMediaUrl } from '@/services/catalogService';
 import { useFocusEffect } from 'expo-router';
 import { useRouter } from '@/lib/router';
 import { ArrowRight, Clapperboard, Clock, Play, Search, Star } from 'lucide-react-native';
@@ -102,11 +102,15 @@ export default function HomeScreen() {
 
   const resume = activeCourse ? resumeLesson(activeCourse) : null;
   const unread = state.notificationsUnread;
+  const lastInboxCheckRef = useRef(0);
 
-  // The badge is the server's count of messages the learner has not opened yet; re-read each time Home is shown.
+  // The badge is the server's count of messages the learner has not opened yet; throttled to 30s on focus.
   useFocusEffect(
     useCallback(() => {
       if (!session) return;
+      const now = Date.now();
+      if (now - lastInboxCheckRef.current < 30_000) return;
+      lastInboxCheckRef.current = now;
       api
         .inbox({ limit: 1, since: state.notificationsSeenAt })
         .then((page) => setNotificationsUnread(page.unreadCount))
@@ -152,6 +156,7 @@ export default function HomeScreen() {
               </View>
               <AvatarButton
                 name={session?.profile.name ?? 'Guest'}
+                uri={state.profileAvatarUri || resolveMediaUrl(session?.profile.avatarUrl)}
                 accessibilityLabel={t("Your profile")}
                 onPress={() => router.push('/profile')}
               />

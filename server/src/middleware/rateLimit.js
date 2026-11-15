@@ -1,8 +1,8 @@
 /**
- * Minimal fixed-window rate limiter (in-memory). Good enough for a single API process;
- * swap for a Redis-backed limiter if you scale horizontally.
+ * Minimal fixed-window rate limiter (in-memory) with bounded key cache to avoid OOM under
+ * spoofed-IP floods. Good enough for a single API process; swap for Redis when scaling horizontally.
  */
-export function rateLimit({ windowMs = 15 * 60 * 1000, max = 20 } = {}) {
+export function rateLimit({ windowMs = 15 * 60 * 1000, max = 20, maxKeys = 20_000 } = {}) {
   const hits = new Map();
 
   setInterval(() => {
@@ -17,6 +17,10 @@ export function rateLimit({ windowMs = 15 * 60 * 1000, max = 20 } = {}) {
     const now = Date.now();
     let entry = hits.get(key);
     if (!entry || now - entry.windowStart > windowMs) {
+      if (!entry && hits.size >= maxKeys) {
+        const oldestKey = hits.keys().next().value;
+        if (oldestKey !== undefined) hits.delete(oldestKey);
+      }
       entry = { windowStart: now, count: 0 };
       hits.set(key, entry);
     }

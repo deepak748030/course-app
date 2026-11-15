@@ -18,10 +18,40 @@ import type * as NotificationsApi from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
+import { apiUrl } from '@/lib/serverUrl';
 import { storage } from '@/lib/storage';
 import { api } from '@/services/api';
 
 const TOKEN_KEY = 'ydu.pushToken';
+/** Persistent flag (like `onboardingDone`) so the OS permission dialog is only requested once. */
+const PUSH_PROMPTED_KEY = 'ydu.pushPrompted';
+
+type StoredPushRegistration = {
+  token: string;
+  userId: string;
+  serverUrl: string;
+};
+
+let inFlightSync: Promise<void> | null = null;
+
+async function readStoredRegistration(): Promise<StoredPushRegistration | null> {
+  const raw = await storage.get(TOKEN_KEY);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<StoredPushRegistration>;
+    if (typeof parsed?.token === 'string' && parsed.token) {
+      return {
+        token: parsed.token,
+        userId: typeof parsed.userId === 'string' ? parsed.userId : '',
+        serverUrl: typeof parsed.serverUrl === 'string' ? parsed.serverUrl : '',
+      };
+    }
+  } catch {
+    // Legacy plain-string token stored by an older build.
+    return { token: raw, userId: '', serverUrl: '' };
+  }
+  return null;
+}
 
 /**
  * expo-notifications cannot load in Expo Go on Android (SDK 53+): its remote-push module throws the
@@ -69,7 +99,13 @@ async function currentToken(): Promise<string | null> {
   await ensureAndroidChannel();
   const permission = await Notifications.getPermissionsAsync();
   let status = permission.status;
-  if (status !== 'granted') status = (await Notifications.requestPermissionsAsync()).status;
+  if (status !== 'granted') {
+    // Ask the user at most once across installs (same pattern as `onboardingDone`).
+    const alreadyPrompted = await storage.get(PUSH_PROMPTED_KEY);
+    if (alreadyPrompted === '1' || !permission.canAskAgain) return null;
+    await storage.set(PUSH_PROMPTED_KEY, '1');
+    status = (await Notifications.requestPermissionsAsync()).status;
+  }
   if (status !== 'granted') return null;
   const id = projectId();
   if (!id) {
@@ -80,27 +116,68 @@ async function currentToken(): Promise<string | null> {
   return data;
 }
 
-/** Registers (or refreshes) this device for the signed-in learner. Never throws: it is best-effort. */
-export async function syncPushToken(): Promise<void> {
-  try {
-    const token = await currentToken();
-    if (!token) return;
-    const previous = await storage.get(TOKEN_KEY);
-    const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'unknown';
-    await api.registerPushToken({ token, platform });
-    if (previous && previous !== token) await api.unregisterPushToken(previous).catch(() => {});
-    await storage.set(TOKEN_KEY, token);
-  } catch (err) {
-    console.warn('[push] could not register this device', err);
-  }
+/**
+ * Registers this device once for the signed-in learner and persists the registration on-device
+ * (just like `onboardingDone`), so subsequent app launches and foreground transitions make zero
+ * redundant `/api/notifications/push-token` requests unless the token, account, or server changes.
+ */
+export async function syncPushToken(userId?: string | null, force = false): Promise<void> {
+  if (!userId) return;
+  if (inFlightSync) return inFlightSync;
+  inFlightSync = (async () => {
+    try {
+      const currentServer = apiUrl();
+      const previous = await readStoredRegistration();
+
+      // Fast path: if already registered for this user + server and not forced by OS token rotation,
+      // skip native token lookup and network call completely.
+      if (
+        !force &&
+        previous &&
+        previous.userId === userId &&
+        previous.serverUrl === currentServer &&
+        previous.token
+      ) {
+        return;
+      }
+
+      const token = await currentToken();
+      if (!token) return;
+
+      if (
+        !force &&
+        previous &&
+        previous.token === token &&
+        previous.userId === userId &&
+        previous.serverUrl === currentServer
+      ) {
+        return;
+      }
+
+      const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'unknown';
+      await api.registerPushToken({ token, platform });
+      if (previous?.token && previous.token !== token) {
+        await api.unregisterPushToken(previous.token).catch(() => {});
+      }
+      await storage.set(
+        TOKEN_KEY,
+        JSON.stringify({ token, userId, serverUrl: currentServer } satisfies StoredPushRegistration),
+      );
+    } catch (err) {
+      console.warn('[push] could not register this device', err);
+    } finally {
+      inFlightSync = null;
+    }
+  })();
+  return inFlightSync;
 }
 
 /** Removes this device from the account. Call while the session is still valid. */
 export async function forgetPushToken(): Promise<void> {
   try {
-    const token = await storage.get(TOKEN_KEY);
-    if (!token) return;
-    await api.unregisterPushToken(token).catch(() => {});
+    const previous = await readStoredRegistration();
+    if (!previous?.token) return;
+    await api.unregisterPushToken(previous.token).catch(() => {});
     await storage.remove(TOKEN_KEY);
   } catch {
     /* nothing to undo */

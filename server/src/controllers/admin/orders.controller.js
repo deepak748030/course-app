@@ -1,4 +1,6 @@
 import { Order } from '../../models/Order.js';
+import { emitToUser } from '../../realtime/socket.js';
+import { invalidateCache } from '../../services/cache.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 import { grantEnrollment } from '../shared.js';
 import { Enrollment } from '../../models/Enrollment.js';
@@ -68,9 +70,14 @@ export const updateOrder = asyncHandler(async (req, res) => {
 
   if (status === 'paid' && previous !== 'paid') {
     await grantEnrollment(order.user, order.course);
+    emitToUser(String(order.user), 'enrollment.granted', {
+      courseId: String(order.course),
+      title: order.courseTitle,
+    });
   }
   if (status === 'refunded' && previous === 'paid') {
     await Enrollment.deleteOne({ user: order.user, course: order.course });
+    invalidateCache([`enrollment:owns:${order.user}:`, 'catalog:course:']);
   }
 
   res.json({ order });

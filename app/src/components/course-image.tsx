@@ -1,8 +1,9 @@
 import { Image, type ImageProps } from 'expo-image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { type StyleProp, type ImageStyle } from 'react-native';
 
 import { COVER_PLACEHOLDER, COVER_PLACEHOLDER_BG } from '@/constants/covers';
+import { resolveMediaUrl } from '@/services/catalogService';
 
 type Source = ImageProps['source'];
 
@@ -21,12 +22,26 @@ export function CourseImage({
   transition?: number;
 }) {
   const [failed, setFailed] = useState(false);
-  const usePlaceholder = failed || source === COVER_PLACEHOLDER || source == null;
+
+  const rawUri =
+    source && typeof source === 'object' && !Array.isArray(source) && 'uri' in source && typeof source.uri === 'string'
+      ? source.uri
+      : null;
+  const resolvedUri = rawUri ? resolveMediaUrl(rawUri) : null;
+  const effectiveSource: Source = rawUri ? (resolvedUri ? { uri: resolvedUri } : COVER_PLACEHOLDER) : source;
+
+  // Reset error state whenever the image source URI changes (e.g. server URL switch or banner update).
+  useEffect(() => {
+    setFailed(false);
+  }, [resolvedUri, source]);
+
+  const usePlaceholder = failed || effectiveSource === COVER_PLACEHOLDER || effectiveSource == null;
 
   return (
     <Image
-      source={usePlaceholder ? COVER_PLACEHOLDER : source}
+      source={usePlaceholder ? COVER_PLACEHOLDER : effectiveSource}
       onError={() => setFailed(true)}
+      cachePolicy="memory-disk"
       style={[style, usePlaceholder && { backgroundColor: COVER_PLACEHOLDER_BG }]}
       contentFit={usePlaceholder ? 'contain' : 'cover'}
       transition={transition}

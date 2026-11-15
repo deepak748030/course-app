@@ -7,7 +7,7 @@ import { validateParams, validateQuery } from '../middleware/validate.js';
 const router = Router();
 
 const courseListQuery = z.object({
-  category: z.string().optional(),
+  category: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid category id').optional(),
   level: z.enum(['Beginner', 'Intermediate', 'Advanced']).optional(),
   q: z.string().max(100).optional(),
   popular: z.enum(['true', 'false']).optional(),

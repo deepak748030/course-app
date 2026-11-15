@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createOrUpdateReview, listCourseReviews } from '../controllers/reviews.controller.js';
 import { requireAuth } from '../middleware/auth.js';
+import { rateLimit } from '../middleware/rateLimit.js';
 import { validateBody, validateParams } from '../middleware/validate.js';
 
 const router = Router();
+const reviewLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 
 const courseParam = z.object({ courseId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid course id') });
 
@@ -16,6 +18,7 @@ const reviewSchema = z.object({
 router.get('/courses/:courseId/reviews', validateParams(courseParam), listCourseReviews);
 router.post(
   '/courses/:courseId/reviews',
+  reviewLimiter,
   requireAuth,
   validateParams(courseParam),
   validateBody(reviewSchema),

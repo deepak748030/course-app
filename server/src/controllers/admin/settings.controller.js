@@ -1,6 +1,7 @@
 import { Settings } from '../../models/Settings.js';
 import { defaultFaqs, defaultLegalDocs, defaultPurchaseTerms } from '../../data/defaultContent.js';
 import { emitToApp } from '../../realtime/socket.js';
+import { cacheRemember, invalidateCache } from '../../services/cache.js';
 import { asyncHandler } from '../../utils/http.js';
 
 /**
@@ -8,7 +9,9 @@ import { asyncHandler } from '../../utils/http.js';
  * not written their own, so the Content page can edit it instead of starting blank.
  */
 export const getSettings = asyncHandler(async (_req, res) => {
-  const settings = await Settings.findById('app').lean();
+  const settings = await cacheRemember('settings:app', 5 * 60_000, () =>
+    Settings.findById('app').lean()
+  );
   res.json({
     settings,
     contentDefaults: { faqs: defaultFaqs, legalDocs: defaultLegalDocs, purchaseTerms: defaultPurchaseTerms },
@@ -22,6 +25,7 @@ export const updateSettings = asyncHandler(async (req, res) => {
     upsert: true,
     setDefaultsOnInsert: true,
   }).lean();
+  invalidateCache('settings:');
   emitToApp('settings.updated', { settings });
   res.json({ settings });
 });

@@ -3,6 +3,7 @@ import { Enrollment } from '../../models/Enrollment.js';
 import { PushToken } from '../../models/PushToken.js';
 import { Order } from '../../models/Order.js';
 import { User } from '../../models/User.js';
+import { invalidateCache } from '../../services/cache.js';
 import { HttpError, asyncHandler } from '../../utils/http.js';
 import { purgeUserData } from '../shared.js';
 
@@ -19,16 +20,21 @@ export const listUsers = asyncHandler(async (req, res) => {
     filter.$or = [{ name: rx }, { email: rx }, { phone: rx }];
   }
 
-  // passwordHash never leaves the server: .lean() skips the model's toJSON that strips it.
-  const users = await User.find(filter).select('-passwordHash -__v').sort({ createdAt: -1 }).limit(500).lean();
-  const counts = await Enrollment.aggregate([
-    { $match: { user: { $in: users.map((u) => u._id) } } },
-    { $group: { _id: '$user', count: { $sum: 1 } } },
-  ]);
-  const spent = await Order.aggregate([
-    { $match: { user: { $in: users.map((u) => u._id) }, status: 'paid' } },
-    { $group: { _id: '$user', total: { $sum: '$amountInr' } } },
-  ]);
+  // passwordHash and tokenVersion never leave the server: .lean() skips the model's toJSON that strips them.
+  const users = await User.find(filter).select('-passwordHash -tokenVersion -__v').sort({ createdAt: -1 }).limit(500).lean();
+  const userIds = users.map((u) => u._id);
+  const [counts, spent] = userIds.length
+    ? await Promise.all([
+        Enrollment.aggregate([
+          { $match: { user: { $in: userIds } } },
+          { $group: { _id: '$user', count: { $sum: 1 } } },
+        ]),
+        Order.aggregate([
+          { $match: { user: { $in: userIds }, status: 'paid' } },
+          { $group: { _id: '$user', total: { $sum: '$amountInr' } } },
+        ]),
+      ])
+    : [[], []];
   const countByUser = new Map(counts.map((c) => [String(c._id), c.count]));
   const spentByUser = new Map(spent.map((s) => [String(s._id), s.total]));
 
@@ -59,8 +65,13 @@ export const updateUser = asyncHandler(async (req, res) => {
   if (req.user && String(req.user._id) === req.params.id && (req.body.blocked === true || req.body.role === 'user')) {
     throw new HttpError(400, 'You cannot block or demote your own account');
   }
-  const user = await User.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+  const update = { $set: req.body };
+  if (req.body.blocked === true || req.body.role === 'user') {
+    update.$inc = { tokenVersion: 1 };
+  }
+  const user = await User.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
   if (!user) throw new HttpError(404, 'User not found');
+  invalidateCache(`auth:user:${user._id}`);
   if (user.blocked) {
     revokeUserSockets(String(user._id));
     // A blocked learner's phones must stop receiving pushes for the account.
@@ -76,6 +87,8 @@ export const deleteUser = asyncHandler(async (req, res) => {
   }
   const user = await User.findByIdAndDelete(req.params.id);
   if (!user) throw new HttpError(404, 'User not found');
+  invalidateCache([`auth:user:${user._id}`, `enrollment:owns:${user._id}:`, `push:token:${user._id}:`]);
   await purgeUserData(user);
+  revokeUserSockets(String(user._id));
   res.json({ ok: true, deleted: user.email });
 });

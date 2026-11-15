@@ -24,7 +24,7 @@ const recipeSchema = new Schema(
   { _id: false }
 );
 
-/** One encoded version of a lesson video. Each quality is its own private B2 object. */
+/** One encoded version of a lesson video stored inside `uploads/videos/`. */
 const lessonVideoSchema = new Schema(
   {
     quality: { type: String, enum: ['360', '480', '720', '1080'], required: true },

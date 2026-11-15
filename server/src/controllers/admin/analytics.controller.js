@@ -36,7 +36,8 @@ export const overview = asyncHandler(async (req, res) => {
   // The admin opening the page counts as a page view of the console itself.
   trackEvent({ userId: req.user._id, event: 'admin_view' });
 
-  const days = Math.min(Math.max(Number(req.query.days) || 30, 7), 365);
+  const rawDays = req.validatedQuery?.days ?? req.query.days;
+  const days = Math.min(Math.max(Number(rawDays) || 30, 7), 365);
   const now = new Date();
   const start = new Date(now.getTime() - (days - 1) * DAY);
   start.setUTCHours(0, 0, 0, 0);

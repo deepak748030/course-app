@@ -8,6 +8,7 @@ import { OtpCode } from '../models/OtpCode.js';
 import { PushToken } from '../models/PushToken.js';
 import { Review } from '../models/Review.js';
 import { User } from '../models/User.js';
+import { invalidateCache } from '../services/cache.js';
 import { deleteAvatarImage } from '../services/uploads.js';
 
 /** Recompute a course's denormalised rating from its visible reviews. */
@@ -23,15 +24,18 @@ export async function recomputeCourseRating(courseId) {
       reviewCount: agg ? agg.count : 0,
     }
   );
+  invalidateCache('catalog:');
 }
 
 /** Idempotently grant access to a course (called when an order is paid). */
 export async function grantEnrollment(userId, courseId) {
-  return Enrollment.findOneAndUpdate(
+  const doc = await Enrollment.findOneAndUpdate(
     { user: userId, course: courseId },
     { $setOnInsert: { user: userId, course: courseId } },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+  invalidateCache([`enrollment:owns:${userId}:`, 'catalog:course:']);
+  return doc;
 }
 
 /**

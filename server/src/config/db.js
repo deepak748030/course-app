@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { env } from './env.js';
+import { runtime } from './runtime.js';
 
 mongoose.set('bufferCommands', false); // fail fast when the DB is down, no 10s hangs
 mongoose.set('strictQuery', true);
@@ -35,13 +36,21 @@ export async function connectDb({ retries = 10, delayMs = 3000 } = {}) {
   }
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
-      await mongoose.connect(env.mongoUri, { serverSelectionTimeoutMS: 5000 });
-      const { flattenLegacySections } = await import('../models/Course.js');
-      await flattenLegacySections().catch((err) => console.error('[db] section migration failed:', err.message));
-      const { removeLegacyDateOfBirth } = await import('../models/User.js');
-      await removeLegacyDateOfBirth().catch((err) => console.error('[db] user migration failed:', err.message));
-      const { replaceDemoContactDetails } = await import('../models/Settings.js');
-      await replaceDemoContactDetails().catch((err) => console.error('[db] settings migration failed:', err.message));
+      await mongoose.connect(env.mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        minPoolSize: runtime.mongoMinPoolSize,
+        maxPoolSize: runtime.mongoMaxPoolSize,
+        maxIdleTimeMS: runtime.mongoMaxIdleTimeMs,
+      });
+      // Only run one-time boot migrations on the initial worker, not on dynamically scaled workers.
+      if (process.env.IS_SCALE_WORKER !== '1') {
+        const { flattenLegacySections } = await import('../models/Course.js');
+        await flattenLegacySections().catch((err) => console.error('[db] section migration failed:', err.message));
+        const { removeLegacyDateOfBirth } = await import('../models/User.js');
+        await removeLegacyDateOfBirth().catch((err) => console.error('[db] user migration failed:', err.message));
+        const { replaceDemoContactDetails } = await import('../models/Settings.js');
+        await replaceDemoContactDetails().catch((err) => console.error('[db] settings migration failed:', err.message));
+      }
       return true;
     } catch (err) {
       console.warn(`[db] connect attempt ${attempt}/${retries} failed: ${err.message}`);
@@ -51,3 +60,11 @@ export async function connectDb({ retries = 10, delayMs = 3000 } = {}) {
   console.error('[db] giving up — the API stays up and answers 503 until MongoDB is reachable.');
   return false;
 }
+
+/** Close Mongoose connections cleanly when a dynamic worker scales down. */
+export async function disconnectDb() {
+  if (mongoose.connection.readyState !== 0) {
+    await mongoose.connection.close().catch(() => {});
+  }
+}
+

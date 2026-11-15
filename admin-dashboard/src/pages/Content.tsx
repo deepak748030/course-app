@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Copy, ExternalLink, FileText, HelpCircle, Plus, RotateCcw, Save, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, SERVER_URL } from '../api/client';
+import { api, useServerUrl } from '../api/client';
 import type { AppSettings, ContentDefaults, FaqEntry, LegalDocEntry, LegalSectionEntry } from '../api/types';
 import { Button, Card, CardHeader, Field, FormSkeleton, Input, Skeleton, Textarea, useToast } from '../components/ui';
 import { BUILT_IN_CONTENT } from '../data/builtInContent';
@@ -138,6 +138,7 @@ function cleanDoc(key: DocKey, doc: LegalDocEntry): LegalDocEntry {
 
 export default function Content() {
   const toast = useToast();
+  const serverUrl = useServerUrl();
   const [defaults, setDefaults] = useState<ContentDefaults>(EMPTY_DEFAULTS);
   const [saved, setSaved] = useState<ContentState | null>(null);
   const [draft, setDraft] = useState<ContentState | null>(null);
@@ -308,7 +309,7 @@ export default function Content() {
         />
         <div className="space-y-2 p-5">
           {DOC_KEYS.map((key) => {
-            const url = `${SERVER_URL}/legal/${key}`;
+            const url = `${serverUrl}/legal/${key}`;
             const playField = PLAY_CONSOLE_FIELD[key];
             return (
               <div key={key} className="flex items-center gap-2 rounded-lg border border-line-soft px-3 py-2">
@@ -340,7 +341,7 @@ export default function Content() {
             );
           })}
           <p className="pt-1 text-[12px] leading-relaxed text-muted">
-            These use this dashboard's server URL (<span className="font-medium text-ink">{SERVER_URL}</span>). The
+            These use this dashboard's server URL (<span className="font-medium text-ink">{serverUrl}</span>). The
             pages are rendered by the API itself — no login and no database needed — and show the same text you save
             here.
           </p>

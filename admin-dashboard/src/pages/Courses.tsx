@@ -185,10 +185,10 @@ function formatLength(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 }
 
-/** Per-lesson video control: uploads to Backblaze B2 with progress, or shows the attached video. */
+/** Per-lesson video control: uploads directly to the server `uploads/videos/` folder with progress. */
 const VIDEO_QUALITIES: VideoQuality[] = ['360', '480', '720', '1080'];
 
-/** One upload slot per quality. Each quality is its own file in the private bucket. */
+/** One upload slot per quality. Each quality is stored on the server in `uploads/videos/`. */
 function LessonVideos({
   courseId,
   value,
@@ -239,7 +239,7 @@ function LessonVideos({
               title={
                 uploading
                   ? busy?.stage === 'storing'
-                    ? 'Server is copying the video to storage'
+                    ? 'Server is saving the video in uploads/videos/'
                     : 'Sending the video to the server'
                   : uploaded
                     ? `Replace the ${quality}p video`
@@ -551,7 +551,7 @@ export default function Courses() {
                 <option>English + Hindi</option>
               </Select>
             </Field>
-            <Field label="Cover image" hint="Upload an image (stored on Cloudinary when configured) or paste a URL.">
+            <Field label="Cover image" hint="Upload an image (saved in the server uploads folder) or paste a URL.">
               <div className="flex items-center gap-3">
                 <CourseCover title={form.title || 'Cover'} coverUrl={form.coverUrl} className="h-14 w-20" />
                 <div className="flex-1 space-y-2">

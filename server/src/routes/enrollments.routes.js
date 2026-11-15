@@ -14,9 +14,9 @@ const progressLimiter = rateLimit({ windowMs: 60 * 1000, max: 120 });
 const courseParam = z.object({ courseId: z.string().regex(/^[a-f\d]{24}$/i, 'Invalid course id') });
 
 const progressSchema = z.object({
-  completedLessons: z.array(z.string().max(40)).max(500),
-  lastLessonId: z.string().max(40).default(''),
-  lastPositionSeconds: z.number().min(0).default(0),
+  completedLessons: z.array(z.string().trim().min(1).max(40)).max(500),
+  lastLessonId: z.string().trim().max(40).default(''),
+  lastPositionSeconds: z.number().min(0).max(86400).default(0),
 });
 
 router.get('/my', myEnrollments);

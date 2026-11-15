@@ -12,6 +12,8 @@ const otpCodeSchema = new Schema(
     codeHash: { type: String, required: true },
     attempts: { type: Number, default: 0 },
     sentAt: { type: Date, required: true },
+    windowStart: { type: Date, default: Date.now },
+    windowCount: { type: Number, default: 1 },
     expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
   },
   { timestamps: false }

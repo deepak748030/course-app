@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
@@ -16,7 +15,18 @@ import { overview } from '../controllers/admin/stats.controller.js';
 import * as users from '../controllers/admin/users.controller.js';
 import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { validateBody, validateParams, validateQuery } from '../middleware/validate.js';
-import { MAX_VIDEO_BYTES, VIDEO_QUALITIES, VIDEO_TYPES, getUploadProgress, storeVideo, videoStorageConfigured, videoStorageProblem } from '../services/videoStorage.js';
+import { normalizeUploadUrl } from '../services/uploads.js';
+import {
+  MAX_VIDEO_BYTES,
+  VIDEO_QUALITIES,
+  VIDEO_TMP_DIR,
+  VIDEO_TYPES,
+  getUploadProgress,
+  isValidVideoFile,
+  storeVideo,
+  videoStorageConfigured,
+  videoStorageProblem,
+} from '../services/videoStorage.js';
 import { HttpError, asyncHandler } from '../utils/http.js';
 
 const router = Router();
@@ -33,20 +43,33 @@ router.get('/stats/overview', overview);
 const analyticsDaysQuery = z.object({ days: z.coerce.number().int().min(7).max(365).optional() });
 router.get('/analytics/overview', validateQuery(analyticsDaysQuery), analyticsOverview);
 
-// ---------- course videos (Backblaze B2, private bucket) -----------------------
-/** Storage-stage progress of one upload; the admin polls it while the file is copied to B2. */
+// ---------- course videos (local server storage in uploads/videos/) -----------
+/** Storage-stage progress of one upload; the admin polls it while the file is saved. */
 router.get('/uploads/video/progress/:id', (req, res) => {
   const entry = /^[\w-]{8,64}$/.test(req.params.id) ? getUploadProgress(req.params.id) : null;
   res.json(entry ?? { stage: 'waiting' });
 });
 
 router.get('/uploads/video/status', (_req, res) => {
-  res.json({ configured: videoStorageConfigured, maxBytes: MAX_VIDEO_BYTES, types: Object.keys(VIDEO_TYPES), qualities: VIDEO_QUALITIES });
+  res.json({
+    configured: videoStorageConfigured,
+    storage: 'local',
+    maxBytes: MAX_VIDEO_BYTES,
+    types: Object.keys(VIDEO_TYPES),
+    qualities: VIDEO_QUALITIES,
+  });
 });
 
-// Videos are written to a temp file first, then streamed to B2. Multer's limit stops oversize files.
+// Videos land in `uploads/.tmp` on the same disk, then move atomically into `uploads/videos/courses/...`.
 const videoUpload = multer({
-  storage: multer.diskStorage({ destination: os.tmpdir() }),
+  storage: multer.diskStorage({
+    destination(_req, _file, cb) {
+      fs.promises
+        .mkdir(VIDEO_TMP_DIR, { recursive: true })
+        .then(() => cb(null, VIDEO_TMP_DIR))
+        .catch((err) => cb(err));
+    },
+  }),
   limits: { fileSize: MAX_VIDEO_BYTES, files: 1 },
   fileFilter(_req, file, cb) {
     if (VIDEO_TYPES[file.mimetype]) cb(null, true);
@@ -65,8 +88,8 @@ function handleVideoUpload(req, res, next) {
 }
 
 /**
- * POST /api/admin/uploads/video — multipart field `file` (+ optional `courseId`).
- * Streams the video to the private bucket and returns the object key the lesson stores.
+ * POST /api/admin/uploads/video — multipart field `file` (+ optional `courseId` & `quality`).
+ * Saves the video into `uploads/videos/courses/...` on this server and returns the relative key.
  */
 router.post(
   '/uploads/video',
@@ -78,12 +101,13 @@ router.post(
   asyncHandler(async (req, res) => {
     const file = req.file;
     const cleanup = () => file && fs.promises.rm(file.path, { force: true }).catch(() => {});
+    req.on('aborted', cleanup);
     const headerId = String(req.headers['x-upload-id'] || '');
     const progressId = /^[\w-]{8,64}$/.test(headerId) ? headerId : '';
     try {
       if (!file) throw new HttpError(400, 'Send a video in the "file" field');
-      if (!videoStorageConfigured) {
-        throw new HttpError(503, `Video storage is not set up: ${videoStorageProblem()}.`);
+      if (!(await isValidVideoFile(file.path, file.mimetype))) {
+        throw new HttpError(415, 'Uploaded file does not match a valid MP4, WebM, or MOV video');
       }
       const courseId = typeof req.body.courseId === 'string' ? req.body.courseId : '';
       const courseKey = /^[a-f\d]{24}$/i.test(courseId) ? courseId : 'drafts';
@@ -103,10 +127,10 @@ router.post(
           progressId,
         });
       } catch (err) {
-        console.error('[uploads] could not store video in B2:', err?.message || err);
-        throw new HttpError(503, 'Could not store the video in Backblaze B2. Check the B2_* values in server/.env.');
+        console.error('[uploads] could not save video on server:', err?.message || err);
+        throw new HttpError(500, 'Could not save the video on the server upload folder.');
       }
-      res.status(201).json({ key, quality, size: file.size, contentType: file.mimetype });
+      res.status(201).json({ key, quality, size: file.size, contentType: file.mimetype, storage: 'local' });
     } finally {
       await cleanup();
     }
@@ -127,12 +151,26 @@ const recipeSchema = z.object({
   steps: z.array(z.string().trim().max(500)).max(40).default([]),
   tips: z.array(z.string().trim().max(280)).max(20).default([]),
 });
+const safeMediaUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .transform(normalizeUploadUrl)
+  .refine(
+    (v) =>
+      v === '' ||
+      /^\/uploads\/(?:avatars|covers|banners|images)\/(?!.*\.\.)[\w.-]+$/i.test(v) ||
+      /^https?:\/\//i.test(v),
+    'Enter a valid http(s) or uploaded media URL'
+  );
+
 const lessonVideoSchema = z.object({
   quality: z.enum(['360', '480', '720', '1080']),
-  videoKey: z.string().trim().max(300).regex(/^courses\/[\w./-]+$/, 'Invalid video key'),
+  videoKey: z.string().trim().max(300).regex(/^courses\/(?!.*\.\.)[\w./-]+$/, 'Invalid video key'),
 });
 const lessonSchema = z
   .object({
+    _id: z.string().regex(/^[a-f\d]{24}$/i).optional(),
     title: z.string().trim().min(1).max(140),
     description: z.string().trim().max(2000).default(''),
     minutes: z.number().int().min(1).max(600),
@@ -141,7 +179,7 @@ const lessonSchema = z
       .string()
       .trim()
       .max(300)
-      .regex(/^(courses\/[\w./-]+)?$/, 'Invalid video key')
+      .regex(/^(courses\/(?!.*\.\.)[\w./-]+)?$/, 'Invalid video key')
       .default(''),
     videos: z.array(lessonVideoSchema).max(4).default([]),
     durationSec: z.number().int().min(0).max(86400).default(0),
@@ -159,7 +197,7 @@ const courseSchema = z.object({
   slug: z.string().trim().toLowerCase().regex(/^[a-z0-9-]{2,80}$/).optional(),
   promise: z.string().trim().max(280).default(''),
   description: z.string().trim().max(8000).default(''),
-  coverUrl: z.string().trim().max(500).default(''),
+  coverUrl: safeMediaUrl.default(''),
   category: z.string().regex(/^[a-f\d]{24}$/i),
   level: z.enum(['Beginner', 'Intermediate', 'Advanced']).default('Beginner'),
   language: z.string().trim().max(60).default('English'),
@@ -243,16 +281,27 @@ router.patch('/reviews/:id', validateParams(objectIdParam), validateBody(reviewP
 router.delete('/reviews/:id', validateParams(objectIdParam), reviews.deleteReview);
 
 // ---------- coupons ---------------------------------------------------------------------------
-const couponSchema = z.object({
+const couponBaseSchema = z.object({
   code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,24}$/),
   description: z.string().trim().max(200).default(''),
   type: z.enum(['percent', 'flat']),
-  value: z.number().min(1),
+  value: z.number().min(1).max(100000),
   maxUses: z.number().int().min(0).default(0),
   expiresAt: z.coerce.date().optional().nullable(),
   active: z.boolean().default(true),
 });
-const couponUpdateSchema = couponSchema.partial().omit({ code: true }).extend({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,24}$/).optional() });
+const couponSchema = couponBaseSchema.refine((v) => v.type !== 'percent' || v.value <= 90, {
+  message: 'Percentage discount cannot exceed 90%',
+  path: ['value'],
+});
+const couponUpdateSchema = couponBaseSchema
+  .partial()
+  .omit({ code: true })
+  .extend({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,24}$/).optional() })
+  .refine((v) => v.type !== 'percent' || v.value === undefined || v.value <= 90, {
+    message: 'Percentage discount cannot exceed 90%',
+    path: ['value'],
+  });
 
 router.get('/coupons', coupons.listCoupons);
 router.post('/coupons', validateBody(couponSchema), coupons.createCoupon);
@@ -307,14 +356,14 @@ const settingsSchema = z.object({
     .string()
     .trim()
     .max(200)
+    .transform((value) => value.replace(/\/+$/, '').replace(/\/api$/i, ''))
     .refine((value) => value === '' || /^https?:\/\/[^\s/]+(\/[^\s]*)?$/i.test(value), 'Enter a full URL starting with http:// or https://, or leave it empty.')
-    .transform((value) => value.replace(/\/+$/, ''))
     .optional(),
   checkoutMode: z.enum(['web', 'sdk']).optional(),
   homeBanners: z
     .array(
       z.object({
-        imageUrl: z.string().trim().max(500).default(''),
+        imageUrl: safeMediaUrl.default(''),
         title: z.string().trim().max(80).default(''),
         subtitle: z.string().trim().max(160).default(''),
         courseSlug: z.string().trim().max(80).default(''),

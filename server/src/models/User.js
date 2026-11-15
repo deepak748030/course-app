@@ -14,6 +14,8 @@ const userSchema = new Schema(
     role: { type: String, enum: ['user', 'admin'], default: 'user', index: true },
     avatarUrl: { type: String, default: '' },
     blocked: { type: Boolean, default: false },
+    /** Incremented on password change, block, or role demotion to revoke prior JWTs immediately. */
+    tokenVersion: { type: Number, default: 0 },
     lastLoginAt: { type: Date },
     /** Optional profile fields the app edits from Profile → Edit. */
     city: { type: String, default: '', trim: true, maxlength: 80 },
@@ -38,6 +40,7 @@ userSchema.index(
 userSchema.set('toJSON', {
   transform(_doc, ret) {
     delete ret.passwordHash;
+    delete ret.tokenVersion;
     delete ret.__v;
     return ret;
   },
