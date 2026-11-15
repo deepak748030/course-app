@@ -14,7 +14,7 @@ import { storage } from '@/lib/storage';
 
 const STORAGE_KEY = 'ydu.serverUrl';
 const MANUAL_KEY = 'ydu.serverUrl.manual';
-const LEGACY_RENDER_URL = 'https://course-app-na94.onrender.com';
+const LEGACY_RENDER_URL = 'https://api-ydu-server.duckdns.org';
 
 export const BUILT_IN_API_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'https://api-ydu-server.duckdns.org')
   .trim()
